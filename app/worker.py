@@ -55,7 +55,6 @@ def run_forever() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
     c = Container()
     consumer = f"{socket.gethostname()}-{os.getpid()}"
-    c.queue.ensure_group()
     running = True
 
     def stop(*_):
@@ -68,13 +67,14 @@ def run_forever() -> None:
 
     while running:
         try:
+            c.queue.ensure_group()
             for msg_id, payload in c.queue.reclaim_stale(consumer):
                 process_message(c, msg_id, payload)
             for msg_id, payload in c.queue.consume(consumer, count=1, block_ms=5000):
                 process_message(c, msg_id, payload)
         except RedisConnectionError:
             # Redis 재시작 중이면 잠시 기다렸다가 다시 붙는다. 처리 중이던 메시지는 pending으로 남아 재처리된다
-            log.warning("redis connection lost, retrying in 3s")
+            log.warning("redis(%s) 연결 실패, 3초 후 재시도", c.settings.redis_url)
             time.sleep(3)
 
 
