@@ -1,0 +1,47 @@
+services:
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]   # 큐 메시지가 재시작 후에도 남도록 AOF 사용
+    volumes: [redis-data:/data]
+    ports: ["6379:6379"]
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    volumes: [qdrant-data:/qdrant/storage]
+    ports: ["6333:6333"]
+
+  api:
+    build: .
+    env_file: .env
+    depends_on: [redis, qdrant]
+    ports: ["8000:8000"]
+
+  worker:
+    build: .
+    env_file: .env
+    command: ["python", "-m", "app.worker"]
+    depends_on: [redis, qdrant]
+    volumes:
+      # 수정안을 검증할 대상 저장소. 워커는 이 경로를 읽기 전용으로 복사해서 쓰고 원본은 건드리지 않는다
+      - ./sample_repo:/repo:ro
+      - artifacts:/srv/artifacts
+      - fastembed-cache:/tmp/fastembed_cache
+    deploy:
+      replicas: 2     # Consumer Group이라 워커를 늘려도 메시지가 중복 처리되지 않는다
+
+  n8n:
+    image: n8nio/n8n:latest
+    environment:
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
+      - AUTOMATION_TOKEN=${AUTOMATION_TOKEN}
+      - N8N_BLOCK_ENV_ACCESS_IN_NODE=false
+      - WEBHOOK_URL=${N8N_WEBHOOK_URL:-http://localhost:5678/}
+    ports: ["5678:5678"]
+    volumes: [n8n-data:/home/node/.n8n]
+
+volumes:
+  redis-data:
+  qdrant-data:
+  n8n-data:
+  artifacts:
+  fastembed-cache:

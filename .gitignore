@@ -1,0 +1,12 @@
+# 비밀값: .env, .env.local, .env.production 등 전부 제외 (예시 파일만 허용)
+.env*
+!.env.example
+*.pem
+*.key
+
+__pycache__/
+*.pyc
+.pytest_cache/
+artifacts/
+.venv/
+.DS_Store
