@@ -7,6 +7,12 @@
 | [0001](0001-no-eks.md) | 4단계에서 EKS를 쓰지 않고 EC2만 다룬다 | 채택 |
 | [0002](0002-sqs-intake.md) | AWS 알림은 EventBridge와 SQS로 받는다 | 채택 |
 | [0003](0003-approved-remediation.md) | 승인 후 허용 목록 Ansible 플레이북으로 조치한다 | 채택 |
+| [0004](0004-deployed-bug-premise.md) | 코드 버그 시나리오는 "배포된 버그"를 전제로 만든다 | 채택 |
+| [0005](0005-scenario-triggers.md) | 시나리오 재현 방식을 다섯 가지로 나눈다 | 채택 |
+| [0006](0006-experiment-conditions.md) | 실험 조건은 서버 설정으로 두고 실행 전에 확인한다 | 채택 |
+| [0007](0007-light-model-haiku-5-5.md) | 경량 모델은 claude-haiku-5-5, temperature는 보내지 않는다 | 채택 |
+| [0008](0008-keep-phase-order.md) | 1단계 측정이 막혀도 2단계 작업을 당겨 하지 않는다 | 채택 |
+| [0009](0009-verification-stack.md) | 검증 스킬은 사용 중인 스택과 분리된 별도 스택을 띄운다 | 제안 |
 
 양식은 다음과 같다.
 
