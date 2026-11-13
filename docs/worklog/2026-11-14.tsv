@@ -19,3 +19,6 @@ ts	phase	decision	why	evidence	result
 2026-11-13T20:10Z	day1	실제 LLM 호출이 크레딧 부족(400)으로 막혀 Day 1 마무리와 본 실험을 멈춤	Your credit balance is too low	haiku-5-5, opus-5-5 각각 1회 호출 결과	open: 크레딧 충전 필요
 2026-11-13T20:15Z	plan	측정이 막힌 동안 2단계 코드를 당겨 만들지 않음	1단계 기준선이 원래 시스템이어야 2단계 비교가 성립함	docs/decisions/0008	보류
 2026-11-13T20:15Z	verify	검증 스킬 생성을 본 실험 때로 미루고 격리 스택 설계만 기록	사용자가 본 실험을 진행하면 실행하라고 지시했고 본 실험이 막힘	docs/decisions/0009	제안 상태
+2026-11-13T19:50Z	verify	검증 스택 분리용 compose 덮어쓰기(!override)가 포트와 볼륨을 바꾸는지 확인	0009 설계가 Docker Compose 5.7에서 동작하는지 먼저 보려고	docker compose -p aiops-verify ... config --format json 결과: api 18000:8000, worker /repo 덮어씀	동작 확인
+2026-11-13T20:25Z	review	Sonnet 검토 지적 반영: 0004 테스트 수 정정과 판정 순환성 한계, 0007 후속 확인, 0009 본 실험과 검증 스택 구분	작업한 모델과 다른 모델의 검토에서 근거가 약하거나 사실이 틀린 곳이 나옴	PR #9 커밋	반영
+2026-11-13T20:30Z	pr	PR #1~#9 본문에서 Claude 출처 줄 삭제, 열린 PR(#7~#9) 커밋 메시지에서도 삭제	사용자가 출처 표시를 원하지 않음	gh pr view 1~9 본문 검색 0건	main에 병합된 커밋은 강제 푸시가 필요해 보류
