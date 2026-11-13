@@ -1,0 +1,11 @@
+diff --git a/shopapi/pagination.py b/shopapi/pagination.py
+index 00c4d54..48c2944 100644
+--- a/shopapi/pagination.py
++++ b/shopapi/pagination.py
+@@ -20,5 +20,5 @@ def paginate(items: list[T], page: int, size: int) -> dict:
+     if not 1 <= page <= pages:
+         raise InvalidPage(f"page {page} out of range 1..{pages}")
+     start = (page - 1) * size
+-    end = min(start + size, len(items))
++    end = start + size
+     return {"items": [items[i] for i in range(start, end)], "page": page, "pages": pages, "has_next": page < pages}

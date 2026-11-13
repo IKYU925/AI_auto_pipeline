@@ -1,0 +1,13 @@
+diff --git a/shopapi/pricing.py b/shopapi/pricing.py
+index 1f53146..6ee271e 100644
+--- a/shopapi/pricing.py
++++ b/shopapi/pricing.py
+@@ -40,7 +40,7 @@ def apply_coupon(amount: float, coupon: Coupon | None) -> float:
+ 
+ def option_surcharge(options: tuple[str, ...]) -> float:
+     """알 수 없는 옵션은 추가금 없이 무시한다."""
+-    return sum(OPTION_SURCHARGE.get(o, 0.0) for o in options)
++    return sum(OPTION_SURCHARGE[o] for o in options)
+ 
+ 
+ def add_tax(amount: float, rate: float) -> float:
