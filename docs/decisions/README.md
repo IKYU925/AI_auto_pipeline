@@ -12,7 +12,9 @@
 | [0006](0006-experiment-conditions.md) | 실험 조건은 서버 설정으로 두고 실행 전에 확인한다 | 채택 |
 | [0007](0007-light-model-haiku-5-5.md) | 경량 모델은 claude-haiku-5-5, temperature는 보내지 않는다 | 채택 |
 | [0008](0008-keep-phase-order.md) | 1단계 측정이 막혀도 2단계 작업을 당겨 하지 않는다 | 채택 |
-| [0009](0009-verification-stack.md) | 검증 스킬은 사용 중인 스택과 분리된 별도 스택을 띄운다 | 제안 |
+| [0009](0009-verification-stack.md) | 검증 스킬은 사용 중인 스택과 분리된 별도 스택을 띄운다 | 채택 |
+| [0010](0010-single-run-ab.md) | 1단계 A/B 본 실험은 조건마다 1회만 실행한다 | 채택 |
+| [0011](0011-keep-expected-labels.md) | 결과를 본 뒤 시나리오 기대값을 고치지 않는다 | 채택 |
 
 양식은 다음과 같다.
 
