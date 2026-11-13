@@ -125,9 +125,22 @@ curl -X POST localhost:8000/api/v1/incidents \
 curl localhost:8000/api/v1/incidents/<incident_id> -H "X-Automation-Token: $AUTOMATION_TOKEN"
 ```
 
-### 3. 실제 서비스 저장소에 붙이기
+### 3. 장애 시나리오 실행(검증 1단계)
 
-- `docker-compose.yml`의 `./sample_repo:/repo:ro`를 대상 서비스 저장소로 바꾼다. 운영에서는 워커가 배포된 커밋을 clone해서 쓰는 방식이 맞다.
+워커는 `targets/shopapi`(주문, 쿠폰, 재고, 결제, 목록 조회를 가진 작은 FastAPI 서비스)를 대상 저장소로 쓴다. 시나리오는 `scenarios/<ID>.yaml`(기대 결과, 재현 요청), `<ID>.patch`(정상 코드에 넣는 버그), `hidden_tests/`(LLM이 보지 못하는 판정용 테스트)로 이뤄진다. 계획은 [docs/plan.md](docs/plan.md)에 있다.
+
+```bash
+docker compose up -d --build
+docker compose exec worker python -m pytest /repo -q -p no:cacheprovider   # shopapi 테스트가 워커 안에서 도는지 확인
+docker compose exec api python -m scripts.ingest_knowledge knowledge
+AUTOMATION_TOKEN=... python -m scripts.run_experiment S01                    # 맥에서 실행. 주입, 접수, 대기, 판정, 원복
+```
+
+`run_experiment`는 버그를 주입한 shopapi를 프로세스 안에서 호출해 실제 스택트레이스를 만들고, `/api/v1/incidents`로 접수한 뒤 완료를 기다린다. 끝나면 AI 패치를 버그가 든 복사본에 적용해 숨은 테스트와 전체 테스트를 돌리고, 결과를 JSON 한 줄로 출력한다. 선별 테스트는 통과했지만 숨은 테스트가 실패하면 `false_pass`가 참이다. 수동으로 확인할 때는 `scripts/inject.sh S01`로 주입하고 `localhost:8100`으로 요청한 뒤 `scripts/inject.sh S01 revert`로 원복한다.
+
+### 4. 실제 서비스 저장소에 붙이기
+
+- `docker-compose.yml`의 `./targets/shopapi:/repo:ro`를 대상 서비스 저장소로 바꾼다. 운영에서는 워커가 배포된 커밋을 clone해서 쓰는 방식이 맞다.
 - `knowledge/` 아래에 런북, 포스트모템을 front matter(`service`, `category`, `doc_type`, `updated_at`)와 함께 넣고 `scripts.ingest_knowledge`를 주기적으로(문서 저장소 push 시 CI 등) 실행한다. 바뀐 청크만 임베딩되므로 자주 돌려도 비용이 거의 들지 않는다.
 
 ## 폴더 구조
@@ -148,9 +161,11 @@ AI_automation/
 │   └── notify/slack.py      # 결과 회신
 ├── n8n/incident_workflow.json
 ├── knowledge/               # RAG 원천 문서 예시
-├── sample_repo/             # 데모용 대상 저장소(버그 포함)
-├── scripts/                 # 오프라인 데모, 지식 문서 수집
-├── tests/                   # 파이프라인 테스트 23개
+├── sample_repo/             # 오프라인 데모용 대상 저장소(버그 포함)
+├── targets/shopapi/         # 검증용 대상 서비스와 테스트
+├── scenarios/               # 장애 시나리오(정의, 버그 패치, 숨은 테스트)
+├── scripts/                 # 오프라인 데모, 지식 문서 수집, 버그 주입, 시나리오 실행
+├── tests/                   # 파이프라인 테스트
 ├── docker-compose.yml
 └── Dockerfile
 ```

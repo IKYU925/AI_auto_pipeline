@@ -27,13 +27,13 @@ class Settings(BaseSettings):
     embedding_model: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"  # 한국어 문서 지원, 384차원
 
     # --- LLM 모델 분리 ---
-    light_model: str = "anthropic:claude-haiku-5-5"   # 분류, 요약 같은 가벼운 작업
+    light_model: str = "anthropic:claude-haiku-4-5"   # 분류, 요약 같은 가벼운 작업
     heavy_model: str = "anthropic:claude-opus-5-5"    # 원인 분석, 수정 코드 생성
-    # 모델별 100만 토큰당 단가(USD) [입력, 출력]. 예시 값이므로 실제 요금표로 교체해서 쓴다.
+    # 모델별 100만 토큰당 단가(USD) [입력, 출력]. Anthropic 요금표 기준(2026-11-14 확인)
     model_prices: dict[str, list[float]] = Field(
         default_factory=lambda: {
-            "anthropic:claude-haiku-5-5": [1.0, 5.0],
-            "anthropic:claude-opus-5-5": [5.0, 25.0],
+            "anthropic:claude-haiku-4-5": [1.0, 5.0],
+            "anthropic:claude-opus-5-5": [4.0, 20.0],
         }
     )
 
