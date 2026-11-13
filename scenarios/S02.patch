@@ -1,0 +1,13 @@
+diff --git a/shopapi/pricing.py b/shopapi/pricing.py
+index 1f53146..b8e2f1d 100644
+--- a/shopapi/pricing.py
++++ b/shopapi/pricing.py
+@@ -33,8 +33,6 @@ def apply_discount(price: float, rate: float) -> float:
+ 
+ def apply_coupon(amount: float, coupon: Coupon | None) -> float:
+     """쿠폰이 없으면 금액을 그대로 돌려준다. 할인 후 금액은 0 아래로 내려가지 않는다."""
+-    if coupon is None:
+-        return amount
+     return max(round(apply_discount(amount, coupon.rate) - coupon.amount, 2), 0.0)
+ 
+ 

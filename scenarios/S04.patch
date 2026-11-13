@@ -1,0 +1,13 @@
+diff --git a/shopapi/orders.py b/shopapi/orders.py
+index 46988dd..8462232 100644
+--- a/shopapi/orders.py
++++ b/shopapi/orders.py
+@@ -22,7 +22,7 @@ def parse_item(raw: dict) -> OrderItem:
+         return OrderItem(
+             sku=raw["sku"],
+             price=float(raw["price"]),
+-            quantity=int(raw["quantity"]),
++            quantity=raw["quantity"],
+             options=tuple(raw.get("options", [])),
+         )
+     except (KeyError, ValueError) as e:

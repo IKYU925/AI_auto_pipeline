@@ -1,6 +1,6 @@
 import pytest
 
-from shopapi.pricing import Coupon, InvalidCoupon, add_tax, apply_coupon, apply_discount, option_surcharge, parse_coupon
+from shopapi.pricing import Coupon, InvalidCoupon, add_tax, apply_coupon, apply_discount, parse_coupon
 
 
 def test_apply_discount():
@@ -10,10 +10,6 @@ def test_apply_discount():
 def test_apply_discount_rejects_rate_over_one():
     with pytest.raises(ValueError):
         apply_discount(1000, 1.5)
-
-
-def test_apply_coupon_none_returns_amount():
-    assert apply_coupon(1234.5, None) == 1234.5
 
 
 def test_apply_coupon_rate_and_amount():
@@ -27,10 +23,6 @@ def test_apply_coupon_never_negative():
 def test_parse_coupon_rejects_invalid_rate():
     with pytest.raises(InvalidCoupon):
         parse_coupon({"code": "C", "rate": 2})
-
-
-def test_option_surcharge_ignores_unknown_option():
-    assert option_surcharge(("gift_wrap", "express", "unknown")) == 5000.0
 
 
 def test_add_tax():

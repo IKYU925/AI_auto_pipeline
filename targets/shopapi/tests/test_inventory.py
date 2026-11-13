@@ -1,6 +1,6 @@
 import pytest
 
-from shopapi.inventory import Inventory, InvalidQuantity, OutOfStock
+from shopapi.inventory import Inventory, OutOfStock
 
 
 def test_reserve_decreases_stock():
@@ -21,9 +21,3 @@ def test_reserve_more_than_stock():
 def test_reserve_unknown_sku():
     with pytest.raises(OutOfStock):
         Inventory().reserve("X", 1)
-
-
-@pytest.mark.parametrize("qty", [0, -1])
-def test_reserve_rejects_non_positive_quantity(qty):
-    with pytest.raises(InvalidQuantity):
-        Inventory({"A": 5}).reserve("A", qty)

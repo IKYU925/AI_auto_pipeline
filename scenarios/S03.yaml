@@ -1,0 +1,14 @@
+id: S03
+title: 가격표에 없는 상품 옵션이 들어오면 KeyError
+type: code_bug
+difficulty: easy
+expected:
+  category: code_bug
+  needs_code_fix: true
+  root_cause_file: shopapi/pricing.py
+  outcome: resolved
+request:
+  method: POST
+  path: /orders/summary
+  json: {items: [{sku: SKU-001, price: 1000, quantity: 1, options: [engraving]}]}
+hidden_test: hidden_tests/test_s03.py
