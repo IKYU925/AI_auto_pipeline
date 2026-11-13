@@ -133,10 +133,11 @@ curl localhost:8000/api/v1/incidents/<incident_id> -H "X-Automation-Token: $AUTO
 docker compose up -d --build
 docker compose exec worker python -m pytest /repo -q -p no:cacheprovider   # shopapi 테스트가 워커 안에서 도는지 확인
 docker compose exec api python -m scripts.ingest_knowledge knowledge
-AUTOMATION_TOKEN=... python -m scripts.run_experiment S01                    # 맥에서 실행. 주입, 접수, 대기, 판정, 원복
+set -a; . ./.env; set +a                                                    # AUTOMATION_TOKEN을 셸에 불러온다
+python -m scripts.run_experiment S01 S10 --condition A --repeat 3 --out results/phase1_A.csv
 ```
 
-`run_experiment`는 버그를 주입한 shopapi를 프로세스 안에서 호출해 실제 스택트레이스를 만들고, `/api/v1/incidents`로 접수한 뒤 완료를 기다린다. 끝나면 AI 패치를 버그가 든 복사본에 적용해 숨은 테스트와 전체 테스트를 돌리고, 결과를 JSON 한 줄로 출력한다. 선별 테스트는 통과했지만 숨은 테스트가 실패하면 `false_pass`가 참이다. 수동으로 확인할 때는 `scripts/inject.sh S01`로 주입하고 `localhost:8100`으로 요청한 뒤 `scripts/inject.sh S01 revert`로 원복한다.
+`run_experiment`는 먼저 서버의 최적화 설정(`/api/v1/config`)이 `--condition`(A는 모두 켬, B는 `.env`의 `OPT_*`를 모두 끔)과 같은지 확인한다. 실행마다 캐시를 비우고, 버그를 주입한 shopapi로 장애를 재현해 `/api/v1/incidents`로 접수한 뒤 완료를 기다린다. 끝나면 AI 패치를 버그가 든 복사본에 적용해 숨은 테스트와 전체 테스트를 돌리고, 결과를 CSV에 한 줄 붙인다. 선별 테스트는 통과했지만 숨은 테스트가 실패하면 `false_pass`가 참이다. 재발(S12)과 중복(S13)도 같은 명령으로 실행한다.
 
 ### 4. 실제 서비스 저장소에 붙이기
 

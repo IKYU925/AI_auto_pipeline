@@ -1,14 +1,16 @@
-"""장애 시나리오 하나를 실행하고 결과를 판정한다.
+"""장애 시나리오를 실행하고 결과를 판정해 CSV로 남긴다.
 
-실행: python -m scripts.run_experiment S01 [--api http://localhost:8000]
+실행: python -m scripts.run_experiment S01 S02 --condition A --repeat 3 --out results/phase1_A.csv
 
-1. 시나리오 버그를 shopapi에 주입한다(워커의 /repo와 같은 폴더)
-2. 시나리오 요청을 shopapi에 보내 실제 예외와 스택트레이스를 얻는다
-3. 자동화 API로 장애를 접수하고 완료될 때까지 기다린다
-4. AI 패치를 버그가 들어간 복사본에 적용하고 숨은 테스트와 전체 테스트로 판정한다
-5. 버그를 원복하고 결과를 JSON 한 줄로 출력한다
+1. 서버의 최적화 설정이 --condition(A: 모두 켬, B: 모두 끔)과 같은지 확인한다
+2. 실행마다 캐시를 비운다
+3. 시나리오 버그를 shopapi에 주입한다(워커의 /repo와 같은 폴더)
+4. 버그가 든 shopapi로 장애를 재현해 자동화 API로 접수하고 완료될 때까지 기다린다
+5. AI 패치를 버그가 들어간 복사본에 적용하고 숨은 테스트와 전체 테스트로 판정한다
+6. 버그를 원복하고 결과를 CSV에 한 줄 붙인다
 """
 import argparse
+import csv
 import json
 import os
 import shutil
@@ -17,12 +19,17 @@ import sys
 import tempfile
 import time
 import traceback
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 
 import httpx
 import yaml
+from redis import Redis
 
+from app.infra import make_redis
 from app.testing.runner import SandboxTestRunner
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -116,8 +123,23 @@ def load_scenario(scenario_id: str) -> Scenario:
     )
 
 
-def inject(scenario_id: str, revert: bool = False) -> None:
-    subprocess.run([str(ROOT / "scripts" / "inject.sh"), scenario_id, *(["revert"] if revert else [])], check=True)
+def inject(scenario_id: str, repo: Path, revert: bool = False) -> bool:
+    """버그 패치가 있으면 repo에 적용(또는 원복)하고 True를 돌려준다. 코드 버그가 아닌 시나리오는 패치가 없다."""
+    patch = SCENARIOS / f"{scenario_id}.patch"
+    if not patch.exists():
+        return False
+    subprocess.run(["git", "-C", str(repo), "apply", *(["-R"] if revert else []), str(patch)], check=True)
+    return True
+
+
+@contextmanager
+def injected(scenario_id: str, repo: Path) -> Iterator[None]:
+    applied = inject(scenario_id, repo)
+    try:
+        yield
+    finally:
+        if applied:
+            inject(scenario_id, repo, revert=True)
 
 
 def _load_shopapi(repo: Path):
@@ -218,53 +240,161 @@ def judge(s: Scenario, patch: str) -> dict:
         shutil.rmtree(tmp, ignore_errors=True)
 
 
-def summarize(s: Scenario, accepted: dict, status: dict, verdict: dict, elapsed_sec: float) -> dict:
+CACHE_PATTERNS = ("llm:*", "fix:resolved:*", "dedupe:*", "rag:q:*")
+CONDITIONS = {"A": True, "B": False}
+COLUMNS = [
+    "condition", "run", "started_at", "scenario", "type", "difficulty", "incident_id",
+    "outcome", "expected_outcome", "outcome_correct", "category", "expected_category", "category_correct",
+    "attempts", "elapsed_sec", "usd", "tokens_in", "tokens_out", "llm_calls", "calls_by_model", "cache_hits",
+    "reused_fix", "tests_selected", "test_files_total", "test_sec",
+    "hidden_passed", "full_passed", "false_pass", "incidents_created",
+]
+
+
+def reset_caches(redis: Redis) -> None:
+    """임베딩 캐시는 LLM 비용과 무관한 로컬 계산이라 남긴다."""
+    for pattern in CACHE_PATTERNS:
+        for key in redis.scan_iter(pattern):
+            redis.delete(key)
+
+
+def verify_condition(api: httpx.Client, condition: str) -> dict:
+    config = api.get("/api/v1/config").json()
+    want = CONDITIONS[condition]
+    off_target = {k: v for k, v in config["optimizations"].items() if v != want}
+    if off_target:
+        raise SystemExit(f"서버 설정이 조건 {condition}와 다르다: {off_target}. .env의 OPT_*를 고치고 api, worker를 다시 만든다")
+    return config
+
+
+@dataclass
+class Backend:
+    api: httpx.Client
+    redis: Redis
+    process: Callable[[], None] = lambda: None  # 실제 실행에서는 워커 컨테이너가 처리한다
+    timeout_sec: float = 600
+    interval_sec: float = 3
+
+
+@dataclass
+class Run:
+    accepted: dict
+    status: dict
+    elapsed_sec: float
+    verdict: dict
+
+
+def _run(s: Scenario, b: Backend) -> Run:
+    with injected(s.id, SHOPAPI):
+        started = time.monotonic()
+        accepted = submit(b.api, reproduce(s))
+        b.process()
+        status = wait(b.api, accepted["incident_id"], b.timeout_sec, b.interval_sec)
+        elapsed = time.monotonic() - started
+        verdict = judge(s, status.get("patch", ""))
+    return Run(accepted, status, elapsed, verdict)
+
+
+def _run_duplicate(base: Scenario, times: int, b: Backend) -> tuple[Run, int]:
+    with injected(base.id, SHOPAPI):
+        started = time.monotonic()
+        incident = reproduce(base)
+        accepted = [submit(b.api, incident) for _ in range(times)]
+        b.process()
+        status = wait(b.api, accepted[0]["incident_id"], b.timeout_sec, b.interval_sec)
+        elapsed = time.monotonic() - started
+        verdict = judge(base, status.get("patch", ""))
+    return Run(accepted[0], status, elapsed, verdict), len({a["incident_id"] for a in accepted})
+
+
+def run_scenario(s: Scenario, b: Backend) -> dict:
+    reset_caches(b.redis)
+    match s.trigger:
+        case Recurrence(base=base):
+            base_s = load_scenario(base)
+            first = _run(base_s, b)
+            # 중복 제거 기간이 지났다고 보고 같은 장애를 다시 접수한다. 캐시와 검증된 수정안은 남긴다
+            b.redis.delete(f"dedupe:{first.accepted['fingerprint']}")
+            return summarize(s, _run(base_s, b))
+        case Duplicate(base=base, times=times):
+            run, created = _run_duplicate(load_scenario(base), times, b)
+            return summarize(s, run, incidents_created=created)
+        case _:
+            return summarize(s, _run(s, b))
+
+
+def summarize(s: Scenario, run: Run, incidents_created: int | None = None) -> dict:
+    status, verdict = run.status, run.verdict
     cls = status.get("classification") or {}
     cost = status.get("cost") or {}
+    calls = {k.removeprefix("calls:"): v for k, v in cost.items() if k.startswith("calls:")}
+    selection = status.get("test_selection") or {}
+    result = status.get("test_result") or {}
     outcome = status.get("status")
+    category = cls.get("category")
     return {
         "scenario": s.id,
-        "incident_id": accepted["incident_id"],
+        "type": s.type,
+        "difficulty": s.difficulty,
+        "incident_id": run.accepted["incident_id"],
         "outcome": outcome,
         "expected_outcome": s.expected.outcome,
-        "category": cls.get("category"),
-        "category_correct": cls.get("category") == s.expected.category,
+        "outcome_correct": outcome == s.expected.outcome,
+        "category": category,
+        "expected_category": s.expected.category,
+        "category_correct": category == s.expected.category if s.expected.category else None,
         "attempts": status.get("attempts", 0),
-        "elapsed_sec": round(elapsed_sec, 1),
+        "elapsed_sec": round(run.elapsed_sec, 1),
         "usd": cost.get("usd", 0),
         "tokens_in": cost.get("tokens_in", 0),
         "tokens_out": cost.get("tokens_out", 0),
-        **verdict,
+        "llm_calls": sum(calls.values()),
+        "calls_by_model": json.dumps(calls, sort_keys=True),
+        "cache_hits": sum(v for k, v in cost.items() if k.startswith("cache_hit:")),
+        "reused_fix": bool(status.get("reused_fix")),
+        "tests_selected": ("full" if selection.get("full_suite") else len(selection.get("tests", []))) if selection else None,
+        "test_files_total": selection.get("total_test_files"),
+        "test_sec": result.get("duration_sec"),
+        "hidden_passed": verdict.get("hidden_passed"),
+        "full_passed": verdict.get("full_passed"),
         "false_pass": outcome == "resolved" and verdict.get("hidden_passed") is False,
+        "incidents_created": incidents_created,
     }
+
+
+def append_csv(path: Path, row: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    new = not path.exists()
+    with path.open("a", newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, fieldnames=COLUMNS)
+        if new:
+            w.writeheader()
+        w.writerow({k: row.get(k) for k in COLUMNS})
 
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("scenario")
+    ap.add_argument("scenarios", nargs="+")
+    ap.add_argument("--condition", choices=sorted(CONDITIONS), required=True)
+    ap.add_argument("--repeat", type=int, default=1)
+    ap.add_argument("--out", type=Path, help="결과를 붙일 CSV. 없으면 JSON 줄로만 출력")
     ap.add_argument("--api", default=os.environ.get("AUTOMATION_API", "http://localhost:8000"))
+    ap.add_argument("--redis", default=os.environ.get("EXPERIMENT_REDIS_URL", "redis://localhost:6379/0"))
     ap.add_argument("--timeout", type=float, default=600)
     args = ap.parse_args()
 
-    s = load_scenario(args.scenario)
-    token = os.environ["AUTOMATION_TOKEN"]
-    api = httpx.Client(base_url=args.api, headers={"X-Automation-Token": token}, timeout=30)
+    scenarios = [load_scenario(sid) for sid in args.scenarios]
+    api = httpx.Client(base_url=args.api, headers={"X-Automation-Token": os.environ["AUTOMATION_TOKEN"]}, timeout=30)
+    verify_condition(api, args.condition)
+    backend = Backend(api, make_redis(args.redis), timeout_sec=args.timeout)
 
-    if isinstance(s.trigger, Recurrence | Duplicate):
-        sys.exit(f"{s.id}: 재발, 중복 시나리오의 실행 절차는 F02(실험 스크립트)에서 만든다")
-    patched = (SCENARIOS / f"{s.id}.patch").exists()
-    if patched:
-        inject(s.id)
-    try:
-        started = time.monotonic()
-        accepted = submit(api, reproduce(s))
-        status = wait(api, accepted["incident_id"], args.timeout)
-        elapsed = time.monotonic() - started
-        verdict = judge(s, status.get("patch", ""))
-    finally:
-        if patched:
-            inject(s.id, revert=True)
-    print(json.dumps(summarize(s, accepted, status, verdict, elapsed), ensure_ascii=False))
+    for n in range(1, args.repeat + 1):
+        for s in scenarios:
+            started_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
+            row = {"condition": args.condition, "run": n, "started_at": started_at, **run_scenario(s, backend)}
+            print(json.dumps(row, ensure_ascii=False), flush=True)
+            if args.out:
+                append_csv(args.out, row)
 
 
 if __name__ == "__main__":

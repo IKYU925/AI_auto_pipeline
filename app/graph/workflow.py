@@ -22,7 +22,7 @@ def _stopped(state: IncidentState) -> bool:
     return state.get("outcome") == "budget_exceeded"
 
 
-def build_graph(nodes: Nodes, max_attempts: int):
+def build_graph(nodes: Nodes, max_attempts: int, early_exit: bool = True):
     g = StateGraph(IncidentState)
     g.add_node("classify", nodes.classify)
     g.add_node("retrieve_context", nodes.retrieve_context)
@@ -41,21 +41,27 @@ def build_graph(nodes: Nodes, max_attempts: int):
         "classify", lambda s: "report" if _stopped(s) else "retrieve_context", ["report", "retrieve_context"]
     )
 
-    def after_retrieve(s: IncidentState) -> str:
+    def needs_fix(s: IncidentState) -> bool:
         cls = s["classification"]
-        # 코드 수정이 필요 없는 장애(인프라, 설정)는 고성능 모델을 부르지 않고 런북 안내로 끝낸다
-        if not cls["needs_code_fix"] or cls["confidence"] < 0.5:
-            return "report"
-        return "lookup_known_fix"
+        return cls["needs_code_fix"] and cls["confidence"] >= 0.5
 
-    g.add_conditional_edges("retrieve_context", after_retrieve, ["report", "lookup_known_fix"])
+    def after_retrieve(s: IncidentState) -> str:
+        if needs_fix(s):
+            return "lookup_known_fix"
+        # 코드 수정이 필요 없는 장애(인프라, 설정)는 고성능 모델을 부르지 않고 런북 안내로 끝낸다.
+        # 조기 종료를 끄면(실험 조건 B) 원인 분석까지 실행한 뒤 끝낸다
+        return "report" if early_exit else "analyze_root_cause"
+
+    g.add_conditional_edges("retrieve_context", after_retrieve, ["report", "lookup_known_fix", "analyze_root_cause"])
     g.add_conditional_edges(
         "lookup_known_fix",
         lambda s: "analyze_diff" if s.get("reused_fix") else "analyze_root_cause",
         ["analyze_diff", "analyze_root_cause"],
     )
     g.add_conditional_edges(
-        "analyze_root_cause", lambda s: "report" if _stopped(s) else "generate_fix", ["report", "generate_fix"]
+        "analyze_root_cause",
+        lambda s: "report" if _stopped(s) or not needs_fix(s) else "generate_fix",
+        ["report", "generate_fix"],
     )
     g.add_conditional_edges(
         "generate_fix", lambda s: "report" if _stopped(s) else "analyze_diff", ["report", "analyze_diff"]
