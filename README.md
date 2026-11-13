@@ -125,9 +125,9 @@ curl -X POST localhost:8000/api/v1/incidents \
 curl localhost:8000/api/v1/incidents/<incident_id> -H "X-Automation-Token: $AUTOMATION_TOKEN"
 ```
 
-### 3. 장애 시나리오 실행(실증 1단계)
+### 3. 장애 시나리오 실행(검증 1단계)
 
-워커는 `targets/shopapi`(주문, 쿠폰, 재고, 결제, 목록 조회를 가진 작은 FastAPI 서비스)를 대상 저장소로 쓴다. 시나리오는 `scenarios/<ID>.yaml`(기대 결과, 재현 요청), `<ID>.patch`(정상 코드에 넣는 버그), `hidden_tests/`(LLM이 보지 못하는 판정용 테스트)로 이뤄진다. 계획은 [docs/experiment-plan-v2.md](docs/experiment-plan-v2.md)에 있다.
+워커는 `targets/shopapi`(주문, 쿠폰, 재고, 결제, 목록 조회를 가진 작은 FastAPI 서비스)를 대상 저장소로 쓴다. 시나리오는 `scenarios/<ID>.yaml`(기대 결과, 재현 요청), `<ID>.patch`(정상 코드에 넣는 버그), `hidden_tests/`(LLM이 보지 못하는 판정용 테스트)로 이뤄진다. 계획은 [docs/plan.md](docs/plan.md)에 있다.
 
 ```bash
 docker compose up -d --build
@@ -162,7 +162,7 @@ AI_automation/
 ├── n8n/incident_workflow.json
 ├── knowledge/               # RAG 원천 문서 예시
 ├── sample_repo/             # 오프라인 데모용 대상 저장소(버그 포함)
-├── targets/shopapi/         # 실증용 대상 서비스와 테스트
+├── targets/shopapi/         # 검증용 대상 서비스와 테스트
 ├── scenarios/               # 장애 시나리오(정의, 버그 패치, 숨은 테스트)
 ├── scripts/                 # 오프라인 데모, 지식 문서 수집, 버그 주입, 시나리오 실행
 ├── tests/                   # 파이프라인 테스트
