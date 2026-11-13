@@ -2,10 +2,12 @@
 
 실행: python -m scripts.check_scenarios [S01 S02 ...]
 
-코드 버그 시나리오마다 shopapi 복사본에서 다음을 확인한다.
+요청으로 재현하는 코드 버그 시나리오는 shopapi 복사본에서 다음을 확인한다.
 - 원본에서 공개 테스트와 숨은 테스트가 통과한다
 - 패치를 적용하면 공개 테스트는 그대로 통과하고 숨은 테스트만 실패한다(배포된 버그는 기존 테스트를 통과한 버그다)
 - 패치를 적용하면 시나리오 요청이 처리되지 않은 예외로 끝난다
+
+기동 실패 시나리오는 원본 그대로 기동이 실패하는지, 재발과 중복 시나리오는 base가 코드 버그 시나리오인지 확인한다.
 """
 import logging
 import shutil
@@ -14,7 +16,18 @@ import sys
 import tempfile
 from pathlib import Path
 
-from scripts.run_experiment import SCENARIOS, SHOPAPI, Scenario, load_scenario, reproduce
+from scripts.run_experiment import (
+    SCENARIOS,
+    SHOPAPI,
+    Alert,
+    Duplicate,
+    Recurrence,
+    Requests,
+    Scenario,
+    Startup,
+    load_scenario,
+    reproduce,
+)
 
 
 def _pytest(repo: Path, *args: str) -> bool:
@@ -22,7 +35,9 @@ def _pytest(repo: Path, *args: str) -> bool:
     return subprocess.run(cmd, cwd=repo, capture_output=True, text=True).returncode == 0
 
 
-def check(s: Scenario) -> list[str]:
+def _check_code_bug(s: Scenario) -> list[str]:
+    if s.hidden_test is None:
+        return ["숨은 테스트가 없다"]
     tmp = Path(tempfile.mkdtemp(prefix="check-"))
     try:
         repo = tmp / "shopapi"
@@ -53,15 +68,40 @@ def check(s: Scenario) -> list[str]:
         shutil.rmtree(tmp, ignore_errors=True)
 
 
+def _check_startup(s: Scenario) -> list[str]:
+    try:
+        reproduce(s)
+    except RuntimeError as e:
+        return [str(e)]
+    return []
+
+
+def _check_repeat(s: Scenario, base: str) -> list[str]:
+    if not isinstance(load_scenario(base).trigger, Requests):
+        return [f"base {base}가 요청으로 재현하는 코드 버그 시나리오가 아니다"]
+    if isinstance(s.trigger, Duplicate) and s.trigger.times < 2:
+        return ["중복 횟수는 2 이상이어야 한다"]
+    return []
+
+
+def check(s: Scenario) -> list[str]:
+    match s.trigger:
+        case Requests():
+            return _check_code_bug(s)
+        case Startup():
+            return _check_startup(s)
+        case Alert(message=message):
+            return [] if message.strip() else ["알림 문구가 비어 있다"]
+        case Recurrence(base=base) | Duplicate(base=base):
+            return _check_repeat(s, base)
+
+
 def main() -> None:
     logging.getLogger("shopapi").setLevel(logging.CRITICAL)
     ids = sys.argv[1:] or sorted(p.stem for p in SCENARIOS.glob("S*.yaml"))
     bad = 0
     for sid in ids:
         s = load_scenario(sid)
-        if s.type != "code_bug":
-            print(f"{sid}  건너뜀({s.type})")
-            continue
         failures = check(s)
         bad += bool(failures)
         print(f"{sid}  {'OK' if not failures else 'FAIL'}  {s.title}")

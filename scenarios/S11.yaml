@@ -1,0 +1,10 @@
+id: S11
+title: 필수 환경변수 누락으로 기동 실패
+type: config
+difficulty: easy
+expected:
+  category: config
+  needs_code_fix: false
+  outcome: no_code_fix
+startup:
+  unset_env: [PG_API_KEY]

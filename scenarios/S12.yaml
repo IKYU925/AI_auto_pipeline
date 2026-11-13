@@ -1,0 +1,10 @@
+id: S12
+title: 배포 전 S01 재발
+type: recurrence
+difficulty: easy
+expected:
+  category: code_bug
+  outcome: resolved
+  llm_calls: 0
+recurrence:
+  base: S01
