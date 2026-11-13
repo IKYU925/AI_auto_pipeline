@@ -1,0 +1,14 @@
+id: S08
+title: 재고 모듈만 이전 버전으로 배포돼 주문 ID 인자를 받지 못함(시그니처 불일치)
+type: code_bug
+difficulty: hard
+expected:
+  category: code_bug
+  needs_code_fix: true
+  root_cause_file: shopapi/inventory.py
+  outcome: escalated
+requests:
+  - method: POST
+    path: /inventory/reserve
+    json: {sku: SKU-001, quantity: 1, order_id: O-1001}
+hidden_test: hidden_tests/test_s08.py
