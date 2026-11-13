@@ -1,0 +1,11 @@
+--- a/shopapi/orders.py
++++ b/shopapi/orders.py
+@@ -40,8 +40,6 @@
+ def average_unit_price(items: list[OrderItem]) -> float:
+     """옵션 포함 개당 평균 가격. 빈 주문이면 0.0을 돌려준다(프론트엔드와 합의된 스펙)."""
+     quantity = sum(i.quantity for i in items)
+-    if quantity == 0:
+-        return 0.0
+     return round(subtotal(items) / quantity, 2)
+ 
+ 
