@@ -57,7 +57,10 @@ class Container:
     @cached_property
     def router(self) -> LLMRouter:
         s = self.settings
-        return LLMRouter(s.light_model, s.heavy_model, self.redis, self.cost, s.llm_cache_ttl_sec, self.model_factory)
+        return LLMRouter(
+            s.light_model, s.heavy_model, self.redis, self.cost, s.llm_cache_ttl_sec, self.model_factory,
+            cache_enabled=s.opt_llm_cache, routing_enabled=s.opt_model_routing,
+        )
 
     @cached_property
     def notifier(self) -> SlackNotifier:
@@ -69,4 +72,4 @@ class Container:
         from app.graph.workflow import build_graph
 
         nodes = Nodes(self.settings, self.router, self.retriever, self.cost, self.redis)
-        return build_graph(nodes, self.settings.max_fix_attempts)
+        return build_graph(nodes, self.settings.max_fix_attempts, early_exit=self.settings.opt_early_exit)

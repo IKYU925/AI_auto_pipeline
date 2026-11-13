@@ -47,6 +47,9 @@ def process_message(c: Container, msg_id: str, payload: dict) -> dict:
         patch_path=final.get("patch_path", ""),
         classification=final.get("classification", {}),
         patch=final.get("fix", {}).get("patch", ""),
+        reused_fix=bool(final.get("reused_fix")),
+        test_selection=final.get("test_selection", {}),
+        test_result={k: v for k, v in final.get("test_result", {}).items() if k != "failure_log"},
     )
     c.notifier.post(incident["channel"], final["report"], incident.get("thread_ts"))
     c.queue.ack(msg_id)
