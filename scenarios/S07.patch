@@ -1,0 +1,13 @@
+diff --git a/shopapi/pricing.py b/shopapi/pricing.py
+index d1a8d47..6afc774 100644
+--- a/shopapi/pricing.py
++++ b/shopapi/pricing.py
+@@ -31,7 +31,7 @@ def parse_coupon(raw: dict | None, cache: dict[str, Coupon]) -> Coupon | None:
+ def bulk_discount_rate(quantity: int) -> float:
+     """대량 구매 할인율. 10개 이상 5%, 50개 이상 10%."""
+     if quantity >= 50:
+-        return 0.1
++        return 10  # 10% 할인
+     if quantity >= 10:
+         return 0.05
+     return 0.0
