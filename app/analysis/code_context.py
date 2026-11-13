@@ -11,7 +11,9 @@ _FRAME = re.compile(r'File "([^"]+)", line (\d+)')
 
 def _resolve(repo: Path, raw_path: str) -> Path | None:
     """운영 서버 경로(/app/shop/pricing.py)를 저장소 상대 경로로 맞춘다."""
-    parts = Path(raw_path).parts
+    raw = Path(raw_path)
+    # 절대 경로의 루트("/")까지 joinpath에 넣으면 저장소 밖 파일(site-packages 등)을 가리키게 된다
+    parts = raw.parts[1:] if raw.is_absolute() else raw.parts
     for i in range(len(parts)):
         candidate = repo.joinpath(*parts[i:])
         if candidate.is_file():
