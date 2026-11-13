@@ -123,3 +123,14 @@ def test_csv_has_header_once(tmp_path):
     rx.append_csv(out, {"scenario": "S02", "run": 1})
     lines = out.read_text().splitlines()
     assert lines[0].split(",") == rx.COLUMNS and len(lines) == 3
+
+
+def test_run_all_stops_at_cost_ceiling(shopapi, tmp_path):
+    b = backend(shopapi, tmp_path)
+    out = tmp_path / "runs.csv"
+    one = rx.run_all([rx.load_scenario("S01")], b, "A", 1, None)
+    assert one > 0
+    spent = rx.run_all([rx.load_scenario("S01")], b, "A", 5, out, max_usd=one * 1.5)
+    rows = out.read_text().splitlines()[1:]
+    assert len(rows) == 2, "두 번째 실행 뒤 상한을 넘어 멈춤"
+    assert spent >= one * 1.5

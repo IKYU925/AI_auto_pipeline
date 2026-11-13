@@ -372,6 +372,24 @@ def append_csv(path: Path, row: dict) -> None:
         w.writerow({k: row.get(k) for k in COLUMNS})
 
 
+def run_all(scenarios: list[Scenario], b: Backend, condition: str, repeat: int, out: Path | None,
+            max_usd: float | None = None) -> float:
+    """조건과 반복 횟수만큼 실행하고 누적 LLM 비용을 돌려준다. 누적 비용이 max_usd에 닿으면 멈춘다."""
+    spent = 0.0
+    for n in range(1, repeat + 1):
+        for s in scenarios:
+            if max_usd is not None and spent >= max_usd:
+                print(f"누적 비용 ${spent:.4f}가 상한 ${max_usd:.2f}에 닿아 멈춘다", file=sys.stderr, flush=True)
+                return spent
+            started_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
+            row = {"condition": condition, "run": n, "started_at": started_at, **run_scenario(s, b)}
+            spent += float(row["usd"] or 0)
+            print(json.dumps(row, ensure_ascii=False), flush=True)
+            if out:
+                append_csv(out, row)
+    return spent
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("scenarios", nargs="+")
@@ -381,6 +399,7 @@ def main() -> None:
     ap.add_argument("--api", default=os.environ.get("AUTOMATION_API", "http://localhost:8000"))
     ap.add_argument("--redis", default=os.environ.get("EXPERIMENT_REDIS_URL", "redis://localhost:6379/0"))
     ap.add_argument("--timeout", type=float, default=600)
+    ap.add_argument("--max-usd", type=float, help="누적 LLM 비용이 이 금액에 닿으면 남은 실행을 멈춘다")
     args = ap.parse_args()
 
     scenarios = [load_scenario(sid) for sid in args.scenarios]
@@ -388,13 +407,8 @@ def main() -> None:
     verify_condition(api, args.condition)
     backend = Backend(api, make_redis(args.redis), timeout_sec=args.timeout)
 
-    for n in range(1, args.repeat + 1):
-        for s in scenarios:
-            started_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
-            row = {"condition": args.condition, "run": n, "started_at": started_at, **run_scenario(s, backend)}
-            print(json.dumps(row, ensure_ascii=False), flush=True)
-            if args.out:
-                append_csv(args.out, row)
+    spent = run_all(scenarios, backend, args.condition, args.repeat, args.out, args.max_usd)
+    print(f"누적 LLM 비용 ${spent:.4f}", file=sys.stderr)
 
 
 if __name__ == "__main__":
