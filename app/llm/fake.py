@@ -34,7 +34,7 @@ class FakeChatModel:
     def __init__(self, name: str, responder: Responder, calls: list):
         self.name, self.responder, self.calls = name, responder, calls
 
-    def with_structured_output(self, schema: type[BaseModel], include_raw: bool = False):
+    def with_structured_output(self, schema: type[BaseModel], include_raw: bool = False, method: str = ""):
         return _FakeRunnable(self.name, schema, self.responder, self.calls)
 
 
