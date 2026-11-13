@@ -1,0 +1,17 @@
+id: S09
+title: 잘못된 쿠폰이 먼저 들어오면 같은 코드의 정상 쿠폰 주문이 실패(순서 의존)
+type: code_bug
+difficulty: hard
+expected:
+  category: code_bug
+  needs_code_fix: true
+  root_cause_file: shopapi/pricing.py
+  outcome: escalated
+requests:
+  - method: POST
+    path: /orders/summary
+    json: {items: [{sku: SKU-001, price: 1000, quantity: 1}], coupon: {code: SPRING, rate: 1.5}}
+  - method: POST
+    path: /orders/summary
+    json: {items: [{sku: SKU-001, price: 1000, quantity: 1}], coupon: {code: SPRING, rate: 0.1}}
+hidden_test: hidden_tests/test_s09.py

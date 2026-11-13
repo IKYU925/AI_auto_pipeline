@@ -117,10 +117,10 @@ expected:
   needs_code_fix: true
   root_cause_file: shopapi/orders.py
   outcome: resolved         # resolved | no_code_fix | escalated
-request:                    # 실험 스크립트가 버그가 든 shopapi에 보내 실제 스택트레이스를 얻는다
-  method: POST
-  path: /orders/summary
-  json: {items: []}
+requests:                   # 실험 스크립트가 버그가 든 shopapi에 순서대로 보내 실제 스택트레이스를 얻는다
+  - method: POST
+    path: /orders/summary
+    json: {items: []}
 hidden_test: hidden_tests/test_s01.py
 ```
 

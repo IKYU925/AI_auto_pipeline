@@ -1,0 +1,14 @@
+id: S07
+title: 대량 구매 할인율을 퍼센트로 반환해 할인 계산에서 ValueError
+type: code_bug
+difficulty: medium
+expected:
+  category: code_bug
+  needs_code_fix: true
+  root_cause_file: shopapi/pricing.py
+  outcome: resolved
+requests:
+  - method: POST
+    path: /orders/summary
+    json: {items: [{sku: SKU-001, price: 1000, quantity: 50}]}
+hidden_test: hidden_tests/test_s07.py

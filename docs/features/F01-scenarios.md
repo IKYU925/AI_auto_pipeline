@@ -22,7 +22,7 @@
 
 ## 요구사항
 
-- 시나리오 정의(`scenarios/<ID>.yaml`): `id`, `title`, `type`(code_bug, infra, config), `difficulty`, `expected`(category, needs_code_fix, root_cause_file, outcome), `request`(method, path, json 또는 params), `hidden_test`.
+- 시나리오 정의(`scenarios/<ID>.yaml`): `id`, `title`, `type`(code_bug, infra, config), `difficulty`, `expected`(category, needs_code_fix, root_cause_file, outcome), `requests`(method, path, json 또는 params를 가진 요청 목록, 순서대로 보내고 처음 난 예외를 장애로 쓴다), `hidden_test`.
 - 버그 패치(`scenarios/<ID>.patch`): `targets/shopapi` 기준 상대 경로의 unified diff.
 - 숨은 테스트(`scenarios/hidden_tests/test_<id>.py`): 버그가 깨뜨리는 스펙을 검증한다. 공개 테스트에는 같은 스펙을 두지 않는다.
 - 코드 버그 시나리오는 버그가 공개 테스트를 깨지 않아야 한다. 실제로 배포된 버그는 기존 테스트를 통과한 버그이기 때문이다.
@@ -37,7 +37,8 @@
   - 주입 후 공개 테스트 통과, 숨은 테스트 실패
   - 주입 후 시나리오 요청이 처리되지 않은 예외(500)로 끝남
 - [x] S02~S06 작성. 검사는 `tests/test_scenarios_valid.py`로 파이프라인 테스트에 포함
-- [ ] S07~S09 작성(회귀 유발, 시그니처 변경, 순서 의존)
+- [x] S07(회귀 유발), S09(순서 의존) 작성
+- [ ] S08 작성(시그니처 변경이 필요한 여러 모듈 수정)
 - [ ] S10~S13 작성(코드 버그가 아닌 장애, 재발, 중복). 시나리오 정의 형식 확장 필요
 
 ## 설계 메모
@@ -48,10 +49,14 @@
 
 ## 열린 질문
 
+- S08은 올바른 수정이 함수 시그니처를 바꿔 여러 모듈을 함께 고쳐야 하는 버그여야 한다. 공개 테스트가 그 함수의 기존 시그니처를 많이 쓰고 있어, 버그가 공개 테스트를 깨지 않으면서 수정은 시그니처 변경을 요구하는 구조를 아직 찾지 못했다.
 - S10(외부 PG 지연)과 S11(환경변수 누락)은 예외가 아니라 응답 지연과 기동 실패라서 `request`로 재현할 수 없다. 알림 문구를 정의에 직접 두는 방식(`incident`)을 S10 작업 때 정한다.
 
 ## 변경 이력
 
+- 2026-11-14 S09(순서 의존)를 위해 시나리오 정의의 `request`를 `requests` 목록으로 바꾸고 S01~S06을 옮겼다.
+- 2026-11-14 S07, S09를 위해 shopapi에 대량 구매 할인(10개 이상 5%, 50개 이상 10%)과 앱 인스턴스별 쿠폰 캐시를 추가했다. 공개 테스트는 40개다.
+- 2026-11-14 S09의 기대 결과는 plan.md 4장대로 escalated로 둔다. 실제 결과는 측정으로 확인한다.
 - 2026-11-14 S02~S06의 버그를 잡던 공개 테스트 6개를 숨은 테스트로 옮겼다(공개 테스트 41개에서 34개). 공개 테스트가 버그를 잡으면 "배포된 버그" 전제가 깨진다.
 - 2026-11-14 S05, S06을 위해 목록 조회를 인덱스로 꺼내는 방식으로, 재고 예약에 예약 기록 단계의 수량 검증을 추가했다.
 - 2026-11-14 시나리오 정의의 `trigger`(curl 문자열)를 `request`(구조화된 요청)로 바꿨다. 스크립트가 같은 요청을 재현해 실제 스택트레이스를 얻기 위해서다.
