@@ -1,7 +1,7 @@
 """주문 합계, 평균 단가."""
 from dataclasses import dataclass
 
-from shopapi.pricing import Coupon, add_tax, apply_coupon, option_surcharge
+from shopapi.pricing import Coupon, add_tax, apply_coupon, apply_discount, bulk_discount_rate, option_surcharge
 
 
 class InvalidOrder(Exception):
@@ -47,10 +47,12 @@ def average_unit_price(items: list[OrderItem]) -> float:
 
 def summarize(items: list[OrderItem], coupon: Coupon | None, tax_rate: float) -> dict:
     sub = subtotal(items)
+    quantity = sum(i.quantity for i in items)
+    discounted = apply_discount(sub, bulk_discount_rate(quantity))
     return {
         "items": len(items),
-        "quantity": sum(i.quantity for i in items),
+        "quantity": quantity,
         "subtotal": sub,
-        "total": add_tax(apply_coupon(sub, coupon), tax_rate),
+        "total": add_tax(apply_coupon(discounted, coupon), tax_rate),
         "average_unit_price": average_unit_price(items),
     }

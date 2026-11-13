@@ -15,13 +15,26 @@ class Coupon:
     amount: float = 0.0
 
 
-def parse_coupon(raw: dict | None) -> Coupon | None:
+def parse_coupon(raw: dict | None, cache: dict[str, Coupon]) -> Coupon | None:
+    """쿠폰 코드별 정의는 발급 후 바뀌지 않으므로 검증을 통과한 쿠폰만 코드별로 저장해 다시 쓴다."""
     if raw is None:
         return None
+    if raw["code"] in cache:
+        return cache[raw["code"]]
     coupon = Coupon(code=raw["code"], rate=float(raw.get("rate", 0)), amount=float(raw.get("amount", 0)))
     if not 0 <= coupon.rate <= 1 or coupon.amount < 0:
         raise InvalidCoupon(f"invalid coupon {coupon.code}")
+    cache[coupon.code] = coupon
     return coupon
+
+
+def bulk_discount_rate(quantity: int) -> float:
+    """대량 구매 할인율. 10개 이상 5%, 50개 이상 10%."""
+    if quantity >= 50:
+        return 0.1
+    if quantity >= 10:
+        return 0.05
+    return 0.0
 
 
 def apply_discount(price: float, rate: float) -> float:

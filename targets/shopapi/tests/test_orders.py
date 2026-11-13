@@ -31,3 +31,8 @@ def test_average_unit_price_rounds_to_two_decimals():
 def test_summarize_applies_coupon_then_tax():
     result = summarize([OrderItem("A", 10000, 1)], Coupon("C", rate=0.1), tax_rate=0.1)
     assert result == {"items": 1, "quantity": 1, "subtotal": 10000.0, "total": 9900.0, "average_unit_price": 10000.0}
+
+
+def test_summarize_applies_bulk_discount_before_coupon():
+    result = summarize([OrderItem("A", 1000, 10)], Coupon("C", amount=500), tax_rate=0)
+    assert result["total"] == 9000.0

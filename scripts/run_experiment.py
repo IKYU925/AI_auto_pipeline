@@ -46,7 +46,7 @@ class Scenario:
     type: str
     difficulty: str
     expected: Expected
-    request: dict
+    requests: list[dict]
     hidden_test: Path
 
 
@@ -58,7 +58,7 @@ def load_scenario(scenario_id: str) -> Scenario:
         type=raw["type"],
         difficulty=raw["difficulty"],
         expected=Expected(**raw["expected"]),
-        request=raw["request"],
+        requests=raw["requests"],
         hidden_test=SCENARIOS / raw["hidden_test"],
     )
 
@@ -87,15 +87,15 @@ def reproduce(s: Scenario, repo: Path | None = None) -> dict:
     Settings, create_app = _load_shopapi(repo or SHOPAPI)
     settings = Settings(pg_url="http://fake-pg", pg_api_key="k", pg_timeout_sec=1, tax_rate=0.1, page_size=5, slack_webhook_url="")
     client = TestClient(create_app(settings), raise_server_exceptions=True)
-    req = s.request
-    try:
-        r = client.request(req["method"], req["path"], json=req.get("json"), params=req.get("params"))
-    except Exception as exc:  # noqa: BLE001 - 어떤 예외든 장애 알림으로 만든다
-        return {
-            "message": f"{type(exc).__name__}: {exc} on {req['method']} {req['path']}",
-            "stacktrace": "".join(traceback.format_exception(exc)),
-        }
-    raise RuntimeError(f"{s.id}: 요청이 {r.status_code}로 끝나 장애가 재현되지 않았다. 버그가 주입됐는지 확인한다")
+    for req in s.requests:
+        try:
+            r = client.request(req["method"], req["path"], json=req.get("json"), params=req.get("params"))
+        except Exception as exc:  # noqa: BLE001 - 어떤 예외든 장애 알림으로 만든다
+            return {
+                "message": f"{type(exc).__name__}: {exc} on {req['method']} {req['path']}",
+                "stacktrace": "".join(traceback.format_exception(exc)),
+            }
+    raise RuntimeError(f"{s.id}: 마지막 요청이 {r.status_code}로 끝나 장애가 재현되지 않았다. 버그가 주입됐는지 확인한다")
 
 
 def submit(api: httpx.Client, incident: dict) -> dict:

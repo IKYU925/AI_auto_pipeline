@@ -48,6 +48,7 @@ def create_app(
     s = settings or load_settings()
     stock = inventory or Inventory(INITIAL_STOCK)
     pg = gateway or PaymentGateway(s.pg_url, s.pg_api_key, s.pg_timeout_sec)
+    coupons: dict[str, pricing.Coupon] = {}
     app = FastAPI(title="shopapi")
 
     for exc_type, code in DOMAIN_ERRORS.items():
@@ -68,7 +69,7 @@ def create_app(
     @app.post("/orders/summary")
     def order_summary(body: dict = Body(...)) -> dict:
         items = [orders.parse_item(raw) for raw in body.get("items", [])]
-        return orders.summarize(items, pricing.parse_coupon(body.get("coupon")), s.tax_rate)
+        return orders.summarize(items, pricing.parse_coupon(body.get("coupon"), coupons), s.tax_rate)
 
     @app.post("/inventory/reserve")
     def reserve(body: dict = Body(...)) -> dict:

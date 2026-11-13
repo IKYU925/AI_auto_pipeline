@@ -7,8 +7,8 @@ expected:
   needs_code_fix: true
   root_cause_file: shopapi/pagination.py
   outcome: resolved
-request:
-  method: GET
-  path: /products
-  params: {page: 3}
+requests:
+  - method: GET
+    path: /products
+    params: {page: 3}
 hidden_test: hidden_tests/test_s05.py
