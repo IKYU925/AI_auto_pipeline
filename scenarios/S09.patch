@@ -1,0 +1,15 @@
+diff --git a/shopapi/pricing.py b/shopapi/pricing.py
+index d1a8d47..211f127 100644
+--- a/shopapi/pricing.py
++++ b/shopapi/pricing.py
+@@ -22,9 +22,9 @@ def parse_coupon(raw: dict | None, cache: dict[str, Coupon]) -> Coupon | None:
+     if raw["code"] in cache:
+         return cache[raw["code"]]
+     coupon = Coupon(code=raw["code"], rate=float(raw.get("rate", 0)), amount=float(raw.get("amount", 0)))
++    cache[coupon.code] = coupon
+     if not 0 <= coupon.rate <= 1 or coupon.amount < 0:
+         raise InvalidCoupon(f"invalid coupon {coupon.code}")
+-    cache[coupon.code] = coupon
+     return coupon
+ 
+ 
