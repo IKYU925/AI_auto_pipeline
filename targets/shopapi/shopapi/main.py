@@ -73,7 +73,8 @@ def create_app(
 
     @app.post("/inventory/reserve")
     def reserve(body: dict = Body(...)) -> dict:
-        return {"sku": body["sku"], "left": stock.reserve(body["sku"], int(body["quantity"]))}
+        left = stock.reserve(body["sku"], int(body["quantity"]), order_id=body.get("order_id"))
+        return {"sku": body["sku"], "left": left}
 
     @app.post("/payments")
     def pay(body: dict = Body(...)) -> dict:
