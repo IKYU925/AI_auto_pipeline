@@ -1,0 +1,11 @@
+id: S13
+title: S02 알림 10회 연속 발생
+type: duplicate
+difficulty: easy
+expected:
+  category: code_bug
+  outcome: resolved
+  incidents_created: 1
+duplicate:
+  base: S02
+  times: 10

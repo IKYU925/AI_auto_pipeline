@@ -33,10 +33,60 @@ FINAL_STATUSES = {"resolved", "escalated", "no_code_fix", "budget_exceeded", "fa
 
 @dataclass(frozen=True)
 class Expected:
-    category: str
-    needs_code_fix: bool
-    root_cause_file: str
     outcome: str
+    category: str | None = None
+    needs_code_fix: bool | None = None
+    root_cause_file: str | None = None
+    llm_calls: int | None = None
+    incidents_created: int | None = None
+
+
+@dataclass(frozen=True)
+class Requests:
+    """버그가 든 shopapi에 순서대로 보내는 요청. 처음 난 예외가 장애다."""
+
+    items: list[dict]
+
+
+@dataclass(frozen=True)
+class Startup:
+    """환경변수를 지운 채 shopapi를 기동한다. 기동 중 예외가 장애다."""
+
+    unset_env: list[str]
+
+
+@dataclass(frozen=True)
+class Alert:
+    """스택트레이스 없이 모니터링 알림 문구로만 들어오는 장애."""
+
+    message: str
+    severity: str = "warning"
+
+
+@dataclass(frozen=True)
+class Recurrence:
+    """base 시나리오를 처리한 뒤, 배포 전에 같은 장애가 다시 들어온다."""
+
+    base: str
+
+
+@dataclass(frozen=True)
+class Duplicate:
+    """base 시나리오의 같은 알림이 짧은 시간에 여러 번 들어온다."""
+
+    base: str
+    times: int
+
+
+Trigger = Requests | Startup | Alert | Recurrence | Duplicate
+
+TRIGGERS = {
+    "requests": Requests,
+    "startup": lambda v: Startup(**v),
+    "alert": lambda v: Alert(**v),
+    "recurrence": lambda v: Recurrence(**v),
+    "duplicate": lambda v: Duplicate(**v),
+}
 
 
 @dataclass(frozen=True)
@@ -46,20 +96,23 @@ class Scenario:
     type: str
     difficulty: str
     expected: Expected
-    requests: list[dict]
-    hidden_test: Path
+    trigger: Trigger
+    hidden_test: Path | None
 
 
 def load_scenario(scenario_id: str) -> Scenario:
     raw = yaml.safe_load((SCENARIOS / f"{scenario_id}.yaml").read_text(encoding="utf-8"))
+    kinds = [k for k in TRIGGERS if k in raw]
+    if len(kinds) != 1:
+        raise ValueError(f"{scenario_id}: {sorted(TRIGGERS)} 중 정확히 하나가 있어야 한다. 지금은 {kinds}")
     return Scenario(
         id=raw["id"],
         title=raw["title"],
         type=raw["type"],
         difficulty=raw["difficulty"],
         expected=Expected(**raw["expected"]),
-        requests=raw["requests"],
-        hidden_test=SCENARIOS / raw["hidden_test"],
+        trigger=TRIGGERS[kinds[0]](raw[kinds[0]]),
+        hidden_test=SCENARIOS / raw["hidden_test"] if "hidden_test" in raw else None,
     )
 
 
@@ -80,27 +133,56 @@ def _load_shopapi(repo: Path):
     return Settings, create_app
 
 
-def reproduce(s: Scenario, repo: Path | None = None) -> dict:
-    """버그가 들어간 shopapi를 프로세스 안에서 띄워 요청을 보내고, 운영 알림과 같은 형태의 장애 정보를 만든다."""
+def _incident(exc: Exception, where: str) -> dict:
+    return {
+        "message": f"{type(exc).__name__}: {exc} on {where}",
+        "stacktrace": "".join(traceback.format_exception(exc)),
+        "severity": "critical",
+    }
+
+
+def _reproduce_requests(s: Scenario, t: Requests, repo: Path) -> dict:
     from fastapi.testclient import TestClient
 
-    Settings, create_app = _load_shopapi(repo or SHOPAPI)
+    Settings, create_app = _load_shopapi(repo)
     settings = Settings(pg_url="http://fake-pg", pg_api_key="k", pg_timeout_sec=1, tax_rate=0.1, page_size=5, slack_webhook_url="")
     client = TestClient(create_app(settings), raise_server_exceptions=True)
-    for req in s.requests:
+    for req in t.items:
         try:
             r = client.request(req["method"], req["path"], json=req.get("json"), params=req.get("params"))
         except Exception as exc:  # noqa: BLE001 - 어떤 예외든 장애 알림으로 만든다
-            return {
-                "message": f"{type(exc).__name__}: {exc} on {req['method']} {req['path']}",
-                "stacktrace": "".join(traceback.format_exception(exc)),
-            }
+            return _incident(exc, f"{req['method']} {req['path']}")
     raise RuntimeError(f"{s.id}: 마지막 요청이 {r.status_code}로 끝나 장애가 재현되지 않았다. 버그가 주입됐는지 확인한다")
 
 
+def _reproduce_startup(s: Scenario, t: Startup, repo: Path) -> dict:
+    _, create_app = _load_shopapi(repo)
+    saved = {k: os.environ.pop(k) for k in t.unset_env if k in os.environ}
+    try:
+        create_app()
+    except Exception as exc:  # noqa: BLE001 - 기동 실패 전체를 장애 알림으로 만든다
+        return _incident(exc, "startup")
+    finally:
+        os.environ.update(saved)
+    raise RuntimeError(f"{s.id}: {t.unset_env}를 지워도 shopapi가 정상 기동했다")
+
+
+def reproduce(s: Scenario, repo: Path | None = None) -> dict:
+    """버그가 들어간 shopapi로 장애를 일으키고, 운영 알림과 같은 형태의 장애 정보를 만든다."""
+    repo = repo or SHOPAPI
+    match s.trigger:
+        case Requests() as t:
+            return _reproduce_requests(s, t, repo)
+        case Startup() as t:
+            return _reproduce_startup(s, t, repo)
+        case Alert() as t:
+            return {"message": t.message, "severity": t.severity}
+        case Recurrence(base=base) | Duplicate(base=base):
+            return reproduce(load_scenario(base), repo)
+
+
 def submit(api: httpx.Client, incident: dict) -> dict:
-    body = {"source": "experiment", "channel": os.environ.get("SLACK_CHANNEL", "C-EXPERIMENT"), "service": "shopapi",
-            "severity": "critical", **incident}
+    body = {"source": "experiment", "channel": os.environ.get("SLACK_CHANNEL", "C-EXPERIMENT"), "service": "shopapi", **incident}
     r = api.post("/api/v1/incidents", json=body)
     r.raise_for_status()
     return r.json()
@@ -119,7 +201,7 @@ def wait(api: httpx.Client, incident_id: str, timeout_sec: float = 600, interval
 
 def judge(s: Scenario, patch: str) -> dict:
     """버그가 들어간 현재 shopapi에 AI 패치를 적용하고 숨은 테스트만, 전체(숨은 테스트 포함) 순서로 돌린다."""
-    if not patch:
+    if not patch or s.hidden_test is None:
         return {"hidden_passed": None, "full_passed": None}
     tmp = Path(tempfile.mkdtemp(prefix="judge-"))
     try:
@@ -168,7 +250,11 @@ def main() -> None:
     token = os.environ["AUTOMATION_TOKEN"]
     api = httpx.Client(base_url=args.api, headers={"X-Automation-Token": token}, timeout=30)
 
-    inject(s.id)
+    if isinstance(s.trigger, Recurrence | Duplicate):
+        sys.exit(f"{s.id}: 재발, 중복 시나리오의 실행 절차는 F02(실험 스크립트)에서 만든다")
+    patched = (SCENARIOS / f"{s.id}.patch").exists()
+    if patched:
+        inject(s.id)
     try:
         started = time.monotonic()
         accepted = submit(api, reproduce(s))
@@ -176,7 +262,8 @@ def main() -> None:
         elapsed = time.monotonic() - started
         verdict = judge(s, status.get("patch", ""))
     finally:
-        inject(s.id, revert=True)
+        if patched:
+            inject(s.id, revert=True)
     print(json.dumps(summarize(s, accepted, status, verdict, elapsed), ensure_ascii=False))
 
 

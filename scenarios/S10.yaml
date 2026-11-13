@@ -1,0 +1,11 @@
+id: S10
+title: 외부 PG 응답 지연으로 결제 타임아웃
+type: infra
+difficulty: easy
+expected:
+  category: infra
+  needs_code_fix: false
+  outcome: no_code_fix
+alert:
+  message: "ShopapiSlowPayment: POST /payments p95 8.4s > 5s for 2m, PaymentTimeout 17건 (PG approve timeout after 3.0s)"
+  severity: warning
