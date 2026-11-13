@@ -1,0 +1,14 @@
+id: S04
+title: 수량이 문자열로 들어와 형 변환 오류
+type: code_bug
+difficulty: medium
+expected:
+  category: code_bug
+  needs_code_fix: true
+  root_cause_file: shopapi/orders.py
+  outcome: resolved
+request:
+  method: POST
+  path: /orders/summary
+  json: {items: [{sku: SKU-001, price: 1000, quantity: "2"}]}
+hidden_test: hidden_tests/test_s04.py

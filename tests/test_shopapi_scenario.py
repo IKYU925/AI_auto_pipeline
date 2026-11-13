@@ -1,6 +1,5 @@
 import shutil
 import subprocess
-import sys
 
 import pytest
 from fastapi.testclient import TestClient
@@ -53,10 +52,7 @@ def injected_shopapi(tmp_path, monkeypatch):
     shutil.copytree(run_experiment.SHOPAPI, repo, ignore=shutil.ignore_patterns("__pycache__", ".pytest_cache"))
     subprocess.run(["git", "apply", str(run_experiment.SCENARIOS / "S01.patch")], cwd=repo, check=True)
     monkeypatch.setattr(run_experiment, "SHOPAPI", repo)
-    yield repo
-    for name in [m for m in sys.modules if m == "shopapi" or m.startswith("shopapi.")]:
-        del sys.modules[name]
-    sys.path.remove(str(repo))
+    return repo
 
 
 def run_s01(repo, tmp_path, patch: str) -> dict:
