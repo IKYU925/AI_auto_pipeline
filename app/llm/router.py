@@ -71,8 +71,11 @@ class LLMRouter:
         cost: CostTracker,
         cache_ttl: int,
         model_factory: Callable[[str], Any] = default_model_factory,
+        cache_enabled: bool = True,
+        routing_enabled: bool = True,
     ):
-        self.models = {Tier.LIGHT: light_model, Tier.HEAVY: heavy_model}
+        self.models = {Tier.LIGHT: light_model if routing_enabled else heavy_model, Tier.HEAVY: heavy_model}
+        self.cache_enabled = cache_enabled
         self.redis = redis
         self.cost = cost
         self.cache_ttl = cache_ttl
@@ -98,7 +101,7 @@ class LLMRouter:
     ) -> T:
         model = self.model_for(task)
         key = None
-        if task in CACHEABLE_TASKS:
+        if self.cache_enabled and task in CACHEABLE_TASKS:
             basis = cache_key or hashlib.sha256((system + "\n" + user).encode()).hexdigest()
             key = f"llm:{model}:{task}:{basis}"
             hit = self.redis.get(key)

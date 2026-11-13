@@ -7,7 +7,7 @@ from pathlib import Path
 from app.analysis import code_context
 from app.analysis.diff_analyzer import analyze_diff
 from app.analysis.impact import ImportGraph, analyze_impact
-from app.analysis.test_selector import select_tests
+from app.analysis.test_selector import TestSelection, select_tests
 from app.config import Settings
 from app.core.fingerprint import normalize
 from app.graph.state import IncidentState
@@ -77,6 +77,8 @@ class Nodes:
 
     # 검증까지 끝난 수정안이 있으면(같은 에러가 배포 전에 재발한 경우) LLM 없이 재검증만 한다
     def lookup_known_fix(self, state: IncidentState) -> dict:
+        if not self.s.opt_fix_reuse:
+            return {}
         raw = self.redis.get(f"fix:resolved:{state['fingerprint']}")
         if not raw:
             return {}
@@ -124,7 +126,10 @@ class Nodes:
         analysis = analyze_diff(state["fix"]["patch"], self.s.target_repo_path)
         graph = ImportGraph(self.s.target_repo_path)
         impact = analyze_impact(analysis, graph)
-        selection = select_tests(impact, graph, self.s.fallback_full_suite)
+        if self.s.opt_test_selection:
+            selection = select_tests(impact, graph, self.s.fallback_full_suite)
+        else:
+            selection = TestSelection([], True, "테스트 선별 끔: 전체 테스트 실행", len(graph.test_modules()))
         return {"impact": impact.to_dict(), "test_selection": selection.to_dict()}
 
     # 8. 테스트 실행

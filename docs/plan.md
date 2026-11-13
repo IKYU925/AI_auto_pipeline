@@ -200,7 +200,7 @@ hidden_test: hidden_tests/test_s01.py
 | 테스트 선별 | 영향 범위 기반 선별 | 매번 전체 테스트 |
 | 수정안 재사용 | 사용 | 사용 안 함 |
 
-조건 B를 만들려면 환경변수로 각 최적화를 끌 수 있게 해야 한다. Day 3에 `OPT_CLASSIFY_CACHE`, `OPT_MODEL_ROUTING`, `OPT_EARLY_EXIT`, `OPT_TEST_SELECTION`, `OPT_FIX_REUSE`를 추가한다.
+조건 B를 만들려면 환경변수로 각 최적화를 끌 수 있게 해야 한다. Day 3에 `OPT_LLM_CACHE`, `OPT_MODEL_ROUTING`, `OPT_EARLY_EXIT`, `OPT_TEST_SELECTION`, `OPT_FIX_REUSE`를 추가한다.
 
 시나리오 1회 실행 순서는 다음과 같다.
 
