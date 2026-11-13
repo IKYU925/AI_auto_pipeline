@@ -67,14 +67,24 @@ def inject(scenario_id: str, revert: bool = False) -> None:
     subprocess.run([str(ROOT / "scripts" / "inject.sh"), scenario_id, *(["revert"] if revert else [])], check=True)
 
 
-def reproduce(s: Scenario) -> dict:
+def _load_shopapi(repo: Path):
+    """시나리오마다 다른 shopapi 복사본을 쓰므로 이전에 import한 모듈을 지우고 새로 읽는다."""
+    for name in [m for m in sys.modules if m == "shopapi" or m.startswith("shopapi.")]:
+        del sys.modules[name]
+    sys.path.insert(0, str(repo))
+    try:
+        from shopapi.config import Settings
+        from shopapi.main import create_app
+    finally:
+        sys.path.remove(str(repo))
+    return Settings, create_app
+
+
+def reproduce(s: Scenario, repo: Path | None = None) -> dict:
     """버그가 들어간 shopapi를 프로세스 안에서 띄워 요청을 보내고, 운영 알림과 같은 형태의 장애 정보를 만든다."""
-    sys.path.insert(0, str(SHOPAPI))
     from fastapi.testclient import TestClient
 
-    from shopapi.config import Settings
-    from shopapi.main import create_app
-
+    Settings, create_app = _load_shopapi(repo or SHOPAPI)
     settings = Settings(pg_url="http://fake-pg", pg_api_key="k", pg_timeout_sec=1, tax_rate=0.1, page_size=5, slack_webhook_url="")
     client = TestClient(create_app(settings), raise_server_exceptions=True)
     req = s.request
