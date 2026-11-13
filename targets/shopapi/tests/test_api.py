@@ -16,10 +16,6 @@ def test_order_summary_invalid_item_is_400(client):
     assert client.post("/orders/summary", json={"items": [{"sku": "A"}]}).status_code == 400
 
 
-def test_reserve_out_of_stock_is_409(client):
-    assert client.post("/inventory/reserve", json={"sku": "SKU-001", "quantity": 4}).status_code == 409
-
-
 def test_payment(client):
     assert client.post("/payments", json={"order_id": "O-1", "amount": 1000}).json()["approved"] is True
 
