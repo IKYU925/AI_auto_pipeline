@@ -60,6 +60,18 @@ def create_app(container: Container | None = None) -> FastAPI:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "incident not found")
         return {"incident_id": incident_id, **data}
 
+    @app.get("/api/v1/config", dependencies=[Depends(verify_token)])
+    def get_config(c: Container = Depends(get_container)) -> dict:
+        """실험 스크립트가 기록할 조건과 서버의 실제 설정이 같은지 확인하는 데 쓴다."""
+        s = c.settings
+        return {
+            "light_model": s.light_model,
+            "heavy_model": s.heavy_model,
+            "max_fix_attempts": s.max_fix_attempts,
+            "incident_budget_usd": s.incident_budget_usd,
+            "optimizations": {name.removeprefix("opt_"): getattr(s, name) for name in type(s).model_fields if name.startswith("opt_")},
+        }
+
     @app.post("/api/v1/knowledge", dependencies=[Depends(verify_token)])
     def ingest_knowledge(body: KnowledgeIngestIn, c: Container = Depends(get_container)) -> dict:
         docs = [Document(**d.model_dump()) for d in body.documents]
