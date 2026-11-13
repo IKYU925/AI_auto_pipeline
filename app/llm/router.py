@@ -39,12 +39,17 @@ TASK_TIER: dict[str, Tier] = {
 CACHEABLE_TASKS = {"classify", "summarize", "root_cause"}
 
 
+# 이 모델들은 temperature를 바꾸면 400을 돌려준다
+NO_SAMPLING_PREFIXES = ("claude-opus-5-5", "claude-sonnet-5-5", "claude-fable-5")
+
+
 def default_model_factory(name: str) -> Any:
     provider, _, model = name.partition(":")
     if provider == "anthropic":
         from langchain_anthropic import ChatAnthropic
 
-        return ChatAnthropic(model=model, temperature=0, max_tokens=4096)
+        sampling = {} if model.startswith(NO_SAMPLING_PREFIXES) else {"temperature": 0}
+        return ChatAnthropic(model=model, max_tokens=4096, **sampling)
     if provider == "openai":
         from langchain_openai import ChatOpenAI
 
@@ -103,7 +108,7 @@ class LLMRouter:
                 return schema.model_validate_json(hit)
 
         self.cost.check_budget(incident_id)
-        runnable = self._client(model).with_structured_output(schema, include_raw=True)
+        runnable = self._client(model).with_structured_output(schema, include_raw=True, method="json_schema")
         out = runnable.invoke([SystemMessage(content=system), HumanMessage(content=user)])
         parsed, raw = out["parsed"], out["raw"]
         if parsed is None:
