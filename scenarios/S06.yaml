@@ -7,8 +7,8 @@ expected:
   needs_code_fix: true
   root_cause_file: shopapi/inventory.py
   outcome: resolved
-request:
-  method: POST
-  path: /inventory/reserve
-  json: {sku: SKU-001, quantity: -1}
+requests:
+  - method: POST
+    path: /inventory/reserve
+    json: {sku: SKU-001, quantity: -1}
 hidden_test: hidden_tests/test_s06.py

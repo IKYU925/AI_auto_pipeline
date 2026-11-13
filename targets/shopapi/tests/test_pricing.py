@@ -1,6 +1,14 @@
 import pytest
 
-from shopapi.pricing import Coupon, InvalidCoupon, add_tax, apply_coupon, apply_discount, parse_coupon
+from shopapi.pricing import (
+    Coupon,
+    InvalidCoupon,
+    add_tax,
+    apply_coupon,
+    apply_discount,
+    bulk_discount_rate,
+    parse_coupon,
+)
 
 
 def test_apply_discount():
@@ -22,8 +30,19 @@ def test_apply_coupon_never_negative():
 
 def test_parse_coupon_rejects_invalid_rate():
     with pytest.raises(InvalidCoupon):
-        parse_coupon({"code": "C", "rate": 2})
+        parse_coupon({"code": "C", "rate": 2}, {})
 
 
 def test_add_tax():
     assert add_tax(1000, 0.1) == 1100.0
+
+
+def test_parse_coupon_reuses_same_code():
+    cache = {}
+    first = parse_coupon({"code": "C", "rate": 0.1}, cache)
+    assert parse_coupon({"code": "C", "rate": 0.1}, cache) is first
+
+
+@pytest.mark.parametrize("qty,rate", [(1, 0.0), (9, 0.0), (10, 0.05), (49, 0.05)])
+def test_bulk_discount_rate(qty, rate):
+    assert bulk_discount_rate(qty) == rate
