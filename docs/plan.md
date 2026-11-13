@@ -4,14 +4,14 @@
 
 ### 1. 목표
 
-로컬 또는 AWS(EKS, EC2)에서 운영 중인 서비스에 장애가 나면, 모니터링이 감지해 알림을 보내고 자동화가 원인 분석, 수정안 생성과 검증, 런북 안내, Slack 보고까지 이어서 처리하는 구조를 만든다. 자동화 본체(접수, 큐, 분석, 검증, 보고)는 운영 환경과 무관하게 하나로 두고, 환경마다 달라지는 부분은 알림 입구, 로그 조회, 배포 방식 세 곳으로 제한한다.
+로컬 쿠버네티스 또는 AWS(EC2)에서 운영 중인 서비스에 장애가 나면, 모니터링이 감지해 알림을 보내고 자동화가 원인 분석, 수정안 생성과 검증, 런북 안내, Slack 보고까지 이어서 처리하는 구조를 만든다. 자동화 본체(접수, 큐, 분석, 검증, 보고)는 운영 환경과 무관하게 하나로 두고, 환경마다 달라지는 부분은 알림 입구, 로그 조회, 배포 방식 세 곳으로 제한한다.
 
 이 구조를 단계별로 검증한다. 현재 워크플로우를 실제 장애 시나리오로 돌려 결과를 숫자로 남기고, 저장소를 PostgreSQL로 옮겨 전후를 비교한다. 그다음 관측 도구를 붙여 모니터링이 장애를 감지하면 자동화가 스스로 시작되게 만들고, 같은 구조를 AWS에서 다시 확인한다.
 
 - 1단계: 현재 스택(Redis, Qdrant)으로 실제 LLM을 호출해 지표를 확보한다.
 - 2단계: PostgreSQL + pgvector로 옮기고, 이력 보존과 중간 재개 효과를 측정한다.
-- 3단계: 로컬 Vagrant K3s 3노드 클러스터에 대상 서비스와 자동화 시스템을 배포하고, Prometheus, Loki, Alertmanager, Grafana로 감지부터 대응, 보고까지 사람 개입 없이 이어지게 한다. Kubernetes 장애(CrashLoop, OOMKilled, 노드 장애)도 다루고, 감지 시간과 전체 처리 시간을 측정한다. 이 클러스터는 EKS와 같은 매니페스트와 알림 구조를 쓰는 로컬 시험장이다.
-- 4단계: 같은 자동화를 AWS에 올린다. EKS에서는 3단계 매니페스트와 알림 경로를 그대로 쓰고, EC2에서는 CloudWatch 경보를 새 알림 입구로 받는다. 환경이 바뀌어도 감지부터 회신까지 완주하는지 확인한다(10장).
+- 3단계: 로컬 Vagrant K3s 3노드 클러스터에 대상 서비스와 자동화 시스템을 배포하고, Prometheus, Loki, Alertmanager, Grafana로 감지부터 대응, 보고까지 사람 개입 없이 이어지게 한다. Kubernetes 장애(CrashLoop, OOMKilled, 노드 장애, 노드 디스크 부족)도 다루고, 감지 시간과 전체 처리 시간을 측정한다. 여기에 MSP 운영 방식을 더한다. 고객사 두 곳을 namespace로 나눠 고객사별로 알림과 보고를 분리하고, 사람이 승인하면 허용된 Ansible 플레이북으로 조치까지 실행한다(9-7, 9-8).
+- 4단계: AWS EC2에서 난 장애를 CloudWatch로 감지하고 EventBridge와 SQS를 거쳐 로컬의 같은 자동화가 처리하는지 확인한다. 바뀌는 것은 감지 수단과 알림 입구뿐이고, 자동화 본체와 분석, 보고는 3단계 그대로다(10장).
 
 결과물은 다음과 같다.
 
@@ -22,16 +22,16 @@
 
 이번 계획에서 하지 않는 것은 다음과 같다.
 
-- 실제 사용자 트래픽이 있는 서비스에는 연결하지 않는다. 운영 환경과 같은 구조(K3s, EKS, EC2) 위에 직접 만든 대상 서비스를 올려 검증한다.
+- 실제 사용자 트래픽이 있는 서비스에는 연결하지 않는다. 운영 환경과 같은 구조(K3s, EC2) 위에 직접 만든 대상 서비스를 올려 검증한다.
 - 패치를 자동으로 머지하거나 배포하지 않는다.
 - Python 외 언어는 지원하지 않는다.
-- 자동화가 클러스터나 인스턴스에 직접 조치(재시작, 스케일 조정, 인스턴스 교체)하지 않는다. 런북 안내까지만 하고, 조치는 사람이 판단한다. 자동 조치는 이번 결과로 분류 정확도를 확인한 뒤 승인 단계를 붙여 다음 범위에서 다룬다.
+- 사람 승인 없이 조치하지 않는다. 조치는 3단계 로컬 노드에서 허용 목록에 있는 Ansible 플레이북(로그와 임시 파일 정리, 서비스 재시작)만 승인 후 실행한다. 쿠버네티스 객체 변경(재시작, 스케일 조정)과 AWS 리소스 조치는 하지 않는다.
 
 ### 2. 전체 일정
 
 단계를 섞지 않는다. 1단계 결과가 있어야 2단계에서 무엇이 좋아졌는지 비교할 수 있고, 2단계의 PostgreSQL 데이터와 체크포인터가 있어야 3단계에서 자동화 현황 대시보드와 Pod 종료 중 재개를 보여줄 수 있다. 1, 2단계는 docker compose에서, 3단계는 로컬 K3s에서, 4단계는 AWS에서 진행한다. 4단계는 3단계에서 감지부터 회신까지 완주한 뒤에만 시작한다. 로컬에서 안 되는 경로를 클라우드에서 고치면 비용만 든다.
 
-3단계의 클러스터 준비 중 상당 부분은 infra_local_set에 이미 들어가 있다. 워커 노드 메모리 4GB 증설, 배치용 노드 라벨, 로컬 레지스트리, 관측 도구(kube-prometheus-stack, Loki, Alloy) 설치, Alertmanager 웹훅 수신처와 Bearer 토큰 설정이 끝났다. 그래서 3단계는 23일 차까지로 하루 줄이고, 24일 차는 예비일로 둔다.
+3단계의 클러스터 준비 중 상당 부분은 infra_local_set에 이미 들어가 있다. 워커 노드 메모리 4GB 증설, 배치용 노드 라벨, 로컬 레지스트리, 관측 도구(kube-prometheus-stack, Loki, Alloy) 설치, Alertmanager 웹훅 수신처와 Bearer 토큰 설정이 끝났다. 그래서 줄어든 하루와 4단계를 줄여 생긴 시간을 3단계의 고객사 분리와 승인 조치(Day 23, 24)에 쓰고, 26일 차를 예비일로 둔다.
 
 | Day | 단계 | 작업 | 완료 기준 |
 | --- | --- | --- | --- |
@@ -57,14 +57,14 @@
 | 20 | 3단계 | 자동화 메트릭, Grafana PostgreSQL 데이터 소스, 대시보드 2개 | 대시보드에서 장애 수, 성공률, 비용, 큐 길이가 보임 |
 | 21 | 3단계 | K8s 장애 시나리오(S14~S16) 작성, 실제 감지 경로로 전체 시나리오 실행 | 감지 시간, 전체 처리 시간 측정 완료 |
 | 22 | 3단계 | 알림 묶기, 비코드 알림 분류, Pod 종료 중 재개 실험, 결과 분석 | phase3.csv, 요약 완성 |
-| 23 | 3단계 | 정리(README, 아키텍처 그림 갱신, velog 3편, 영상) | 3단계 결과 공개 가능 |
-| 24 | 예비 | 밀린 작업 | |
-| 25 | 4단계 | Terraform으로 VPC, EKS(관리형 노드 그룹), ECR, EC2 1대 생성. `overlays/eks` 작성, 이미지 ECR 등록, kube-prometheus-stack과 Loki 설치 | 모든 Pod Running, Grafana에서 클러스터 지표가 보임 |
-| 26 | 4단계 | EKS에서 S01, S14, S15를 Alertmanager 경로로 실행 | 3단계와 같은 결과가 EKS에서도 나옴, 감지 시간과 전체 처리 시간 측정 |
-| 27 | 4단계 | EC2에 shopapi와 CloudWatch Agent 설치, 경보와 SNS 구독, CloudWatch 어댑터, S17, S18 실행 | 경보 1건이 사람 개입 없이 Slack 회신까지 완주 |
+| 23 | 3단계 | 고객사 namespace 2개(tenant-a, tenant-b), 고객사 라벨과 Alertmanager 라우팅, 고객사별 Slack 채널과 런북 필터(9-7) | 같은 버그를 두 고객사에 주입하면 각 고객사 채널로 1건씩 회신 |
+| 24 | 3단계 | 승인 조치 Job과 허용 목록 플레이북, Slack 승인 버튼, 조치 기록, S17 노드 디스크 부족(9-8) | S17 알림이 승인 후 플레이북 실행, 알림 해소까지 사람 개입은 승인 1번 |
+| 25 | 3단계 | 정리(README, 아키텍처 그림 갱신, velog 3편, 영상) | 3단계 결과 공개 가능 |
+| 26 | 예비 | 밀린 작업 | |
+| 27 | 4단계 | Terraform으로 EC2 1대, CloudWatch Agent 설정, 경보, EventBridge 규칙, SQS 생성. SQS 어댑터, S18, S19 실행 | 경보 1건이 사람 개입 없이 Slack 회신까지 완주 |
 | 28 | 4단계 | 정리(README, 환경별 비교 표, velog 4편), `terraform destroy` 후 남은 리소스 확인 | 4단계 결과 공개 가능, 과금 리소스 0개 |
 
-일정이 밀리면 측정, Slack 연동, 영상 순으로 우선순위를 둔다. 측정 결과가 없으면 나머지는 의미가 없다. 3단계가 밀리면 대시보드는 shopapi 하나로 줄이고, S16(노드 장애)은 뒤로 미루고, K3s 위에서 감지부터 회신까지 완주하는 것을 우선한다. 4단계가 밀리면 EKS는 S01 한 건으로 줄이고, 구조가 새로 생기는 EC2 경로를 우선한다.
+일정이 밀리면 측정, Slack 연동, 영상 순으로 우선순위를 둔다. 측정 결과가 없으면 나머지는 의미가 없다. 3단계가 밀리면 대시보드는 shopapi 하나로 줄이고, S16(노드 장애)은 뒤로 미루고, K3s 위에서 감지부터 회신까지 완주하는 것을 우선한다. 3단계 추가 작업이 밀리면 승인 조치를 먼저 하고 고객사 분리는 라우팅만 남긴다. 4단계가 밀리면 S19를 빼고 S18 한 건으로 경로 완주만 확인한다.
 
 ### 3. 대상 서비스 설계 (1단계)
 
@@ -93,8 +93,9 @@ AI_auto_pipeline/
 ├── knowledge/
 │   ├── shopapi/                # shopapi 런북 3~5개
 │   └── k8s/                    # CrashLoopBackOff, OOMKilled, NodeNotReady 런북(3단계)
-├── deploy/k8s/                 # kustomize base, overlays/local(3단계), overlays/eks(4단계)
-├── deploy/aws/                 # Terraform: VPC, EKS, ECR, EC2, CloudWatch 경보, SNS(4단계)
+├── deploy/k8s/                 # kustomize base, overlays/local(3단계)
+├── deploy/ansible/             # 승인 조치용 허용 목록 플레이북(3단계)
+├── deploy/aws/                 # Terraform: EC2, CloudWatch Agent 설정, 경보, EventBridge, SQS(4단계)
 ├── scripts/
 │   ├── inject.sh               # 버그 주입, 원복
 │   ├── build_push.sh           # 이미지 빌드와 레지스트리 등록(3단계)
@@ -235,6 +236,7 @@ CREATE TABLE incidents (
   source            text NOT NULL,     -- api | slack | alertmanager | cloudwatch
   alertname         text,              -- 3단계, Alertmanager 알림 이름
   alert_fingerprint text,              -- 3단계, Alertmanager 알림 지문(해소 알림 매칭용)
+  tenant            text NOT NULL DEFAULT 'common',  -- 3단계, 고객사
   service           text NOT NULL,
   severity          text,
   message           text NOT NULL,
@@ -286,6 +288,19 @@ CREATE TABLE approvals (
   approver    text NOT NULL,
   decision    text NOT NULL,       -- approved | rejected
   decided_at  timestamptz DEFAULT now()
+);
+
+CREATE TABLE actions (               -- 3단계, 승인 후 조치 기록
+  id          bigserial PRIMARY KEY,
+  incident_id text REFERENCES incidents(id),
+  playbook    text NOT NULL,       -- 허용 목록의 플레이북 이름
+  target      text NOT NULL,       -- 대상 노드
+  approver    text NOT NULL,
+  approved_at timestamptz NOT NULL,
+  status      text NOT NULL,       -- pending | succeeded | failed
+  log         text,
+  finished_at timestamptz,
+  UNIQUE (incident_id, playbook)   -- 같은 장애에 같은 조치는 한 번만
 );
 
 CREATE TABLE llm_calls (
@@ -455,6 +470,7 @@ Alertmanager 설정은 infra_local_set에 이미 들어 있다.
 | S14 | infra | 잘못된 Secret으로 shopapi가 기동 실패를 반복 | Secret 값을 잘못 바꿔 재배포 | CrashLoop 알림, 런북 안내 |
 | S15 | infra | 메모리 초과로 Pod 종료 | 메모리 limit을 낮추고 큰 요청 전송 | OOMKilled 알림, 런북 안내 |
 | S16 | infra | 워커 노드 장애 | `vagrant halt k3s-w1` 후 3분 뒤 `vagrant up k3s-w1` | 노드 복구 후 알림이 전달되고, 진행 중이던 장애가 체크포인트부터 이어짐 |
+| S17 | infra | 노드 디스크 부족 | k3s-w1의 실험용 볼륨(`/srv/appdata`)을 임시 파일로 90% 넘게 채움 | 디스크 알림, 런북 안내와 정리 플레이북 승인 요청, 승인 후 해소 |
 
 S16에서 k3s-w1을 멈추면 앱 쪽이 모두 함께 멈춘다. shop, aiops의 모든 Pod가 `workload=app` 노드인 k3s-w1에만 뜰 수 있고, k3s-w2는 관측 도구 전용, k3s-cp는 메모리 2GB라 옮겨 갈 곳이 없다. postgres와 redis는 local-path PVC라 데이터가 k3s-w1 디스크에 묶여 있어서, 라벨을 풀어도 다른 노드로 옮길 수 없다. 자동화 api도 멈추므로 Alertmanager의 `KubeNodeNotReady` 알림은 노드가 돌아올 때까지 받을 곳이 없다.
 
@@ -466,7 +482,28 @@ S16에서 k3s-w1을 멈추면 앱 쪽이 모두 함께 멈춘다. shop, aiops의
 
 "다른 곳에서 이어 가기"는 노드 대신 워커 Pod 단위로 확인한다. 분석 도중 처리 중인 워커 Pod를 `kubectl delete pod --force --grace-period=0`으로 지우면, 다른 워커 replica가 30초 뒤 메시지를 회수해 체크포인트부터 이어 가야 한다. 2단계의 `docker kill` 실험을 클러스터에서 다시 하는 것이고, 2단계의 PostgreSQL 체크포인터가 여기서 의미를 갖는다.
 
-#### 9-7. 3단계 실험
+#### 9-7. 고객사 분리
+
+MSP는 여러 고객사 환경을 한 운영 조직이 맡는다. 이를 namespace 두 개로 흉내 낸다.
+
+- `shop` namespace 대신 `tenant-a`, `tenant-b`에 shopapi를 1개씩 올린다. 메모리를 늘리지 않도록 고객사당 replica는 1개로 둔다.
+- 고객사는 namespace 이름에서 정한다. 알림 규칙과 LogQL은 `namespace=~"tenant-.*"`로 넓히고, Alertmanager 라우팅도 두 namespace를 받도록 infra_local_set에서 고친다.
+- 자동화는 장애 정보에 `tenant`를 붙인다. 결과는 고객사별 Slack 채널로 보내고, 런북 검색은 `service`와 함께 `tenant`로 범위를 줄인다. 고객사 공통 런북은 `tenant: common`으로 둔다.
+- 대시보드와 이력 집계도 고객사별로 나눠 본다.
+
+#### 9-8. 승인 후 조치
+
+자동화는 런북 안내에서 멈추지 않고, 사람이 승인하면 정해진 조치까지 실행한다. 조치 범위는 노드 OS 수준의 정리 작업으로 좁힌다.
+
+1. 런북에 조치 이름(`cleanup-appdata`, `restart-service` 등)이 적혀 있고 분류가 비코드 장애이면, 회신에 승인 버튼을 붙인다.
+2. 승인되면 자동화가 aiops namespace에 Kubernetes Job을 만든다. Job 이미지는 Ansible만 들어 있고, `deploy/ansible/`의 허용 목록 플레이북 중 하나를 대상 노드 하나에만 실행한다. 플레이북 이름과 대상은 장애 기록에서만 가져오고, LLM 출력은 쓰지 않는다.
+3. SSH 키는 aiops namespace의 Secret에 두고, 자동화 서비스 계정은 aiops의 Job 생성 권한만 가진다.
+4. 승인자, 승인 시각, 실행 결과, Job 로그를 장애 기록(`actions` 테이블)에 남긴다. 같은 장애에 같은 조치는 한 번만 실행한다.
+5. 조치 뒤 알림이 해소되면 `alert_resolved_at`으로 조치 효과를 확인한다.
+
+S17은 노드 루트 디스크 대신 k3s-w1에 만든 1GB 실험용 볼륨을 채운다. 루트 디스크를 채우면 kubelet이 Pod를 축출하고, 맥 디스크도 함께 늘어난다. 볼륨은 infra_local_set의 Ansible로 만들고(루프 장치로 마운트), node-exporter가 이 마운트 지점을 수집한다. 기본 디스크 규칙의 `for`가 길면 9-3처럼 줄이거나 이 마운트 지점 전용 규칙을 쓴다.
+
+#### 9-9. 3단계 실험
 
 LLM 성능은 1, 2단계에서 측정했으므로 여기서는 감지와 연결 구간, 클러스터 장애 대응에 집중한다. 시나리오마다 1회씩 돌린다.
 
@@ -479,6 +516,8 @@ LLM 성능은 1, 2단계에서 측정했으므로 여기서는 감지와 연결 
 | 워커 Pod 종료 중 재개 | 분석 도중 처리 중인 워커 Pod 강제 삭제 | 다른 replica에서 재개까지 시간, 추가 LLM 호출 수, 중복 회신 수 |
 | 노드 장애 후 재개(S16) | 분석 도중 k3s-w1 중지, 3분 뒤 복구 | 알림 감지 시각, 웹훅 전달 시각, 복구 후 재개까지 시간, 추가 LLM 호출 수 |
 | 해소 처리 | 장애 원복 후 알림 해소 | `alert_resolved_at`이 장애 기록에 남는지 |
+| 고객사 분리 | 같은 버그를 tenant-a, tenant-b에 차례로 주입 | 각 고객사 채널로만 회신되는지, 런북 검색이 다른 고객사 문서를 가져오지 않는지 |
+| 승인 후 조치(S17) | 볼륨을 채우고 회신의 승인 버튼 클릭 | 알림부터 승인 요청까지, 승인부터 해소까지 시간, 조치 기록이 남는지 |
 
 감지 시간은 여러 대기 시간의 합이다. 결과를 적을 때 아래 값을 함께 적고, 오탐과 감지 속도 사이에서 이 값을 어떻게 정했는지 정리한다.
 
@@ -489,46 +528,45 @@ LLM 성능은 1, 2단계에서 측정했으므로 여기서는 감지와 연결 
 
 측정한 감지 시간이 이 합보다 크게 길면, 어느 구간에서 늘어났는지 Prometheus의 `ALERTS` 시계열과 Alertmanager 로그로 찾아서 함께 적는다.
 
-### 10. 4단계 AWS 운영 환경 적용(EKS, EC2)
+### 10. 4단계 AWS EC2 적용
 
-4단계의 목적은 자동화 본체를 고치지 않고 운영 환경만 바꿔도 감지부터 회신까지 이어지는지 확인하는 것이다. 바뀌는 곳은 알림 입구, 로그 조회, 배포 세 곳이다. 모든 알림은 출처별 어댑터에서 기존 `IncidentIn`으로 바뀌고, 그 뒤의 중복 제거, 큐, 분석, 검증, 보고는 환경과 관계없이 같다.
+4단계의 목적은 자동화 본체를 고치지 않고 감지 수단과 알림 입구만 바꿔도 감지부터 회신까지 이어지는지 확인하는 것이다. 쿠버네티스 장애 대응은 3단계에서 보였으므로 EKS는 쓰지 않고, AWS에서는 EC2 장애와 CloudWatch 경로만 다룬다. 자동화는 로컬 K3s의 것을 그대로 쓴다.
 
-#### 10-1. 환경별 구성
+#### 10-1. 구성
 
-| 항목 | 로컬 K3s(3단계) | EKS | EC2 |
-| --- | --- | --- | --- |
-| 감지 | kube-prometheus-stack, Loki ruler | 같은 Helm 차트와 규칙 | CloudWatch Agent 메트릭과 로그, CloudWatch 경보 |
-| 알림 전달 | Alertmanager 웹훅(클러스터 내부) | Alertmanager 웹훅(클러스터 내부) | CloudWatch 경보 -> SNS -> HTTPS 구독 |
-| 알림 입구 | `/api/v1/alerts/alertmanager` | 같음 | `/api/v1/alerts/cloudwatch` |
-| 스택트레이스 조회 | Loki | Loki | CloudWatch Logs Insights |
-| 이미지 | 로컬 레지스트리 | ECR | ECR(EC2는 docker로 실행) |
-| 비밀값 | Kubernetes Secret | Secrets Manager + External Secrets Operator, Pod Identity | Secrets Manager, 인스턴스 역할 |
-| 자동화 위치 | aiops namespace | aiops namespace | EKS의 aiops에서 함께 받는다 |
-| 고유 장애 | CrashLoop, OOMKilled, 노드 장애 | 같음 | 프로세스 종료, 인스턴스 상태 검사 실패, 디스크 부족 |
+| 항목 | 로컬 K3s(3단계) | AWS EC2(4단계) |
+| --- | --- | --- |
+| 감지 | kube-prometheus-stack, Loki ruler | CloudWatch Agent 지표와 로그, CloudWatch 경보 |
+| 알림 전달 | Alertmanager 웹훅(클러스터 내부) | 경보 상태 변경 -> EventBridge 규칙 -> SQS |
+| 알림 입구 | `/api/v1/alerts/alertmanager` | 자동화의 SQS 소비자 |
+| 스택트레이스 조회 | Loki | CloudWatch Logs Insights |
+| 자동화 위치 | aiops namespace | 같음(로컬에서 SQS를 가져감) |
+| 조치 | 승인 후 Ansible 플레이북 | 안내만 함 |
 
-EC2 전용 자동화를 따로 띄우지 않고 EKS의 자동화가 EC2 경보도 받는다. 자동화가 하나여야 이력과 비용 집계가 한곳에 모인다. EKS 없이 EC2만 쓰는 환경이라면 같은 이미지를 EC2에서 docker compose로 띄우면 된다.
+SQS를 두는 이유는 두 가지다. 자동화가 SQS를 가져가는 방식이라 공개 주소, 로드밸런서, 서명 검증이 필요 없다. 자동화가 꺼져 있던 동안의 경보도 큐에 남는다. 로컬 자동화는 SQS 읽기와 삭제, CloudWatch Logs 조회 권한만 가진 IAM 사용자로 접근한다.
 
-#### 10-2. CloudWatch 어댑터
+#### 10-2. SQS 어댑터
 
-1. SNS 구독 확인 메시지(`SubscriptionConfirmation`)는 `SubscribeURL`을 호출해 확인만 하고 끝낸다.
-2. 모든 메시지는 SNS 서명을 검증한다. 공개 주소로 받는 입구라서 토큰만으로는 부족하다. 입구는 ALB 뒤에 두고 이 경로만 연다.
-3. 경보 메시지에서 `AlarmName`, `NewStateValue`, `Trigger`(지표, 차원)를 꺼낸다. `ALARM`은 장애로 접수하고, `OK`는 같은 경보의 `alert_resolved_at`을 남긴다(Alertmanager의 `resolved`와 같은 처리).
-4. 로그 기반 경보(ERROR 로그 지표 필터)면 경보 시각 5분 전부터 CloudWatch Logs Insights로 해당 로그 그룹의 최근 스택트레이스를 조회한다.
-5. 서비스 이름은 경보 이름 규칙(`<service>-<alertname>`)이나 태그에서 정한다. RAG 메타데이터 필터에 그대로 쓰인다.
+1. SQS 메시지에서 EventBridge 이벤트(`CloudWatch Alarm State Change`)를 꺼내 경보 이름, 새 상태, 지표와 차원을 읽는다.
+2. `ALARM`은 장애로 접수하고, `OK`는 같은 경보의 `alert_resolved_at`을 남긴다(Alertmanager의 `resolved`와 같은 처리).
+3. 로그 기반 경보(ERROR 로그 지표 필터)면 경보 시각 5분 전부터 CloudWatch Logs Insights로 해당 로그 그룹의 최근 스택트레이스를 조회한다.
+4. 서비스와 고객사는 경보 이름 규칙(`<tenant>-<service>-<alertname>`)에서 정한다.
+5. 기존 `IncidentIn`으로 바꿔 같은 중복 제거와 큐 적재 경로를 탄다. 처리를 마친 SQS 메시지만 지워서, 자동화가 중간에 죽어도 메시지가 다시 보인다.
+
+어댑터 테스트는 실제 EventBridge 이벤트 JSON을 저장해 두고 로컬에서 돌린다. AWS가 없어도 어댑터를 검증할 수 있다.
 
 #### 10-3. 4단계 시나리오
 
-| ID | 환경 | 장애 내용 | 감지 | 예상 결과 |
-| --- | --- | --- | --- | --- |
-| S01, S14, S15 | EKS | 3단계와 같음 | Alertmanager | 3단계와 같은 결과 |
-| S17 | EC2 | shopapi 코드 버그(S01 패치 재사용) | ERROR 로그 지표 필터 경보 | 자동 수정, Slack 회신 |
-| S18 | EC2 | 디스크 사용률 90% 초과 | CloudWatch Agent 디스크 지표 경보 | 코드 수정 없이 런북 안내 |
+| ID | 장애 내용 | 감지 | 예상 결과 |
+| --- | --- | --- | --- |
+| S18 | EC2의 shopapi 코드 버그(S01 패치 재사용) | ERROR 로그 지표 필터 경보 | 자동 수정, Slack 회신 |
+| S19 | EC2 디스크 사용률 90% 초과 | CloudWatch Agent 디스크 지표 경보 | 코드 수정 없이 런북 안내 |
 
 #### 10-4. 비용과 정리
 
-- 리소스는 Terraform 하나로 만들고 지운다. 모든 리소스에 `project=ai-incident` 태그를 붙이고, 작업이 끝난 날마다 `terraform destroy` 후 태그로 남은 리소스를 조회해 0개인지 확인한다.
-- 실행 전에 AWS 요금 계산기로 EKS 컨트롤 플레인, 노드, NAT 게이트웨이, ALB의 시간당 비용을 계산해 예산을 정하고, AWS Budgets 알림을 건다.
-- 노드는 최소 개수로 시작한다. 관측 도구가 메모리를 많이 쓰면 Prometheus 보관 기간을 1일로 두는 로컬 설정을 그대로 쓴다.
+- 리소스는 Terraform 하나로 만들고 지운다. 모든 리소스에 `project=ai-incident` 태그를 붙이고, `terraform destroy` 후 태그로 남은 리소스를 조회해 0개인지 확인한다.
+- EC2는 퍼블릭 서브넷의 작은 인스턴스 1대로 두고 인바운드를 열지 않는다. 접속은 SSM Session Manager로 한다. NAT 게이트웨이와 로드밸런서는 만들지 않는다.
+- 실행 전에 AWS 요금 계산기로 비용을 계산하고 AWS Budgets 알림을 건다.
 
 ### 11. 리스크와 대응
 
@@ -549,7 +587,9 @@ EC2 전용 자동화를 따로 띄우지 않고 EKS의 자동화가 EC2 경보�
 | 알림이 너무 늦거나 너무 자주 옴 | `for`, `group_wait`, 평가 주기를 실험 결과와 함께 기록하고 조정 근거로 사용 |
 | 메트릭 전용 알림에 스택트레이스 없음 | Loki 조회 실패 시 스택트레이스 없이 넘기고, 런북 안내로 끝나는지 확인 |
 | AWS 리소스 삭제 누락으로 과금 | Terraform으로만 생성, 태그로 잔여 리소스 확인, AWS Budgets 알림 |
-| 공개 주소로 받는 CloudWatch 입구 악용 | SNS 서명 검증, ALB에서 해당 경로만 공개, 토큰 병행 |
+| 자동화 IAM 자격 증명 유출 | SQS 읽기와 삭제, Logs 조회만 허용한 전용 IAM 사용자, 4단계 종료 시 키 삭제 |
+| 승인 조치가 잘못된 대상에 실행됨 | 허용 목록 플레이북, 대상 노드 1개 지정, 플레이북 이름과 대상은 LLM이 아닌 장애 기록에서만 가져옴, 같은 조치 한 번만 실행 |
+| 디스크 실험 중 Pod 축출 | 루트 디스크 대신 1GB 실험용 볼륨만 채움 |
 | 환경마다 자동화 코드가 갈라짐 | 환경 차이는 알림 어댑터, 로그 조회, 배포 설정에만 둔다. 어댑터 출력은 모두 `IncidentIn` |
 
 ### 12. 결과 정리와 이력서 반영
@@ -569,7 +609,7 @@ EC2 전용 자동화를 따로 띄우지 않고 EKS의 자동화가 EC2 경보�
 
 이력서 문장 틀은 다음과 같다. N에는 측정값만 넣는다. 비용 절감은 최적화 묶음 전체의 효과로 적고, 개별 최적화에 돌리지 않는다(7장).
 
-> 로컬 K3s와 AWS(EKS, EC2)에서 Prometheus, Loki, Alertmanager, CloudWatch로 감지한 장애를 LangGraph로 분석해 수정안을 만들고, 영향 범위 기반 회귀 테스트로 검증한 뒤 Slack으로 보고하는 자동화 파이프라인 구축. 운영 환경이 바뀌어도 알림 어댑터만 추가해 같은 자동화로 처리. 장애 시나리오 18개(코드 버그 10개, 인프라와 Kubernetes, EC2 장애 6개, 재발과 중복 2개)를 대상으로 코드 버그 N종 자동 수정, 비코드 장애 N종 런북 안내, 장애 발생부터 수정안 보고까지 평균 N분. 모델 분리, 조기 종료, 수정안 재사용으로 장애당 LLM 비용 N% 절감, 선별 테스트로 검증 시간 N% 단축. PostgreSQL 체크포인터 도입으로 워커 장애 시 재처리 비용 N% 감소
+> 로컬 K3s와 AWS EC2에서 Prometheus, Loki, Alertmanager, CloudWatch로 감지한 장애를 LangGraph로 분석해 수정안을 만들고, 영향 범위 기반 회귀 테스트로 검증한 뒤 고객사별 Slack 채널로 보고하는 자동화 파이프라인 구축. 운영 환경이 바뀌어도 알림 어댑터만 추가해 같은 자동화로 처리하고, 비코드 장애는 승인 후 Ansible 플레이북으로 조치. 장애 시나리오 19개(코드 버그 10개, 인프라와 Kubernetes, EC2 장애 7개, 재발과 중복 2개)를 대상으로 코드 버그 N종 자동 수정, 비코드 장애 N종 런북 안내, 장애 발생부터 수정안 보고까지 평균 N분. 모델 분리, 조기 종료, 수정안 재사용으로 장애당 LLM 비용 N% 절감, 선별 테스트로 검증 시간 N% 단축. PostgreSQL 체크포인터 도입으로 워커 장애 시 재처리 비용 N% 감소
 
 3단계 결과 표는 다음 양식으로 채운다.
 
@@ -582,15 +622,23 @@ EC2 전용 자동화를 따로 띄우지 않고 EKS의 자동화가 EC2 경보�
 | 워커 Pod 종료 후 재개 시간 | | 추가 LLM 호출 수, 중복 회신 수 함께 기록 |
 | 노드 장애 감지 시간, 복구 후 재개 시간 | | 웹훅 전달 시각 함께 기록 |
 
-4단계 결과 표는 환경별로 같은 지표를 나란히 적는다. EKS 값이 로컬 K3s와 크게 다르면 어느 구간(수집, 평가, 전달, 처리)에서 차이가 났는지 함께 적는다.
+3단계 MSP 운영 항목은 다음 양식으로 채운다.
 
-| 지표 | 로컬 K3s | EKS | EC2 |
-| --- | --- | --- | --- |
-| 감지 시간 | | | |
-| 장애 발생부터 Slack 회신까지 | | | |
-| 감지부터 회신까지 완주 여부 | | | |
-| 환경 추가에 든 코드 변경 | 기준 | | 어댑터 파일 수, 줄 수 |
-| 실험 기간 AWS 비용 | 0 | | |
+| 지표 | 값 | 비고 |
+| --- | --- | --- |
+| 고객사 간 회신 혼선 | | 다른 고객사 채널로 간 회신 수. 목표 0 |
+| 알림부터 승인 요청까지 | | S17 |
+| 승인부터 알림 해소까지 | | S17, 조치 기록 남음 여부 |
+
+4단계 결과 표는 환경별로 같은 지표를 나란히 적는다. 값이 크게 다르면 어느 구간(수집, 평가, 전달, 처리)에서 차이가 났는지 함께 적는다.
+
+| 지표 | 로컬 K3s | AWS EC2 |
+| --- | --- | --- |
+| 감지 시간 | | |
+| 장애 발생부터 Slack 회신까지 | | |
+| 감지부터 회신까지 완주 여부 | | |
+| 환경 추가에 든 코드 변경 | 기준 | 어댑터 파일 수, 줄 수 |
+| 실험 기간 AWS 비용 | 0 | |
 
 ### 13. Day 1 체크리스트
 
