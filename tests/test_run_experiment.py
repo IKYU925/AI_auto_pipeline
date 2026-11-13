@@ -134,3 +134,18 @@ def test_run_all_stops_at_cost_ceiling(shopapi, tmp_path):
     rows = out.read_text().splitlines()[1:]
     assert len(rows) == 2, "두 번째 실행 뒤 상한을 넘어 멈춤"
     assert spent >= one * 1.5
+
+
+@pytest.mark.parametrize("scenario_id", ["S01", "S02"])
+def test_inject_changes_files_inside_a_git_repo(tmp_path, monkeypatch, scenario_id):
+    """S01은 일반 diff, S02는 git diff 형식이다. 저장소 하위 폴더에서도 둘 다 실제로 적용돼야 한다."""
+    import subprocess
+
+    repo = tmp_path / "targets" / "shopapi"
+    shutil.copytree(rx.SHOPAPI, repo, ignore=shutil.ignore_patterns("__pycache__", ".pytest_cache"))
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    before = {p: p.read_text() for p in repo.rglob("*.py")}
+    with rx.injected(scenario_id, repo):
+        changed = [p for p, text in before.items() if p.read_text() != text]
+        assert changed, "패치가 실제로 파일을 바꿔야 한다"
+    assert all(p.read_text() == text for p, text in before.items()), "원복"
