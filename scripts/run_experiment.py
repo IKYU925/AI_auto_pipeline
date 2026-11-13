@@ -128,7 +128,13 @@ def inject(scenario_id: str, repo: Path, revert: bool = False) -> bool:
     patch = SCENARIOS / f"{scenario_id}.patch"
     if not patch.exists():
         return False
-    subprocess.run(["git", "-C", str(repo), "apply", *(["-R"] if revert else []), str(patch)], check=True)
+    cmd = ["git", "-C", str(repo), "apply"]
+    top = subprocess.run(["git", "-C", str(repo), "rev-parse", "--show-toplevel"], capture_output=True, text=True)
+    if top.returncode == 0:
+        # git 저장소 안에서는 "diff --git" 패치 경로를 저장소 루트 기준으로 읽고, 작업 폴더 밖이면 오류 없이 건너뛴다
+        root = Path(top.stdout.strip())
+        cmd = ["git", "-C", str(root), "apply", f"--directory={repo.resolve().relative_to(root.resolve())}"]
+    subprocess.run([*cmd, *(["-R"] if revert else []), str(patch)], check=True)
     return True
 
 
