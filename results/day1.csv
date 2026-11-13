@@ -1,0 +1,2 @@
+condition,run,started_at,scenario,type,difficulty,incident_id,outcome,expected_outcome,outcome_correct,category,expected_category,category_correct,attempts,elapsed_sec,usd,tokens_in,tokens_out,llm_calls,calls_by_model,cache_hits,reused_fix,tests_selected,test_files_total,test_sec,hidden_passed,full_passed,false_pass,incidents_created
+A,1,2026-11-13T20:26:07+00:00,S01,code_bug,easy,455963dc9569,resolved,resolved,True,code_bug,code_bug,True,1,30.3,0.079844,10035,2500,3,"{""anthropic:claude-haiku-5-5"": 1, ""anthropic:claude-opus-5-5"": 2}",0,False,1,7,0.77,True,True,False,

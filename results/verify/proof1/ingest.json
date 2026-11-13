@@ -1,0 +1,55 @@
+{
+  "skipped_docs": 0,
+  "changed_docs": 7,
+  "embedded_chunks": 23,
+  "reused_chunks": 0,
+  "deleted_chunks": 0,
+  "details": [
+    {
+      "doc_id": "common/deploy-rollback.md",
+      "embedded": 3,
+      "reused": 0,
+      "deleted": 0
+    },
+    {
+      "doc_id": "postmortems/2026-08-payment-timeout.md",
+      "embedded": 3,
+      "reused": 0,
+      "deleted": 0
+    },
+    {
+      "doc_id": "runbooks/checkout-unit-price.md",
+      "embedded": 4,
+      "reused": 0,
+      "deleted": 0
+    },
+    {
+      "doc_id": "shopapi/config-env.md",
+      "embedded": 4,
+      "reused": 0,
+      "deleted": 0
+    },
+    {
+      "doc_id": "shopapi/orders-summary.md",
+      "embedded": 4,
+      "reused": 0,
+      "deleted": 0
+    },
+    {
+      "doc_id": "shopapi/payment-timeout.md",
+      "embedded": 4,
+      "reused": 0,
+      "deleted": 0
+    },
+    {
+      "doc_id": "shopapi/pricing-coupon.md",
+      "embedded": 1,
+      "reused": 0,
+      "deleted": 0
+    }
+  ],
+  "embedding_cache": {
+    "hits": 0,
+    "misses": 23
+  }
+}
