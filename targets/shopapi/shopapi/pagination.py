@@ -20,4 +20,5 @@ def paginate(items: list[T], page: int, size: int) -> dict:
     if not 1 <= page <= pages:
         raise InvalidPage(f"page {page} out of range 1..{pages}")
     start = (page - 1) * size
-    return {"items": items[start : start + size], "page": page, "pages": pages, "has_next": page < pages}
+    end = min(start + size, len(items))
+    return {"items": [items[i] for i in range(start, end)], "page": page, "pages": pages, "has_next": page < pages}

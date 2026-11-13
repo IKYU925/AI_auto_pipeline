@@ -1,0 +1,13 @@
+diff --git a/shopapi/inventory.py b/shopapi/inventory.py
+index 7558d11..dd5eca7 100644
+--- a/shopapi/inventory.py
++++ b/shopapi/inventory.py
+@@ -30,8 +30,6 @@ class Inventory:
+ 
+     def reserve(self, sku: str, qty: int) -> int:
+         """재고를 차감하고 남은 수량을 돌려준다. 수량이 0 이하면 InvalidQuantity(400)로 거절한다."""
+-        if qty <= 0:
+-            raise InvalidQuantity(f"quantity must be positive: {qty}")
+         left = self.count(sku) - qty
+         if left < 0:
+             raise OutOfStock(f"not enough stock for {sku}")

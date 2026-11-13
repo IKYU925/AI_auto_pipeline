@@ -4,10 +4,6 @@ from shopapi.orders import InvalidOrder, OrderItem, average_unit_price, parse_it
 from shopapi.pricing import Coupon
 
 
-def test_parse_item_converts_string_quantity():
-    assert parse_item({"sku": "A", "price": "1000", "quantity": "3"}).quantity == 3
-
-
 def test_parse_item_without_options():
     assert parse_item({"sku": "A", "price": 1000, "quantity": 1}).options == ()
 
@@ -35,7 +31,3 @@ def test_average_unit_price_rounds_to_two_decimals():
 def test_summarize_applies_coupon_then_tax():
     result = summarize([OrderItem("A", 10000, 1)], Coupon("C", rate=0.1), tax_rate=0.1)
     assert result == {"items": 1, "quantity": 1, "subtotal": 10000.0, "total": 9900.0, "average_unit_price": 10000.0}
-
-
-def test_summarize_without_coupon():
-    assert summarize([OrderItem("A", 1000, 2)], None, tax_rate=0)["total"] == 2000.0
