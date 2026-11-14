@@ -9,3 +9,14 @@ spec:
     matchLabels: {app.kubernetes.io/name: shopapi}
   endpoints:
     - {port: http, path: /metrics, interval: 15s}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: ai-api
+  namespace: aiops
+spec:
+  selector:
+    matchLabels: {app.kubernetes.io/name: ai-api}
+  endpoints:
+    - {port: http, path: /metrics, interval: 15s}

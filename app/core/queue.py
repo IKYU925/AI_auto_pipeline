@@ -56,6 +56,17 @@ class IncidentQueue:
     def ack(self, msg_id: str) -> None:
         self.redis.xack(self.stream, self.group, msg_id)
 
+    def depth(self) -> dict[str, int]:
+        self.ensure_group()
+        group = next(g for g in self.redis.xinfo_groups(self.stream) if g["name"] in (self.group, self.group.encode()))
+        last = group["last-delivered-id"]
+        last = last.decode() if isinstance(last, bytes) else last
+        return {
+            "waiting": len(self.redis.xrange(self.stream, min=f"({last}", max="+")),
+            "in_progress": group["pending"],
+            "dead_letters": self.redis.xlen(self.dlq_stream),
+        }
+
     def dead_letter(self, msg_id: str, payload: dict, error: str) -> None:
         self.redis.xadd(self.dlq_stream, {"data": json.dumps(payload, default=str), "error": error[:2000]})
         self.ack(msg_id)
