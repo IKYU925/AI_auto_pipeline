@@ -1,0 +1,2 @@
+scenario,alert_ts,reply_ts,alert_to_reply_sec,alert_chars,outcome_title,usd
+S01,1794650649.726359,1794650680.958379,31.2,3466,:white_check_mark: 수정안 검증 완료 · 승인 대기 · shopapi · ZeroDivisionError: float division by zero on POST /orders/summary,0.0845
