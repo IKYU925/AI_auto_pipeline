@@ -71,3 +71,5 @@ ts	phase	decision	why	evidence	result
 2026-11-14T10:25Z	f03	요약 스크립트에 라벨=파일 인자 추가	1단계와 2단계가 둘 다 조건 A라 condition 칸으로는 나뉘지 않음	scripts/summarize_results.py, 테스트 1개	-
 2026-11-14T11:00Z	plan	S08 거짓 통과 대응(F10)을 보류, 3단계 운영과 테스트 뒤 재검토	사람 확인으로 넘어가는 건수와의 균형은 실제 운영 데이터를 보고 정하기로 함(사용자 결정)	docs/features/README.md F10 행	-
 2026-11-14T11:00Z	plan	plan.md 8장을 요약과 링크로 줄임	기능 문서 규칙(완료된 기능의 상세 절은 요약 한 줄과 링크로), 3단계에서 이어 쓰는 설계 3가지는 남김	docs/plan.md 8장	-
+2026-11-14T11:30Z	3-3	shopapi /metrics와 JSON 로그 계측 테스트를 shopapi 공개 테스트가 아닌 자동화 레포 tests/에 둠	shopapi 테스트 파일 수가 바뀌면 실험의 선별 비율(전체 7개 중 N개)이 1, 2단계와 비교되지 않음	tests/test_shopapi_observability.py	-
+2026-11-14T11:35Z	3-3	shopapi 메트릭을 앱별 CollectorRegistry로	기본 레지스트리는 프로세스에 하나라 시나리오 검사처럼 앱을 여러 번 만들면 나중 앱의 요청이 /metrics에 안 잡힘(테스트 순서에 따라 실패로 재현)	targets/shopapi/shopapi/observability.py	86개 통과

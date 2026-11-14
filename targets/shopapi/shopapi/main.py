@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse
 from shopapi import orders, pricing
 from shopapi.config import Settings, load_settings
 from shopapi.inventory import Inventory, InvalidQuantity, OutOfStock
+from shopapi.observability import instrument, setup_logging
 from shopapi.pagination import InvalidPage, paginate
 from shopapi.payments import PaymentDeclined, PaymentGateway, PaymentTimeout
 
@@ -63,6 +64,8 @@ def create_app(
     pg = gateway or PaymentGateway(s.pg_url, s.pg_api_key, s.pg_timeout_sec)
     coupons: dict[str, pricing.Coupon] = {}
     app = FastAPI(title="shopapi")
+    setup_logging(log)
+    instrument(app)
 
     for exc_type, code in DOMAIN_ERRORS.items():
         app.add_exception_handler(
@@ -71,7 +74,8 @@ def create_app(
 
     @app.exception_handler(Exception)
     def unhandled(request: Request, exc: Exception) -> JSONResponse:
-        log.error("unhandled error on %s %s", request.method, request.url.path, exc_info=exc)
+        log.error("unhandled error on %s %s", request.method, request.url.path, exc_info=exc,
+                  extra={"path": request.url.path})
         notify_slack(s.slack_webhook_url, request, exc)
         return JSONResponse({"detail": "internal server error"}, status_code=500)
 
