@@ -85,3 +85,5 @@ ts	phase	decision	why	evidence	result
 2026-11-14T20:50Z	3-3	클러스터에서 S01 실제 LLM 실행, resolved 1회 시도 $0.092	plan.md 3-3 완료 기준(1, 2단계와 같은 결과)	results/phase3_s01_cluster.md	46.6초 중 약 14초는 워커의 임베딩 모델 첫 다운로드
 2026-11-14T20:52Z	3-3	migrate Job을 api init container로 이동	Job은 이미지를 바꿀 수 없어 버그 주입 이미지 재배포 때 적용 실패	deploy/k8s/base/aiops.yaml	-
 2026-11-14T20:55Z	3-3	shopapi setup_logging이 로거 레벨을 정하지 않게 변경	실험 스크립트와 시나리오 검사가 로거를 끈 설정을 create_app이 INFO로 되돌려 결과 출력에 로그가 섞임	targets/shopapi/shopapi/observability.py	재현 출력 확인
+2026-11-14T21:00Z	3-3	임베딩 모델을 이미지에 넣고 HF_HUB_OFFLINE=1	처리 시간에 모델 다운로드(약 14초)가 섞여 측정이 부정확함(사용자 결정)	results/phase3_s01_cluster.md 재측정	46.6초 → 26.0초, HuggingFace 요청 0건
+2026-11-14T21:00Z	3-3	모델 폴더를 chown하지 않고 같은 RUN에서 chmod a+rX	chown -R이 모델 253MB를 새 레이어에 한 번 더 담아 이미지가 1.84GB가 됨, 런타임 쓰기 권한은 필요 없음(nobody, --network none으로 확인)	Dockerfile	1.37GB
