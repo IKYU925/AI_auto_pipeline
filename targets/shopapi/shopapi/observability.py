@@ -39,5 +39,6 @@ def instrument(app: FastAPI) -> None:
     # (시나리오 검사, 테스트) 나중 앱의 요청이 /metrics에 잡히지 않는다
     registry = CollectorRegistry()
     ProcessCollector(registry=registry)
+    # handler 라벨이 붙는 지연 히스토그램이다. 기본 버킷(1초가 끝)이면 결제 지연 알림(p95 > 5초)이 뜰 수 없다
     Instrumentator(should_group_status_codes=True, excluded_handlers=["/metrics", "/healthz"], registry=registry
-                   ).instrument(app).expose(app, include_in_schema=False)
+                   ).instrument(app, latency_lowr_buckets=(0.1, 0.5, 1, 2.5, 5, 10, 30)).expose(app, include_in_schema=False)
