@@ -1,0 +1,64 @@
+worker-1  | 2026-11-14 10:06:53,379 INFO httpx2 HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+worker-1  | 2026-11-14 10:07:11,855 INFO httpx2 HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+worker-1  | 2026-11-14 10:07:20,751 INFO httpx2 HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+worker-1  | 2026-11-14 10:07:32,250 INFO httpx2 HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+worker-1  | 2026-11-14 10:07:33,489 WARNING app.notify.slack slack reply to #C-EXPERIMENT failed: channel_not_found
+worker-1  | 2026-11-14 10:07:33,799 WARNING app.notify.slack slack reply to #C-EXPERIMENT failed: channel_not_found
+worker-1  | 2026-11-14 10:08:13,934 INFO httpx2 HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+worker-1  | 2026-11-14 10:08:23,331 INFO httpx2 HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+worker-1  | 2026-11-14 10:08:39,957 INFO httpx2 HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+worker-1  | 2026-11-14 10:08:41,087 WARNING app.notify.slack slack reply to #C-EXPERIMENT failed: channel_not_found
+worker-1  | 2026-11-14 10:08:41,420 WARNING app.notify.slack slack reply to #C-EXPERIMENT failed: channel_not_found
+worker-1  | 2026-11-14 10:08:47,117 INFO httpx2 HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+worker-1  | 2026-11-14 10:09:01,693 INFO httpx2 HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+worker-1  | 2026-11-14 10:09:13,469 INFO httpx2 HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+worker-1  | 2026-11-14 10:09:14,599 WARNING app.notify.slack slack reply to #C-EXPERIMENT failed: channel_not_found
+worker-1  | 2026-11-14 10:09:14,894 WARNING app.notify.slack slack reply to #C-EXPERIMENT failed: channel_not_found
+worker-1  | 2026-11-14 10:09:19,885 INFO httpx2 HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+worker-1  | 2026-11-14 10:09:34,078 INFO httpx2 HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+worker-1  | 2026-11-14 10:09:53,875 INFO httpx2 HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+worker-1  | 2026-11-14 10:10:11,917 INFO httpx2 HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+worker-1  | 2026-11-14 10:10:13,061 WARNING app.notify.slack slack reply to #C-EXPERIMENT failed: channel_not_found
+worker-1  | 2026-11-14 10:10:13,363 WARNING app.notify.slack slack reply to #C-EXPERIMENT failed: channel_not_found
+worker-2  | 2026-11-14 10:07:38,543 INFO httpx2 HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+worker-2  | 2026-11-14 10:07:54,024 INFO httpx2 HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+worker-2  | 2026-11-14 10:08:09,675 INFO httpx2 HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+worker-2  | 2026-11-14 10:08:10,848 WARNING app.notify.slack slack reply to #C-EXPERIMENT failed: channel_not_found
+worker-2  | 2026-11-14 10:08:11,159 WARNING app.notify.slack slack reply to #C-EXPERIMENT failed: channel_not_found
+worker-2  | 2026-11-14 10:10:21,296 INFO httpx2 HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+worker-2  | 2026-11-14 10:10:34,630 INFO httpx2 HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+worker-2  | 2026-11-14 10:10:41,808 INFO httpx2 HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+worker-2  | 2026-11-14 10:10:43,056 WARNING app.notify.slack slack reply to #C-EXPERIMENT failed: channel_not_found
+worker-1  | 2026-11-14 10:11:53,110 INFO httpx2 HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+worker-1  | 2026-11-14 10:12:08,251 INFO httpx2 HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+worker-1  | 2026-11-14 10:12:22,607 INFO httpx2 HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+worker-1  | 2026-11-14 10:12:23,846 WARNING app.notify.slack slack reply to #C-EXPERIMENT failed: channel_not_found
+worker-1  | 2026-11-14 10:12:24,135 WARNING app.notify.slack slack reply to #C-EXPERIMENT failed: channel_not_found
+worker-1  | 2026-11-14 10:12:31,000 INFO httpx2 HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+worker-1  | 2026-11-14 10:12:31,409 WARNING app.notify.slack slack reply to #C-EXPERIMENT failed: channel_not_found
+worker-2  | 2026-11-14 10:10:43,348 WARNING app.notify.slack slack reply to #C-EXPERIMENT failed: channel_not_found
+worker-2  | 2026-11-14 10:10:47,276 INFO httpx2 HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+worker-2  | 2026-11-14 10:10:59,900 INFO httpx2 HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+worker-2  | 2026-11-14 10:11:16,861 INFO httpx2 HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+worker-2  | 2026-11-14 10:11:17,995 WARNING app.notify.slack slack reply to #C-EXPERIMENT failed: channel_not_found
+worker-2  | 2026-11-14 10:11:18,298 WARNING app.notify.slack slack reply to #C-EXPERIMENT failed: channel_not_found
+worker-2  | 2026-11-14 10:11:22,367 INFO httpx2 HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+worker-2  | 2026-11-14 10:11:37,034 INFO httpx2 HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+worker-2  | 2026-11-14 10:11:48,503 INFO httpx2 HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+worker-2  | 2026-11-14 10:11:49,593 WARNING app.notify.slack slack reply to #C-EXPERIMENT failed: channel_not_found
+worker-2  | 2026-11-14 10:11:49,884 WARNING app.notify.slack slack reply to #C-EXPERIMENT failed: channel_not_found
+worker-2  | 2026-11-14 10:12:27,655 INFO httpx2 HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+worker-2  | 2026-11-14 10:12:28,035 WARNING app.notify.slack slack reply to #C-EXPERIMENT failed: channel_not_found
+worker-2  | 2026-11-14 10:12:32,948 INFO httpx2 HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+worker-2  | 2026-11-14 10:12:49,507 INFO httpx2 HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+worker-2  | 2026-11-14 10:12:58,634 INFO httpx2 HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+worker-2  | 2026-11-14 10:12:59,714 WARNING app.notify.slack slack reply to #C-EXPERIMENT failed: channel_not_found
+worker-2  | 2026-11-14 10:13:00,043 WARNING app.notify.slack slack reply to #C-EXPERIMENT failed: channel_not_found
+worker-2  | 2026-11-14 10:13:02,837 INFO app.llm.router llm cache hit task=classify
+worker-2  | 2026-11-14 10:13:03,940 WARNING app.notify.slack slack reply to #C-EXPERIMENT failed: channel_not_found
+worker-2  | 2026-11-14 10:13:04,267 WARNING app.notify.slack slack reply to #C-EXPERIMENT failed: channel_not_found
+worker-2  | 2026-11-14 10:13:08,685 INFO httpx2 HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+worker-2  | 2026-11-14 10:13:23,030 INFO httpx2 HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+worker-2  | 2026-11-14 10:13:36,536 INFO httpx2 HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+worker-2  | 2026-11-14 10:13:37,632 WARNING app.notify.slack slack reply to #C-EXPERIMENT failed: channel_not_found
+worker-2  | 2026-11-14 10:13:37,931 WARNING app.notify.slack slack reply to #C-EXPERIMENT failed: channel_not_found

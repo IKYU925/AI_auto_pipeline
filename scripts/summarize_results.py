@@ -1,6 +1,8 @@
 """1단계 A/B 실험 CSV를 plan.md 12장 결과 표로 요약한다.
 
 실행: python -m scripts.summarize_results results/phase1_A.csv results/phase1_B.csv > results/phase1_summary.md
+같은 조건을 단계끼리 비교할 때는 라벨=파일로 넘긴다. 그 파일의 행은 condition 대신 라벨로 묶인다.
+     python -m scripts.summarize_results 1단계=results/phase1_A.csv 2단계=results/phase2_A.csv
 
 지표마다 반복 실행(run)별 값을 먼저 구하고, 평균과 범위(최소~최대)를 적는다.
 plan.md 7장 규칙대로 A와 B의 범위가 겹치면 "차이 없음"으로 본다.
@@ -70,7 +72,7 @@ def per_run(rows: list[Row]) -> dict[str, list[list[Row]]]:
 def summarize(rows: list[Row]) -> str:
     runs = per_run(rows)
     conds = sorted(runs)
-    lines = ["| 지표 | " + " | ".join(f"조건 {c} 평균 (범위)" for c in conds) + " | 판단 |", "| --- |" + " --- |" * (len(conds) + 1)]
+    lines = ["| 지표 | " + " | ".join(f"{'조건 ' if len(c) == 1 else ''}{c} 평균 (범위)" for c in conds) + " | 판단 |", "| --- |" + " --- |" * (len(conds) + 1)]
     for name, fn, kind in METRICS:
         cells, ranges = [], []
         for c in conds:
@@ -89,15 +91,16 @@ def summarize(rows: list[Row]) -> str:
             (alo, ahi), (blo, bhi) = ranges
             verdict = "차이 없음(범위 겹침)" if alo <= bhi and blo <= ahi else "차이 있음"
         lines.append(f"| {name} | " + " | ".join(cells) + f" | {verdict} |")
-    counts = ", ".join(f"조건 {c} {len(runs[c])}회 반복, {sum(len(rs) for rs in runs[c])}건" for c in conds)
+    counts = ", ".join(f"{'조건 ' if len(c) == 1 else ''}{c} {len(runs[c])}회 반복, {sum(len(rs) for rs in runs[c])}건" for c in conds)
     return f"실행 수: {counts}\n\n" + "\n".join(lines) + "\n"
 
 
 def main() -> None:
     rows: list[Row] = []
-    for path in sys.argv[1:]:
+    for arg in sys.argv[1:]:
+        label, _, path = arg.rpartition("=")
         with Path(path).open(encoding="utf-8") as f:
-            rows += list(csv.DictReader(f))
+            rows += [{**r, "condition": label} if label else r for r in csv.DictReader(f)]
     print(summarize(rows), end="")
 
 
