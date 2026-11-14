@@ -17,6 +17,7 @@ fi
 image="$REGISTRY/aiops:$tag"
 
 docker build --platform linux/arm64 -t "$image" "$ROOT" >&2
-docker push "$image" >&2
+# Docker Desktop을 재시작한 직후 첫 push가 no route to host로 실패한 적이 있다(두 번째는 성공)
+docker push "$image" >&2 || { sleep 5; docker push "$image" >&2; }
 curl -sf "http://$REGISTRY/v2/aiops/tags/list" | grep -q "\"$tag\"" || { echo "레지스트리에서 $tag를 찾지 못했다" >&2; exit 1; }
 echo "$image"

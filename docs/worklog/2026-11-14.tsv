@@ -78,3 +78,4 @@ ts	phase	decision	why	evidence	result
 2026-11-14T12:30Z	3-1	api, worker, shopapi를 이미지 하나로 빌드	이미지를 둘로 나누면 버그 주입 때 배포된 shopapi와 워커의 /repo가 어긋날 수 있음, compose도 이미 한 이미지	Dockerfile, plan.md 9-1	로컬 빌드 897MB
 2026-11-14T12:30Z	3-1	커밋하지 않은 변경이 있으면 이미지 태그에 diff 해시를 붙임	같은 시나리오를 다시 주입하면 태그가 같아져 노드가 이전 이미지를 씀	scripts/build_push.sh	-
 2026-11-14T12:35Z	3-1	Docker insecure-registries 설정 변경이 권한 확인에서 거절돼 사용자에게 맡김	맥 Docker 설정 변경	-	push 미확인
+2026-11-14T13:00Z	3-1	이미지 push, k3s-w1 pull, Prometheus 수집 확인으로 3-1 완료	plan.md 3-1 완료 기준	레지스트리 aiops:base-e9b3566, pull 5.8초, node-exporter 3/3 up, Grafana 200	첫 push는 no route to host, 재시도 성공
