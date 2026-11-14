@@ -225,127 +225,13 @@ LLM 결과는 매번 조금씩 다르므로 시나리오마다 3회 반복하고
 
 ### 8. 2단계 PostgreSQL 이전 설계
 
-Redis는 큐와 중복 제거(짧은 TTL)에만 남기고, 오래 남아야 하는 데이터는 PostgreSQL로 옮긴다.
+완료. 요구사항과 완료 기준은 [F03](features/F03-postgres.md), 스키마는 [migrations/versions](../migrations/versions/), 이 장과 달라진 결정은 [0012](decisions/0012-postgres-scope.md)에 있다. 결과는 [phase2_summary.md](../results/phase2_summary.md)(1단계 재실행 비교), [phase2_retrieval.md](../results/phase2_retrieval.md)(하이브리드 검색), [phase2_kill.md](../results/phase2_kill.md)(워커 강제 종료)다.
 
-`incidents` 테이블에는 3단계에서 쓸 알림 출처와 해소 시각 칼럼을 미리 넣는다. 3단계에서 Alertmanager의 `resolved` 알림을 받으면 `alert_resolved_at`에 시각을 남기고, `source`는 자동화 메트릭 `incidents_received_total{source}`와 대시보드 집계에 쓴다.
+3단계에서 이어 쓰는 설계는 다음과 같다.
 
-```sql
-CREATE EXTENSION IF NOT EXISTS vector;
-CREATE EXTENSION IF NOT EXISTS pg_trgm;
-
-CREATE TABLE incidents (
-  id                text PRIMARY KEY,
-  fingerprint       text NOT NULL,
-  source            text NOT NULL,     -- api | slack | alertmanager | cloudwatch
-  alertname         text,              -- 3단계, Alertmanager 알림 이름
-  alert_fingerprint text,              -- 3단계, Alertmanager 알림 지문(해소 알림 매칭용)
-  tenant            text NOT NULL DEFAULT 'common',  -- 3단계, 고객사
-  service           text NOT NULL,
-  severity          text,
-  message           text NOT NULL,
-  stacktrace        text,              -- 마스킹 후 저장
-  category          text,
-  needs_code_fix    boolean,
-  status            text NOT NULL,     -- queued | running | resolved | escalated | no_code_fix | failed
-  attempts          int DEFAULT 0,
-  report_ts         text,              -- Slack 회신 메시지 ts, 중복 회신 방지
-  created_at        timestamptz DEFAULT now(),
-  finished_at       timestamptz,
-  alert_resolved_at timestamptz        -- 3단계, 알림이 해소된 시각
-);
-CREATE INDEX ON incidents (fingerprint, created_at DESC);
-CREATE INDEX ON incidents (alert_fingerprint) WHERE alert_fingerprint IS NOT NULL;
-
-CREATE TABLE documents (
-  id           bigserial PRIMARY KEY,
-  doc_id       text NOT NULL,
-  chunk_hash   text NOT NULL,
-  content      text NOT NULL,
-  service      text NOT NULL,
-  category     text NOT NULL,
-  doc_type     text NOT NULL,
-  updated_at   timestamptz NOT NULL,
-  embed_model  text NOT NULL,      -- 모델이 바뀌면 다시 임베딩할 대상을 찾기 위함
-  embedding    vector(384) NOT NULL,
-  UNIQUE (doc_id, chunk_hash)
-);
-CREATE INDEX ON documents USING hnsw (embedding vector_cosine_ops);
-CREATE INDEX ON documents USING gin (content gin_trgm_ops);
-
-CREATE TABLE fixes (
-  id           bigserial PRIMARY KEY,
-  incident_id  text REFERENCES incidents(id),
-  fingerprint  text NOT NULL,
-  attempt      int NOT NULL,
-  patch        text NOT NULL,
-  explanation  text,
-  test_summary text,
-  passed       boolean NOT NULL,
-  created_at   timestamptz DEFAULT now()
-);
-CREATE INDEX ON fixes (fingerprint) WHERE passed;
-
-CREATE TABLE approvals (
-  id          bigserial PRIMARY KEY,
-  fix_id      bigint REFERENCES fixes(id),
-  approver    text NOT NULL,
-  decision    text NOT NULL,       -- approved | rejected
-  decided_at  timestamptz DEFAULT now()
-);
-
-CREATE TABLE actions (               -- 3단계, 승인 후 조치 기록
-  id          bigserial PRIMARY KEY,
-  incident_id text REFERENCES incidents(id),
-  playbook    text NOT NULL,       -- 허용 목록의 플레이북 이름
-  target      text NOT NULL,       -- 대상 노드
-  approver    text NOT NULL,
-  approved_at timestamptz NOT NULL,
-  status      text NOT NULL,       -- pending | succeeded | failed
-  log         text,
-  finished_at timestamptz,
-  UNIQUE (incident_id, playbook)   -- 같은 장애에 같은 조치는 한 번만
-);
-
-CREATE TABLE llm_calls (
-  id          bigserial PRIMARY KEY,
-  incident_id text REFERENCES incidents(id),
-  task        text NOT NULL,
-  model       text NOT NULL,
-  tokens_in   int,
-  tokens_out  int,
-  usd         numeric(10, 6),
-  cache_hit   boolean DEFAULT false,
-  created_at  timestamptz DEFAULT now()
-);
-```
-
-LangGraph 체크포인트 테이블은 `langgraph-checkpoint-postgres`가 직접 만든다.
-
-바뀌는 코드는 다음과 같다.
-
-| 현재 | 변경 후 |
-| --- | --- |
-| `IncidentStore`(Redis Hash, 7일 TTL) | `incidents` 테이블 |
-| `CostTracker`(Redis Hash) | `llm_calls` 테이블 |
-| 분류 캐시(Redis 키) | `incidents`에서 같은 지문의 최근 분류 조회 |
-| 검증된 수정안(Redis 키, 7일) | `fixes`에서 같은 지문의 통과한 수정안 조회 |
-| `IncrementalIngestor` 매니페스트(Redis) | `documents`의 `(doc_id, chunk_hash)` |
-| `Retriever`(Qdrant 필터 검색) | pgvector 검색 + pg_trgm 검색을 RRF로 합침 |
-| 그래프 상태(메모리) | PostgreSQL 체크포인터, `thread_id = incident_id` |
-
-체크포인트에서 이어서 실행하면 마지막 단계가 다시 돌 수 있다. 보고 단계는 `incidents.report_ts`가 비어 있을 때만 Slack에 회신하고, 회신 직후 `report_ts`를 저장한다. 회신과 저장 사이에서 워커가 죽으면 회신이 두 번 갈 수 있다. 이 틈은 없애지 않고, 재개 실험에서 중복 회신 수를 지표로 기록한다.
-
-전후 비교 실험은 다음과 같다.
-
-| 항목 | 이전(1단계) | 이후(2단계) | 측정 방법 |
-| --- | --- | --- | --- |
-| 이력 보존 | TTL 이후 사라짐, 집계 불가 | 영구 보존, SQL 집계 | 서비스별 장애 수, 평균 비용을 한 번에 조회 |
-| 워커 강제 종료 | 처음부터 다시 분석 | 마지막 체크포인트부터 재개 | 원인 분석 직후 `docker kill`, 재처리 시 LLM 호출 수, 추가 비용, 완료 시간, 중복 회신 수 비교 |
-| 에러 코드 검색 | 벡터 검색만 사용 | 벡터 + 키워드 하이브리드 | 에러 코드 질의 10개의 정답 문서 상위 3개 적중률 |
-| 검색 지연 | Qdrant | pgvector | 질의 100회 중앙값 |
-| 비용, 수정 성공률 | 1단계 결과 | 같은 시나리오 재실행 | 결과가 나빠지지 않았는지 확인 |
-
-워커 강제 종료 실험에서는 죽은 워커의 메시지를 회수하는 대기 시간(현재 15분)을 30초로 줄여서 진행한다.
+- `incidents`에는 3단계용 칼럼을 미리 넣었다. Alertmanager의 `resolved` 알림을 받으면 `alert_fingerprint`로 장애를 찾아 `alert_resolved_at`을 남긴다. `source`(api, slack, alertmanager, cloudwatch)는 자동화 메트릭 `incidents_received_total{source}`와 대시보드 집계에 쓴다.
+- 이력성 대시보드(3-6)는 `incidents`, `llm_calls`, `fixes`를 데이터 소스로 쓴다. 분류, 테스트 선별 같은 그래프 결과는 `incidents.result`(jsonb)에 있다.
+- 체크포인터에서 재개하면 보고 단계가 다시 돌 수 있다. 회신은 `incidents.report_ts`가 비어 있을 때만 보낸다. 회신과 저장 사이에 워커가 죽으면 회신이 두 번 갈 수 있는데, 이 틈은 없애지 않고 3단계 Pod 종료 실험에서 중복 회신 수를 지표로 기록한다.
 
 ### 9. 3단계 로컬 K3s 배포, 관측 도구, 알림 구성
 
