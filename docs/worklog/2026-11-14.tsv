@@ -87,3 +87,5 @@ ts	phase	decision	why	evidence	result
 2026-11-14T20:55Z	3-3	shopapi setup_logging이 로거 레벨을 정하지 않게 변경	실험 스크립트와 시나리오 검사가 로거를 끈 설정을 create_app이 INFO로 되돌려 결과 출력에 로그가 섞임	targets/shopapi/shopapi/observability.py	재현 출력 확인
 2026-11-14T21:00Z	3-3	임베딩 모델을 이미지에 넣고 HF_HUB_OFFLINE=1	처리 시간에 모델 다운로드(약 14초)가 섞여 측정이 부정확함(사용자 결정)	results/phase3_s01_cluster.md 재측정	46.6초 → 26.0초, HuggingFace 요청 0건
 2026-11-14T21:00Z	3-3	모델 폴더를 chown하지 않고 같은 RUN에서 chmod a+rX	chown -R이 모델 253MB를 새 레이어에 한 번 더 담아 이미지가 1.84GB가 됨, 런타임 쓰기 권한은 필요 없음(nobody, --network none으로 확인)	Dockerfile	1.37GB
+2026-11-14T21:20Z	3-4	알림 규칙 4개(ShopapiException, ShopapiHighErrorRate, ShopapiSlowPayment, PodOOMKilled)를 이 레포에서 관리	plan.md 9-3, Prometheus는 모든 namespace의 PrometheusRule을 읽고 Loki ruler는 monitoring의 loki-alert-rules를 읽음	deploy/k8s/base/alert-rules.yaml	4개 모두 health ok
+2026-11-14T21:20Z	3-4	infra_local_set 라우팅 변경은 사용자 확인 뒤로 미룸	다른 레포 변경은 먼저 알리는 규칙, infra_local_set에 다른 세션의 커밋 안 된 변경 있음	-	-

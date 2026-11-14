@@ -1,0 +1,58 @@
+# 자동화로 보내는 알림(plan.md 9-3). 장애 하나가 알림 1건으로 들어가게 하는 것이 목표다.
+# 알림 이름을 바꾸면 app/alerts.py의 ALERT_KINDS와 infra_local_set의 Alertmanager 라우팅도 같이 바꾼다
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: shopapi-alerts
+  namespace: shop
+spec:
+  groups:
+    - name: shopapi
+      rules:
+        # 로그를 남기지 않는 5xx용. 코드 버그는 ShopapiException(Loki)도 함께 뜨므로 Alertmanager에서 이 알림을 억제한다
+        - alert: ShopapiHighErrorRate
+          expr: |
+            sum by (namespace, service) (rate(http_requests_total{namespace="shop", status="5xx"}[1m]))
+              / sum by (namespace, service) (rate(http_requests_total{namespace="shop"}[1m])) > 0.05
+          for: 1m
+          labels: {severity: critical}
+          annotations:
+            summary: "shopapi 5xx 비율이 1분간 5%를 넘음"
+        - alert: ShopapiSlowPayment
+          expr: |
+            histogram_quantile(0.95, sum by (le, namespace, service)
+              (rate(http_request_duration_seconds_bucket{namespace="shop", handler="/payments"}[2m]))) > 5
+          for: 2m
+          labels: {severity: warning}
+          annotations:
+            summary: "결제 API 지연 p95가 5초를 넘음"
+    - name: pods
+      rules:
+        # 차트 기본 규칙에 없다. 최근 5분 안에 재시작했고 마지막 종료 사유가 OOMKilled인 컨테이너
+        - alert: PodOOMKilled
+          expr: |
+            (increase(kube_pod_container_status_restarts_total{namespace=~"shop|aiops"}[5m]) > 0)
+              and on (namespace, pod, container)
+            (kube_pod_container_status_last_terminated_reason{namespace=~"shop|aiops", reason="OOMKilled"} == 1)
+          labels: {severity: critical}
+          annotations:
+            summary: "{{ $labels.namespace }}/{{ $labels.pod }}의 {{ $labels.container }}가 메모리 초과로 종료됨"
+---
+# Loki ruler가 /rules/fake로 읽는다(infra_local_set loki values의 extraVolumes)
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: loki-alert-rules
+  namespace: monitoring
+data:
+  shopapi.yaml: |
+    groups:
+      - name: shopapi-logs
+        rules:
+          # Alertmanager가 namespace 라벨로 라우팅하므로 sum by에 namespace를 꼭 남긴다(빠지면 null로 버려짐)
+          - alert: ShopapiException
+            expr: sum by (namespace, service) (count_over_time({namespace="shop"} | json | level="ERROR" [1m])) > 0
+            labels:
+              severity: critical
+            annotations:
+              summary: "shopapi에서 처리하지 못한 예외(ERROR 로그)가 발생함"
