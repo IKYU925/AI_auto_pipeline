@@ -8,6 +8,8 @@ x-verify-env: &verify-env
   OPT_EARLY_EXIT: "true"
   OPT_TEST_SELECTION: "true"
   OPT_FIX_REUSE: "true"
+  # 검증 스택은 실제 Slack에 아무것도 올리지 않는다(회신은 로그로만 남는다)
+  SLACK_BOT_TOKEN: ""
 
 services:
   redis:
@@ -25,5 +27,7 @@ services:
       - fastembed-cache:/tmp/fastembed_cache
   shopapi:
     ports: !override ["18100:8100"]
+    environment:
+      SLACK_WEBHOOK_URL: ""
     volumes: !override
       - ${VERIFY_SHOPAPI:?launch.sh가 정한다}:/repo:ro
