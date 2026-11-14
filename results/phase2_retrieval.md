@@ -1,4 +1,4 @@
-# 2단계 검색 비교(Day 10)
+# 2단계 검색 비교(2-3)
 
 실행: `python -m scripts.eval_retrieval --out results/phase2_retrieval.csv` (2026-11-14, 로컬 Docker Desktop)
 

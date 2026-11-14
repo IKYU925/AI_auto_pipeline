@@ -1,30 +1,30 @@
 ts	phase	decision	why	evidence	result
 2026-11-13T15:45Z	plan	기획서(experiment-plan-v2)를 저장소 docs에 원문 그대로 올림	계획을 저장소에 남겨 이후 PR의 근거로 쓰기 위해	PR #1	병합
-2026-11-13T15:55Z	day1	claude-haiku-5-5를 없는 모델로 보고 claude-haiku-4-5로 변경	당시 참고한 모델표에 haiku-5-5가 없었음	PR #2 커밋 2e325b3	틀린 판단, 2026-11-14 0007로 대체
-2026-11-13T15:55Z	day1	langchain-anthropic이 Opus 5.5에 temperature=0을 extra_body로 보내는 것을 확인하고 제거	Opus 5.5는 temperature를 400으로 거절함	나가는 요청 가로채기 확인, PR #2	병합
+2026-11-13T15:55Z	1-1	claude-haiku-5-5를 없는 모델로 보고 claude-haiku-4-5로 변경	당시 참고한 모델표에 haiku-5-5가 없었음	PR #2 커밋 2e325b3	틀린 판단, 2026-11-14 0007로 대체
+2026-11-13T15:55Z	1-1	langchain-anthropic이 Opus 5.5에 temperature=0을 extra_body로 보내는 것을 확인하고 제거	Opus 5.5는 temperature를 400으로 거절함	나가는 요청 가로채기 확인, PR #2	병합
 2026-11-13T16:00Z	plan	기획 의도를 로컬과 AWS 운영 장애 대응 구조로 다시 쓰고 제목을 구축 및 검증 계획으로 변경	사용자가 MSP, 클라우드 엔지니어 관점의 의도를 밝힘	PR #1, docs/plan.md	병합
-2026-11-13T16:05Z	day1	code_context가 site-packages 프레임을 저장소 파일로 잡던 버그 수정	실제 shopapi 트레이스백에서 장애 처리 전체가 failed로 끝남	PR #2 커밋 eeafc59, tests/test_code_context.py	수정 전 실패, 수정 후 통과
+2026-11-13T16:05Z	1-1	code_context가 site-packages 프레임을 저장소 파일로 잡던 버그 수정	실제 shopapi 트레이스백에서 장애 처리 전체가 failed로 끝남	PR #2 커밋 eeafc59, tests/test_code_context.py	수정 전 실패, 수정 후 통과
 2026-11-13T16:20Z	plan	3단계에 고객사 분리와 승인 후 조치 추가, 4단계를 EKS 없이 EC2와 SQS 경로로 축소	VM 여유가 없어 기존 3노드 안에서 MSP 운영 장면을 만들고, 클라우드 비용을 줄이기 위해	docs/decisions/0001~0003	병합
 2026-11-13T16:40Z	plan	기능 기획(docs/features)과 결정 기록(docs/decisions)을 계획서에서 분리	구현 중 바뀌는 요구사항이 전체 계획서를 흔들지 않게 하기 위해	docs/features/README.md	병합
 2026-11-13T17:20Z	f01	시나리오 검사 스크립트를 만들고 버그를 잡던 공개 테스트를 숨은 테스트로 옮김	배포된 버그 전제를 지켜야 거짓 통과를 측정할 수 있음	PR #3, docs/decisions/0004	S01~S06 검사 통과
 2026-11-13T17:40Z	env	Docker가 없어 colima를 설치했다가, 도중에 Docker Desktop이 설치돼 그쪽으로 옮기고 colima와 brew docker를 제거	엔진 두 개를 16GB 맥에서 함께 돌리면 낭비이고 PATH의 docker CLI가 겹침	로컬 환경, ~/.docker/cli-plugins	Docker Desktop 하나로 정리
-2026-11-13T17:45Z	day1	워커가 Redis 큐 대기 중 죽는 문제를 소켓 시간 제한 30초로 수정	redis-py 8 기본 소켓 제한 5초가 XREADGROUP 대기 5초와 겹침. 4초 대기 성공, 6초 대기 5.0초에 TimeoutError	PR #4, tests/test_infra.py	수정 전 실패, 수정 후 통과
+2026-11-13T17:45Z	1-1	워커가 Redis 큐 대기 중 죽는 문제를 소켓 시간 제한 30초로 수정	redis-py 8 기본 소켓 제한 5초가 XREADGROUP 대기 5초와 겹침. 4초 대기 성공, 6초 대기 5.0초에 TimeoutError	PR #4, tests/test_infra.py	수정 전 실패, 수정 후 통과
 2026-11-13T18:10Z	f01	S07(회귀 유발), S09(순서 의존) 추가와 requests 목록 형식 도입	S09는 요청 두 개를 차례로 보내야 재현됨	PR #5	S09 정상 요청만으로는 재현 안 됨을 확인
 2026-11-13T18:45Z	f01	S08(시그니처 불일치)과 재현 방식 다섯 가지(S10~S13) 추가	예외 요청으로 재현할 수 없는 장애가 있음	PR #6, docs/decisions/0005	S01~S13 검사 통과
 2026-11-13T18:55Z	f02	최적화 끄기 설정 다섯 가지, /api/v1/config 조건 확인, 반복 실행과 CSV 기록 구현	A/B 비교를 하려면 최적화를 끌 수 있어야 하고 기록한 조건이 서버 설정과 같아야 함	PR #7, docs/decisions/0006	테스트 54개 통과, 실제 스택에서 LLM 직전까지 동작
 2026-11-13T18:55Z	f02	plan.md의 OPT_CLASSIFY_CACHE를 OPT_LLM_CACHE로 변경	캐시가 원인 분석에도 걸려 있어 분류만 끄면 B에 캐시가 남음	PR #7, docs/features/F02-experiment.md	PR #7에 반영
-2026-11-13T19:40Z	day1	첫 키는 401(길이 31, sk-ant- 아님)이라 사용자에게 재발급 안내	유효한 API 키가 아니었음	worker 컨테이너에서 /v1/models 호출	키 교체됨
-2026-11-13T20:05Z	day1	새 키로 모델 목록 조회 성공, claude-haiku-5-5 존재 확인	2026-11-13T15:55Z의 판단을 검증	GET /v1/models 200	haiku-5-5는 실재함
-2026-11-13T20:10Z	day1	경량 모델을 claude-haiku-5-5로 되돌리고 모든 모델에서 temperature 제거	haiku-5-5가 4.5의 10분의 1 요금이고, haiku-5-5의 temperature 허용 여부는 확인 못 함	PR #8, docs/decisions/0007	요청 형태 확인, 테스트 통과, 실제 호출 미확인
-2026-11-13T20:10Z	day1	실제 LLM 호출이 크레딧 부족(400)으로 막혀 Day 1 마무리와 본 실험을 멈춤	Your credit balance is too low	haiku-5-5, opus-5-5 각각 1회 호출 결과	open: 크레딧 충전 필요
+2026-11-13T19:40Z	1-1	첫 키는 401(길이 31, sk-ant- 아님)이라 사용자에게 재발급 안내	유효한 API 키가 아니었음	worker 컨테이너에서 /v1/models 호출	키 교체됨
+2026-11-13T20:05Z	1-1	새 키로 모델 목록 조회 성공, claude-haiku-5-5 존재 확인	2026-11-13T15:55Z의 판단을 검증	GET /v1/models 200	haiku-5-5는 실재함
+2026-11-13T20:10Z	1-1	경량 모델을 claude-haiku-5-5로 되돌리고 모든 모델에서 temperature 제거	haiku-5-5가 4.5의 10분의 1 요금이고, haiku-5-5의 temperature 허용 여부는 확인 못 함	PR #8, docs/decisions/0007	요청 형태 확인, 테스트 통과, 실제 호출 미확인
+2026-11-13T20:10Z	1-1	실제 LLM 호출이 크레딧 부족(400)으로 막혀 1-1 마무리와 본 실험을 멈춤	Your credit balance is too low	haiku-5-5, opus-5-5 각각 1회 호출 결과	open: 크레딧 충전 필요
 2026-11-13T20:15Z	plan	측정이 막힌 동안 2단계 코드를 당겨 만들지 않음	1단계 기준선이 원래 시스템이어야 2단계 비교가 성립함	docs/decisions/0008	보류
 2026-11-13T20:15Z	verify	검증 스킬 생성을 본 실험 때로 미루고 격리 스택 설계만 기록	사용자가 본 실험을 진행하면 실행하라고 지시했고 본 실험이 막힘	docs/decisions/0009	제안 상태
 2026-11-13T19:50Z	verify	검증 스택 분리용 compose 덮어쓰기(!override)가 포트와 볼륨을 바꾸는지 확인	0009 설계가 Docker Compose 5.7에서 동작하는지 먼저 보려고	docker compose -p aiops-verify ... config --format json 결과: api 18000:8000, worker /repo 덮어씀	동작 확인
 2026-11-13T20:25Z	review	Sonnet 검토 지적 반영: 0004 테스트 수 정정과 판정 순환성 한계, 0007 후속 확인, 0009 본 실험과 검증 스택 구분	작업한 모델과 다른 모델의 검토에서 근거가 약하거나 사실이 틀린 곳이 나옴	PR #9 커밋	반영
 2026-11-13T20:30Z	pr	PR #1~#9 본문에서 Claude 출처 줄 삭제. 이후 커밋과 PR에는 넣지 않음	사용자가 출처 표시를 원하지 않음	gh pr view 1~9 본문 검색 0건	본문은 완료. 커밋 메시지는 이력 재작성과 강제 푸시가 필요해 권한 검사에서 막혀 보류(열린 PR #7~#9의 기존 커밋, main 병합 커밋 모두)
-2026-11-13T20:25Z	day1	크레딧 반영을 2분 간격 가장 싼 호출(Haiku 출력 1토큰)로 기다림	충전 직후에도 400이 나 반영 지연인지 확인하려고	결과 6번째 시도 05:25 KST 200	반영됨
-2026-11-13T20:25Z	day1	Haiku 5.5에 temperature 0 전송 확인	decisions/0007 후속 확인	400 temperature: Extra inputs are not permitted	모든 모델에서 temperature를 뺀 결정이 맞음
-2026-11-13T20:26Z	day1	S01을 실제 LLM으로 실행해 Day 1 완료	plan.md Day 1 완료 기준	results/day1.md, results/day1.csv	resolved, 30.3초, $0.08, 숨은 테스트 통과
+2026-11-13T20:25Z	1-1	크레딧 반영을 2분 간격 가장 싼 호출(Haiku 출력 1토큰)로 기다림	충전 직후에도 400이 나 반영 지연인지 확인하려고	결과 6번째 시도 05:25 KST 200	반영됨
+2026-11-13T20:25Z	1-1	Haiku 5.5에 temperature 0 전송 확인	decisions/0007 후속 확인	400 temperature: Extra inputs are not permitted	모든 모델에서 temperature를 뺀 결정이 맞음
+2026-11-13T20:26Z	1-1	S01을 실제 LLM으로 실행해 1-1 완료	plan.md 1-1 완료 기준	results/phase1_first_run.md, results/phase1_first_run.csv	resolved, 30.3초, $0.08, 숨은 테스트 통과
 2026-11-13T20:27Z	f02	실험 스크립트에 누적 비용 상한 --max-usd 추가	사람 없이 반복 실험을 돌릴 때 비용 폭주를 막으려고	PR #7 커밋 459f120, tests/test_run_experiment.py	상한에서 멈춤 확인
 2026-11-13T20:29Z	f02	조건 A가 S02에서 멈춤. git diff 형식 패치가 저장소 하위 폴더에서 Skipped patch로 건너뛰어지던 버그 수정	git apply -C 하위폴더는 diff --git 경로를 저장소 루트 기준으로 읽고 종료 코드 0을 돌려줌. S01만 일반 diff라 이전 확인에서 놓침	PR #7 커밋 cc6bd2f, 하위 폴더 git 저장소 회귀 테스트	수정 전 S02 실패, 수정 후 통과. 이 버그로 쓴 API 비용 없음
 2026-11-13T20:30Z	exp	사용자 지시로 실제 API 호출을 줄여 A/B를 조건마다 1회로 축소	실제 호출은 비용이 들고 중요한 테스트에만 쓰라는 지시	docs/decisions/0010	3회 반복 대비 비용 3분의 1
@@ -36,7 +36,7 @@ ts	phase	decision	why	evidence	result
 2026-11-13T21:10Z	exp	B의 S08 거짓 통과를 최적화 효과로 보지 않음	A와 B 모두 같은 Opus가 수정을 생성했고 1회 실행	results/phase1_summary.md, 두 조건의 S08 패치 비교	LLM 결과 흔들림으로 기록
 2026-11-13T21:15Z	verify	검증 스킬 verify-aiops 작성 후 launch, doctor, 장애 접수 기능, cleanup까지 증명	사용자가 본 실험 후 검증 스킬 생성을 지시	results/verify/proof1/, .claude/skills/verify-aiops	doctor 7개 OK, cleanup 후 증거 6개 파일 남음
 2026-11-13T21:38Z	verify	launch 직후 첫 장애가 10~20초 걸리는 것을 기능 지도 주의사항에 추가	워커가 임베딩 모델을 처음 불러옴	results/verify/proof1/worker.log	기능 지도 수정
-2026-11-14T03:40Z	start	이어서 작업. 이전 행(2026-11-13T15:45Z~21:38Z)은 같은 대화의 앞 단계에서 썼음	새 지시(S08 반복, Day 4 Slack)를 받아 계속	이 대화	-
+2026-11-14T03:40Z	start	이어서 작업. 이전 행(2026-11-13T15:45Z~21:38Z)은 같은 대화의 앞 단계에서 썼음	새 지시(S08 반복, 1-4 Slack)를 받아 계속	이 대화	-
 2026-11-14T03:40Z	review	Sonnet 교차 검토 지적 확인: PR #10에 results/verify 커밋, S12 base 비용 미집계, 요약의 추정 표시와 결과 정확도 누락	작업한 모델과 다른 모델의 검토	git ls-tree origin/results/phase1, Redis incident 6a766eb6c7c5, 07b6517146c1	지적이 사실로 확인됨
 2026-11-14T03:45Z	f02	재발 절차 비용을 procedure_usd로 남기고 --max-usd 누적에 사용	S12 base 비용(A $0.081, B $0.086)이 총비용과 상한에서 빠짐	PR #12 커밋, tests/test_run_experiment.py	테스트 통과
 2026-11-14T03:50Z	exp	S08만 조건마다 2회 추가 실행	사용자가 A/B 결과가 갈린 S08 반복을 선택	results/s08_repeat/, 실행마다 워커 로그 저장	A 1/3, B 0/3 올바른 수정, 6회 중 5회 거짓 통과, $0.35
@@ -46,7 +46,7 @@ ts	phase	decision	why	evidence	result
 2026-11-14T04:35Z	f08	ngrok으로 n8n 공개, setup_n8n으로 자격 증명과 워크플로 설정, 서명한 url_verification으로 확인	Slack Events API가 n8n에 닿아야 함	PR #13 scripts/setup_n8n.py, 서명 요청 200, 서명 없는 요청 401	준비 완료
 2026-11-14T04:52Z	f08	Slack 알림이 3,987자와 137자로 나뉘어 코드 블록이 끊기는 것을 확인하고 shopapi 알림을 3,500자로 제한	실제 #alert 메시지 길이 측정	PR #13 커밋 1b06b0b, shopapi 테스트	한 메시지로 올라감(3,466자)
 2026-11-14T05:06Z	f08	이벤트가 오지 않던 원인이 Slack 앱의 Socket Mode임을 사용자 캡처로 확인	Request URL Verified인데 사람 메시지 이벤트도 0건	사용자 캡처, ngrok 요청 기록	Socket Mode 끈 뒤 이벤트 도착
-2026-11-14T05:10Z	f08	실제 LLM 3건(S01, S02, S05)을 Slack 경로로 끝까지 실행	plan.md Day 4 완료 기준	results/day4_slack.md, scripts/slack_e2e.py	모두 수정안 검증 완료, 25~31초, $0.24
+2026-11-14T05:10Z	f08	실제 LLM 3건(S01, S02, S05)을 Slack 경로로 끝까지 실행	plan.md 1-4 완료 기준	results/phase1_slack.md, scripts/slack_e2e.py	모두 수정안 검증 완료, 25~31초, $0.24
 2026-11-14T05:15Z	f08	테스트 설정이 개발자 .env를 읽어 실제 Slack 토큰으로 회신을 시도하던 문제 수정	테스트 17개 실패(전송은 SSL 오류로 없었음)	PR #13 커밋 d6d048a, tests/test_infra.py	수정 전 실패, 수정 후 통과
 2026-11-14T07:48Z	f09	회신을 결과별 Block Kit 카드로 바꾸고 패치는 같은 스레드의 두 번째 메시지로 분리	긴 텍스트 회신은 어떤 장애인지 한눈에 안 보인다(운영자 요청)	PR #17, app/notify/card.py	#alert 초안 2건 게시, 재사용 경로라 비용 $0, 운영자 형식 확정 대기
 2026-11-14T07:50Z	f09	재사용 회신의 시도 칸을 '0회'에서 '수정안 재사용(LLM 호출 없음)'으로 변경	첫 초안에서 0회가 실패처럼 읽힘	첫 초안 alert ts 1794642482.248239	두 번째 초안에서 확인
@@ -63,3 +63,4 @@ ts	phase	decision	why	evidence	result
 2026-11-14T08:30Z	f03	강제 종료 실험을 가짜 LLM(호출당 3초 지연)으로 진행	재처리 호출 수는 그래프 경로로 정해져 실제 모델과 같음, 실제 호출 최소화 원칙	scripts/kill_experiment.py	비용 $0
 2026-11-14T08:33Z	f03	회신 수 집계 결함(로그를 stdout만 읽음)을 고치고 두 조건을 처음부터 다시 측정	손으로 메운 측정값은 신뢰할 수 없음	첫 측정에서 회신 0이 12건	재측정에서 모든 실행 회신 1
 2026-11-14T08:40Z	f03	강제 종료 실험 결과: 원인 분석 직후는 차이 없음(캐시), 수정안 생성 후는 고성능 호출 1회 절감	plan.md 8장 재개 비교	results/phase2_kill.md	장애 1건 비용의 약 절반(추정)
+2026-11-14T09:00Z	plan	작업 표기를 Day N에서 단계-순번(2-3)으로 통일	Day는 하루 단위 일정처럼 읽히는데 실제로는 여러 Day를 하루에 처리함(사용자 지적)	docs/plan.md 2장 대응 규칙	파일 내 Day 표기 0건
