@@ -4,6 +4,8 @@ from dataclasses import dataclass
 # Block Kit 한도: 섹션 텍스트 3,000자, 헤더 150자
 SECTION_MAX = 2900
 HEADER_MAX = 150
+# 카드는 한눈에 읽는 요약이다. 전체 설명은 장애 조회 API의 report에 남는다
+BODY_MAX = 300
 
 
 @dataclass(frozen=True)
@@ -58,20 +60,20 @@ def build_card(state: dict) -> tuple[str, list[dict]]:
     if outcome == "resolved":
         fix = state.get("fix") or {}
         if root_cause:
-            blocks.append(_section("원인", _clip(root_cause, 600)))
-        blocks.append(_section("수정", f"{_clip(fix.get('explanation', '-'), 600)} (위험도 {fix.get('risk', '-')})"))
+            blocks.append(_section("원인", _clip(root_cause, BODY_MAX)))
+        blocks.append(_section("수정", f"{_clip(fix.get('explanation', '-'), BODY_MAX)} (위험도 {fix.get('risk', '-')})"))
         blocks.append({"type": "context", "elements": [{"type": "mrkdwn", "text": _clip(f"테스트: {_tests(state)}", 2000)}]})
     elif outcome == "no_code_fix":
         summary = (state.get("classification") or {}).get("summary", "-")
         docs = ", ".join(dict.fromkeys(d["doc_id"] for d in state.get("context_docs", []))) or "-"
-        blocks.append(_section("판단", _clip(summary, 600)))
+        blocks.append(_section("판단", _clip(summary, BODY_MAX)))
         blocks.append(_section("참고 런북", docs))
     elif outcome == "escalated":
         if root_cause:
-            blocks.append(_section("원인", _clip(root_cause, 600)))
+            blocks.append(_section("원인", _clip(root_cause, BODY_MAX)))
         blocks.append(_section("마지막 테스트", _tests(state)))
     elif state.get("error"):
-        blocks.append(_section("중단 사유", _clip(state["error"], 600)))
+        blocks.append(_section("중단 사유", _clip(state["error"], BODY_MAX)))
     return f"{look.emoji} {look.title} · {service} · {_clip(headline, 120)}", blocks
 
 
