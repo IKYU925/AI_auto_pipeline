@@ -91,7 +91,7 @@ def summarize(rows: list[Row]) -> str:
             (alo, ahi), (blo, bhi) = ranges
             verdict = "차이 없음(범위 겹침)" if alo <= bhi and blo <= ahi else "차이 있음"
         lines.append(f"| {name} | " + " | ".join(cells) + f" | {verdict} |")
-    counts = ", ".join(f"조건 {c} {len(runs[c])}회 반복, {sum(len(rs) for rs in runs[c])}건" for c in conds)
+    counts = ", ".join(f"{'조건 ' if len(c) == 1 else ''}{c} {len(runs[c])}회 반복, {sum(len(rs) for rs in runs[c])}건" for c in conds)
     return f"실행 수: {counts}\n\n" + "\n".join(lines) + "\n"
 
 
