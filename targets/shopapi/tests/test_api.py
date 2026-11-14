@@ -33,3 +33,30 @@ def test_settings_require_pg_api_key(monkeypatch):
     monkeypatch.delenv("PG_API_KEY", raising=False)
     with pytest.raises(MissingSetting):
         load_settings()
+
+
+def test_slack_alert_fits_one_message_and_keeps_innermost_frame(settings, gateway, monkeypatch):
+    import dataclasses
+
+    import httpx
+
+    from shopapi import main
+    from shopapi.inventory import Inventory
+
+    sent = []
+    monkeypatch.setattr(httpx, "post", lambda url, json, timeout: sent.append(json["text"]))
+
+    def deep(n):
+        if n == 0:
+            raise RuntimeError("innermost failure")
+        return deep(n - 1)
+
+    app = main.create_app(dataclasses.replace(settings, slack_webhook_url="https://hooks.example/x"), Inventory(), gateway)
+    app.add_api_route("/boom", lambda: deep(200))
+    from fastapi.testclient import TestClient
+
+    assert TestClient(app, raise_server_exceptions=False).get("/boom").status_code == 500
+    [text] = sent
+    assert len(text) <= main.SLACK_TEXT_LIMIT
+    assert text.startswith("[shopapi] critical: RuntimeError: innermost failure on GET /boom")
+    assert text.count("```") == 2 and "RuntimeError: innermost failure" in text.split("```")[1]
