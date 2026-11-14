@@ -37,3 +37,23 @@ def test_fix_success_counts_only_code_bugs_and_false_pass():
 def test_single_run_withholds_verdict():
     rows = [row("A", 1, usd="0.10"), row("B", 1, usd="0.50")]
     assert line(summarize(rows), "장애당 평균 비용").endswith("판단 보류(1회 실행) |")
+
+
+def test_label_groups_same_condition_from_different_phases(tmp_path, monkeypatch, capsys):
+    import csv
+    import sys
+
+    from scripts.summarize_results import main
+
+    paths = []
+    for name, usd in (("p1", "0.10"), ("p2", "0.30")):
+        p = tmp_path / f"{name}.csv"
+        with p.open("w", newline="") as f:
+            w = csv.DictWriter(f, fieldnames=COLUMNS)
+            w.writeheader()
+            w.writerow(row("A", 1, usd=usd))
+        paths.append(p)
+    monkeypatch.setattr(sys, "argv", ["x", f"1단계={paths[0]}", f"2단계={paths[1]}"])
+    main()
+    l = line(capsys.readouterr().out, "장애당 평균 비용")
+    assert "$0.1000" in l and "$0.3000" in l
