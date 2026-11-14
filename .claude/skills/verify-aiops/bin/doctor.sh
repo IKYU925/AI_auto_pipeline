@@ -13,6 +13,7 @@ check "shopapi 상태 확인(18100)" 'curl -sf localhost:18100/healthz'
 check "토큰 인증과 최적화 모두 켬(/api/v1/config)" 'curl -sf localhost:18000/api/v1/config -H "X-Automation-Token: $AUTOMATION_TOKEN" | grep -q "\"fix_reuse\":true"'
 want=fake:light; [ "$VERIFY_REAL_LLM" = 1 ] && want=anthropic:claude-haiku-5-5
 check "경량 모델이 $want" 'curl -sf localhost:18000/api/v1/config -H "X-Automation-Token: $AUTOMATION_TOKEN" | grep -q "\"light_model\":\"$want\""'
+check "Slack에 올리지 않음(워커 봇 토큰, shopapi 웹훅 비어 있음)" '[ -z "$(compose exec -T worker printenv SLACK_BOT_TOKEN)" ] && [ -z "$(compose exec -T shopapi printenv SLACK_WEBHOOK_URL)" ]'
 fresh="$(mktemp -d)"; git -C "$ROOT" archive HEAD targets/shopapi | tar -x -C "$fresh"
 check "shopapi 복사본이 커밋된 버전과 같음(주입된 버그 없음)" 'diff -rq -x __pycache__ -x .pytest_cache "$fresh/targets/shopapi" "$VERIFY_SHOPAPI"'
 rm -rf "$fresh"
