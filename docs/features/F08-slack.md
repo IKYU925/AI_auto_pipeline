@@ -1,6 +1,6 @@
 # F08. Slack 실연동
 
-상태: 구현 중
+상태: 완료
 관련: plan.md 5장, Day 4
 
 ## 문제
@@ -29,18 +29,29 @@
 
 - [x] 파서가 shopapi 알림 형식, 스레드 댓글, 일반 대화, HTML 엔티티를 올바르게 처리한다(node로 실행하는 테스트)
 - [x] n8n에 워크플로를 가져올 수 있다(`n8n import:workflow`), n8n 컨테이너에서 api로 토큰 인증 요청이 닿는다. 활성화는 Slack 자격 증명을 연결한 뒤 가능
-- [ ] 가짜 LLM으로 Slack 알림 1건이 스레드 회신까지 이어진다(비용 없음)
-- [ ] 실제 LLM으로 Slack 알림 3건이 스레드 회신까지 이어진다(plan.md Day 4 완료 기준, 약 $0.25)
+- [x] 가짜 LLM으로 Slack 알림 1건이 스레드 회신까지 이어진다(비용 없음)
+- [x] 실제 LLM으로 Slack 알림 3건이 스레드 회신까지 이어진다(S01, S02, S05, 25~31초, $0.24, results/day4_slack.md)
 
 ## 설계 메모
 
 - 회신이 다시 장애로 들어오는 반복은 파서의 스레드 댓글 무시로 막는다. 워커는 항상 스레드에만 회신한다.
 - Incoming Webhook 메시지는 Slack 이벤트에서 봇 메시지(`subtype: bot_message`)로 온다. 파서는 subtype으로 거르지 않는다. 장애 알림 자체가 봇 메시지이기 때문이다.
 
+## Slack 앱 설정
+
+1. 봇 권한: `chat:write`, `channels:history`, `channels:read`. 설치 후 봇 토큰을 `SLACK_BOT_TOKEN`에.
+2. Incoming Webhooks를 켜고 알림 채널의 URL을 `SHOPAPI_SLACK_WEBHOOK_URL`에. 봇을 그 채널에 초대하고 채널 ID를 `SLACK_CHANNEL_ID`에.
+3. Basic Information의 Signing Secret을 `SLACK_SIGNING_SECRET`에.
+4. ngrok으로 5678을 공개하고 주소를 `N8N_WEBHOOK_URL`에. n8n을 다시 만들고 `python -m scripts.setup_n8n`을 실행하면 Request URL이 출력된다.
+5. Event Subscriptions: Enable Events On, Request URL 입력(Verified), Subscribe to bot events에 `message.channels`, Save Changes, 재설치.
+6. **Socket Mode는 꺼야 한다.** 켜져 있으면 Request URL이 Verified여도 이벤트가 HTTP로 오지 않는다.
+
 ## 열린 질문
 
-- n8n Slack Trigger가 봇 메시지 이벤트를 넘겨주는지 실제 워크스페이스에서 확인해야 한다. 넘겨주지 않으면 Incoming Webhook 대신 봇 토큰으로 알림을 올리도록 shopapi를 바꾼다.
+- ngrok 무료 주소는 재시작하면 바뀐다. 바뀌면 `N8N_WEBHOOK_URL`, Request URL을 다시 넣어야 한다. 3단계에서는 Alertmanager 웹훅이 입구가 되어 이 의존이 없어진다.
 
 ## 변경 이력
 
+- 2026-11-14 Slack이 4,000자 넘는 알림을 나눠 올려 스택트레이스가 끊기는 것을 실제 채널에서 확인하고 shopapi 알림을 3,500자로 제한했다.
+- 2026-11-14 Incoming Webhook 봇 메시지도 이벤트로 온다는 것을 확인해 열린 질문을 닫았다. Socket Mode가 켜져 있으면 이벤트가 오지 않는 것을 설정 절차에 적었다.
 - 2026-11-14 Slack이 `< > &`를 엔티티로 바꿔 보내 스택트레이스가 깨지는 것을 파서 테스트로 확인하고 고쳤다.
