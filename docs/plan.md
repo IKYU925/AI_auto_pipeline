@@ -259,7 +259,7 @@ Vagrant + VirtualBox (맥북)
 - 이미지는 맥에서 빌드해 컨트롤 플레인의 로컬 레지스트리(`192.168.56.10:30500`)에 올린다. 노드의 `registries.yaml` 등록은 infra_local_set의 registry 역할이 이미 했다. 맥과 VM이 같은 arm64라서 같은 이미지를 쓴다. 맥 Docker의 `insecure-registries`에 레지스트리 주소를 한 번 등록해야 push할 수 있다.
 - 매니페스트는 `deploy/k8s/` 아래 kustomize로 관리한다(base, overlays/local).
 - `.env` 값은 Secret(API 키, 토큰)과 ConfigMap(그 밖의 설정)으로 나눈다. `AUTOMATION_TOKEN`에는 infra_local_set 폴더의 `.ai-automation-token` 값을 넣는다.
-- 워커가 수정안을 검증할 대상 저장소는 워커 이미지 안 `/repo`에 shopapi 소스를 복사해 넣는다. 버그를 주입하면 shopapi 이미지와 워커 이미지를 다시 빌드해 배포한다. 이때 태그는 매번 새로 붙인다(`<시나리오>-<git short sha>`, 예: `s01-3f2a1c9`). 같은 태그로 다시 올리면 노드에 이미 있는 이미지를 그대로 써서 버그가 주입되지 않는다. `build_push.sh`가 태그를 만들고 `kustomize edit set image`로 overlay에 반영한다.
+- api, worker, shopapi는 이미지 하나(`aiops`)를 쓴다. shopapi 소스는 이미지 안 `/repo`에 들어가고, shopapi Pod는 그 소스로 뜨며 워커는 같은 소스를 검증 대상 저장소로 쓴다. 이미지가 하나라야 배포된 shopapi와 워커가 검증하는 코드가 어긋나지 않는다. 버그를 주입하면 이 이미지를 다시 빌드해 배포한다. 태그는 매번 새로 붙인다(`<시나리오>-<git short sha>`, 커밋하지 않은 변경이 있으면 그 diff 해시를 덧붙임, 예: `s01-3f2a1c9-8b1e0d2`). 같은 태그로 다시 올리면 노드에 이미 있는 이미지를 그대로 써서 버그가 주입되지 않는다. `scripts/build_push.sh`가 태그를 만들고 push한 뒤 레지스트리에 올라갔는지 확인한다. overlay 반영은 3-2에서 붙인다.
 - 워커 Pod는 Anthropic API와 Slack API로 나가는 외부 통신만 필요하다. Alertmanager 웹훅은 클러스터 내부 주소로 받으므로 ngrok이 필요 없다.
 
 노드 자원은 infra_local_set의 Vagrantfile에 이미 반영되어 있다. VM 3대가 메모리를 약 10GB 쓴다.

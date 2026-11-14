@@ -1,0 +1,8 @@
+# 빌드 컨텍스트에서 뺄 것. 로컬 캐시와 실험 산출물은 이미지에 들어갈 이유가 없다
+**/__pycache__
+**/.pytest_cache
+.venv
+.git
+.env
+results
+artifacts
