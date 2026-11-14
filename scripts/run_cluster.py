@@ -22,6 +22,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import httpx
+import yaml
 
 from app.db import make_pool
 from app.infra import make_redis
@@ -53,12 +54,15 @@ COLUMNS = [
 ]
 
 
-def sh(*cmd: str, cwd: Path | None = None) -> str:
-    return subprocess.run(cmd, cwd=cwd, check=True, capture_output=True, text=True).stdout.strip()
+def sh(*cmd: str, cwd: Path | None = None, stdin: str | None = None) -> str:
+    r = subprocess.run(cmd, cwd=cwd, input=stdin, capture_output=True, text=True)
+    if r.returncode != 0:
+        raise RuntimeError(f"{' '.join(cmd)} 실패({r.returncode}): {r.stderr.strip()[-1000:]}")
+    return r.stdout.strip()
 
 
-def kubectl(*args: str) -> str:
-    return sh("kubectl", *args)
+def kubectl(*args: str, stdin: str | None = None) -> str:
+    return sh("kubectl", *args, stdin=stdin)
 
 
 def psql(sql: str) -> list[dict]:
@@ -72,8 +76,17 @@ def now() -> datetime:
 
 
 def restore() -> None:
+    """kubectl apply는 set env, set resources로 더한 필드를 지우지 않는다. shopapi Deployment는 매니페스트로 통째로 바꾼다."""
     sh("git", "checkout", "--", str(OVERLAY / "kustomization.yaml"), cwd=ROOT)
-    kubectl("apply", "-k", str(OVERLAY))
+    docs = yaml.safe_load_all(kubectl("kustomize", str(OVERLAY)))
+    shopapi = next(d for d in docs if d and d["kind"] == "Deployment" and d["metadata"]["name"] == "shopapi")
+    kubectl("replace", "-f", "-", stdin=yaml.safe_dump(shopapi))
+    try:
+        kubectl("apply", "-k", str(OVERLAY))
+    except RuntimeError as e:
+        print(f"  apply 재시도: {e}", file=sys.stderr)
+        time.sleep(10)
+        kubectl("apply", "-k", str(OVERLAY))
     for ns, deploy in (("shop", "shopapi"), ("aiops", "api"), ("aiops", "worker")):
         kubectl("-n", ns, "rollout", "status", f"deploy/{deploy}", "--timeout=300s")
 
