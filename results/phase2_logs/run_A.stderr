@@ -1,0 +1,755 @@
+unhandled error on POST /orders/summary
+Traceback (most recent call last):
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/telemetry/_asgi.py", line 151, in __call__
+    await self.app(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/routing.py", line 683, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 2811, in app
+    await route.handle(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 1330, in handle
+    await super().handle(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/routing.py", line 289, in handle
+    await self.app(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 166, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 152, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 745, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 374, in run_endpoint_function
+    return await run_in_threadpool(
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/concurrency.py", line 34, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/anyio/to_thread.py", line 65, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 2779, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 1124, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/telemetry/_api.py", line 244, in _run_sync_endpoint
+    return function(**arguments)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/targets/shopapi/shopapi/main.py", line 85, in order_summary
+    return orders.summarize(items, pricing.parse_coupon(body.get("coupon"), coupons), s.tax_rate)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/targets/shopapi/shopapi/orders.py", line 55, in summarize
+    "average_unit_price": average_unit_price(items),
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/targets/shopapi/shopapi/orders.py", line 43, in average_unit_price
+    return round(subtotal(items) / quantity, 2)
+                 ~~~~~~~~~~~~~~~~^~~~~~~~~~
+ZeroDivisionError: float division by zero
+unhandled error on POST /orders/summary
+Traceback (most recent call last):
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/telemetry/_asgi.py", line 151, in __call__
+    await self.app(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/routing.py", line 683, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 2811, in app
+    await route.handle(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 1330, in handle
+    await super().handle(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/routing.py", line 289, in handle
+    await self.app(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 166, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 152, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 745, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 374, in run_endpoint_function
+    return await run_in_threadpool(
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/concurrency.py", line 34, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/anyio/to_thread.py", line 65, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 2779, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 1124, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/telemetry/_api.py", line 244, in _run_sync_endpoint
+    return function(**arguments)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/targets/shopapi/shopapi/main.py", line 85, in order_summary
+    return orders.summarize(items, pricing.parse_coupon(body.get("coupon"), coupons), s.tax_rate)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/targets/shopapi/shopapi/orders.py", line 56, in summarize
+    "total": add_tax(apply_coupon(discounted, coupon), tax_rate),
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/targets/shopapi/shopapi/pricing.py", line 49, in apply_coupon
+    return max(round(apply_discount(amount, coupon.rate) - coupon.amount, 2), 0.0)
+                                            ^^^^^^^^^^^
+AttributeError: 'NoneType' object has no attribute 'rate'
+unhandled error on POST /orders/summary
+Traceback (most recent call last):
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/telemetry/_asgi.py", line 151, in __call__
+    await self.app(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/routing.py", line 683, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 2811, in app
+    await route.handle(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 1330, in handle
+    await super().handle(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/routing.py", line 289, in handle
+    await self.app(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 166, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 152, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 745, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 374, in run_endpoint_function
+    return await run_in_threadpool(
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/concurrency.py", line 34, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/anyio/to_thread.py", line 65, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 2779, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 1124, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/telemetry/_api.py", line 244, in _run_sync_endpoint
+    return function(**arguments)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/targets/shopapi/shopapi/main.py", line 85, in order_summary
+    return orders.summarize(items, pricing.parse_coupon(body.get("coupon"), coupons), s.tax_rate)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/targets/shopapi/shopapi/orders.py", line 49, in summarize
+    sub = subtotal(items)
+          ^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/targets/shopapi/shopapi/orders.py", line 37, in subtotal
+    return round(sum((item_total(i) for i in items), 0.0), 2)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/targets/shopapi/shopapi/orders.py", line 37, in <genexpr>
+    return round(sum((item_total(i) for i in items), 0.0), 2)
+                      ^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/targets/shopapi/shopapi/orders.py", line 33, in item_total
+    return (item.price + option_surcharge(item.options)) * item.quantity
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/targets/shopapi/shopapi/pricing.py", line 56, in option_surcharge
+    return sum(OPTION_SURCHARGE[o] for o in options)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/targets/shopapi/shopapi/pricing.py", line 56, in <genexpr>
+    return sum(OPTION_SURCHARGE[o] for o in options)
+               ~~~~~~~~~~~~~~~~^^^
+KeyError: 'engraving'
+unhandled error on POST /orders/summary
+Traceback (most recent call last):
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/telemetry/_asgi.py", line 151, in __call__
+    await self.app(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/routing.py", line 683, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 2811, in app
+    await route.handle(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 1330, in handle
+    await super().handle(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/routing.py", line 289, in handle
+    await self.app(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 166, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 152, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 745, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 374, in run_endpoint_function
+    return await run_in_threadpool(
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/concurrency.py", line 34, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/anyio/to_thread.py", line 65, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 2779, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 1124, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/telemetry/_api.py", line 244, in _run_sync_endpoint
+    return function(**arguments)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/targets/shopapi/shopapi/main.py", line 85, in order_summary
+    return orders.summarize(items, pricing.parse_coupon(body.get("coupon"), coupons), s.tax_rate)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/targets/shopapi/shopapi/orders.py", line 49, in summarize
+    sub = subtotal(items)
+          ^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/targets/shopapi/shopapi/orders.py", line 37, in subtotal
+    return round(sum((item_total(i) for i in items), 0.0), 2)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/targets/shopapi/shopapi/orders.py", line 37, in <genexpr>
+    return round(sum((item_total(i) for i in items), 0.0), 2)
+                      ^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/targets/shopapi/shopapi/orders.py", line 33, in item_total
+    return (item.price + option_surcharge(item.options)) * item.quantity
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~
+TypeError: can't multiply sequence by non-int of type 'float'
+unhandled error on GET /products
+Traceback (most recent call last):
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/telemetry/_asgi.py", line 151, in __call__
+    await self.app(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/routing.py", line 683, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 2811, in app
+    await route.handle(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 1330, in handle
+    await super().handle(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/routing.py", line 289, in handle
+    await self.app(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 166, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 152, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 745, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 374, in run_endpoint_function
+    return await run_in_threadpool(
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/concurrency.py", line 34, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/anyio/to_thread.py", line 65, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 2779, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 1124, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/telemetry/_api.py", line 244, in _run_sync_endpoint
+    return function(**arguments)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/targets/shopapi/shopapi/main.py", line 98, in products
+    return paginate(CATALOG, page, size or s.page_size)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/targets/shopapi/shopapi/pagination.py", line 24, in paginate
+    return {"items": [items[i] for i in range(start, end)], "page": page, "pages": pages, "has_next": page < pages}
+                      ~~~~~^^^
+IndexError: list index out of range
+unhandled error on POST /inventory/reserve
+Traceback (most recent call last):
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/telemetry/_asgi.py", line 151, in __call__
+    await self.app(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/routing.py", line 683, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 2811, in app
+    await route.handle(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 1330, in handle
+    await super().handle(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/routing.py", line 289, in handle
+    await self.app(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 166, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 152, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 745, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 374, in run_endpoint_function
+    return await run_in_threadpool(
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/concurrency.py", line 34, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/anyio/to_thread.py", line 65, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 2779, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 1124, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/telemetry/_api.py", line 244, in _run_sync_endpoint
+    return function(**arguments)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/targets/shopapi/shopapi/main.py", line 89, in reserve
+    left = stock.reserve(body["sku"], int(body["quantity"]), order_id=body.get("order_id"))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/targets/shopapi/shopapi/inventory.py", line 37, in reserve
+    self.reservations.append(Reservation(sku, qty, order_id))
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<string>", line 6, in __init__
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/targets/shopapi/shopapi/inventory.py", line 21, in __post_init__
+    raise ValueError(f"reservation quantity must be positive: {self.qty}")
+ValueError: reservation quantity must be positive: -1
+unhandled error on POST /orders/summary
+Traceback (most recent call last):
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/telemetry/_asgi.py", line 151, in __call__
+    await self.app(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/routing.py", line 683, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 2811, in app
+    await route.handle(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 1330, in handle
+    await super().handle(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/routing.py", line 289, in handle
+    await self.app(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 166, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 152, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 745, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 374, in run_endpoint_function
+    return await run_in_threadpool(
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/concurrency.py", line 34, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/anyio/to_thread.py", line 65, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 2779, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 1124, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/telemetry/_api.py", line 244, in _run_sync_endpoint
+    return function(**arguments)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/targets/shopapi/shopapi/main.py", line 85, in order_summary
+    return orders.summarize(items, pricing.parse_coupon(body.get("coupon"), coupons), s.tax_rate)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/targets/shopapi/shopapi/orders.py", line 51, in summarize
+    discounted = apply_discount(sub, bulk_discount_rate(quantity))
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/targets/shopapi/shopapi/pricing.py", line 43, in apply_discount
+    raise ValueError("rate must be between 0 and 1")
+ValueError: rate must be between 0 and 1
+unhandled error on POST /inventory/reserve
+Traceback (most recent call last):
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/telemetry/_asgi.py", line 151, in __call__
+    await self.app(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/routing.py", line 683, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 2811, in app
+    await route.handle(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 1330, in handle
+    await super().handle(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/routing.py", line 289, in handle
+    await self.app(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 166, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 152, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 745, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 374, in run_endpoint_function
+    return await run_in_threadpool(
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/concurrency.py", line 34, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/anyio/to_thread.py", line 65, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 2779, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 1124, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/telemetry/_api.py", line 244, in _run_sync_endpoint
+    return function(**arguments)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/targets/shopapi/shopapi/main.py", line 89, in reserve
+    left = stock.reserve(body["sku"], int(body["quantity"]), order_id=body.get("order_id"))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: Inventory.reserve() got an unexpected keyword argument 'order_id'
+unhandled error on POST /orders/summary
+Traceback (most recent call last):
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/telemetry/_asgi.py", line 151, in __call__
+    await self.app(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/routing.py", line 683, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 2811, in app
+    await route.handle(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 1330, in handle
+    await super().handle(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/routing.py", line 289, in handle
+    await self.app(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 166, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 152, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 745, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 374, in run_endpoint_function
+    return await run_in_threadpool(
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/concurrency.py", line 34, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/anyio/to_thread.py", line 65, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 2779, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 1124, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/telemetry/_api.py", line 244, in _run_sync_endpoint
+    return function(**arguments)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/targets/shopapi/shopapi/main.py", line 85, in order_summary
+    return orders.summarize(items, pricing.parse_coupon(body.get("coupon"), coupons), s.tax_rate)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/targets/shopapi/shopapi/orders.py", line 56, in summarize
+    "total": add_tax(apply_coupon(discounted, coupon), tax_rate),
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/targets/shopapi/shopapi/pricing.py", line 51, in apply_coupon
+    return max(round(apply_discount(amount, coupon.rate) - coupon.amount, 2), 0.0)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/targets/shopapi/shopapi/pricing.py", line 43, in apply_discount
+    raise ValueError("rate must be between 0 and 1")
+ValueError: rate must be between 0 and 1
+unhandled error on POST /orders/summary
+Traceback (most recent call last):
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/telemetry/_asgi.py", line 151, in __call__
+    await self.app(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/routing.py", line 683, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 2811, in app
+    await route.handle(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 1330, in handle
+    await super().handle(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/routing.py", line 289, in handle
+    await self.app(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 166, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 152, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 745, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 374, in run_endpoint_function
+    return await run_in_threadpool(
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/concurrency.py", line 34, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/anyio/to_thread.py", line 65, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 2779, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 1124, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/telemetry/_api.py", line 244, in _run_sync_endpoint
+    return function(**arguments)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/targets/shopapi/shopapi/main.py", line 85, in order_summary
+    return orders.summarize(items, pricing.parse_coupon(body.get("coupon"), coupons), s.tax_rate)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/targets/shopapi/shopapi/orders.py", line 55, in summarize
+    "average_unit_price": average_unit_price(items),
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/targets/shopapi/shopapi/orders.py", line 43, in average_unit_price
+    return round(subtotal(items) / quantity, 2)
+                 ~~~~~~~~~~~~~~~~^~~~~~~~~~
+ZeroDivisionError: float division by zero
+unhandled error on POST /orders/summary
+Traceback (most recent call last):
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/telemetry/_asgi.py", line 151, in __call__
+    await self.app(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/routing.py", line 683, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 2811, in app
+    await route.handle(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 1330, in handle
+    await super().handle(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/routing.py", line 289, in handle
+    await self.app(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 166, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 152, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 745, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 374, in run_endpoint_function
+    return await run_in_threadpool(
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/concurrency.py", line 34, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/anyio/to_thread.py", line 65, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 2779, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 1124, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/telemetry/_api.py", line 244, in _run_sync_endpoint
+    return function(**arguments)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/targets/shopapi/shopapi/main.py", line 85, in order_summary
+    return orders.summarize(items, pricing.parse_coupon(body.get("coupon"), coupons), s.tax_rate)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/targets/shopapi/shopapi/orders.py", line 55, in summarize
+    "average_unit_price": average_unit_price(items),
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/targets/shopapi/shopapi/orders.py", line 43, in average_unit_price
+    return round(subtotal(items) / quantity, 2)
+                 ~~~~~~~~~~~~~~~~^~~~~~~~~~
+ZeroDivisionError: float division by zero
+unhandled error on POST /orders/summary
+Traceback (most recent call last):
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/telemetry/_asgi.py", line 151, in __call__
+    await self.app(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/routing.py", line 683, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 2811, in app
+    await route.handle(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 1330, in handle
+    await super().handle(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/routing.py", line 289, in handle
+    await self.app(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 166, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 152, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 745, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/routing.py", line 374, in run_endpoint_function
+    return await run_in_threadpool(
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/starlette/concurrency.py", line 34, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/anyio/to_thread.py", line 65, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 2779, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 1124, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/.venv/lib/python3.12/site-packages/fastapi/telemetry/_api.py", line 244, in _run_sync_endpoint
+    return function(**arguments)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/targets/shopapi/shopapi/main.py", line 85, in order_summary
+    return orders.summarize(items, pricing.parse_coupon(body.get("coupon"), coupons), s.tax_rate)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/targets/shopapi/shopapi/orders.py", line 56, in summarize
+    "total": add_tax(apply_coupon(discounted, coupon), tax_rate),
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mingyu/Project/infra_local_set/AI_auto_pipeline/targets/shopapi/shopapi/pricing.py", line 49, in apply_coupon
+    return max(round(apply_discount(amount, coupon.rate) - coupon.amount, 2), 0.0)
+                                            ^^^^^^^^^^^
+AttributeError: 'NoneType' object has no attribute 'rate'
+누적 LLM 비용 $1.1183

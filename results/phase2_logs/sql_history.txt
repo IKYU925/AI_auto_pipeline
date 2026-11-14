@@ -1,0 +1,13 @@
+   status    | incidents | avg_usd | avg_sec 
+-------------+-----------+---------+---------
+ resolved    |        12 |  0.0931 |    30.9
+ no_code_fix |         2 |  0.0003 |     2.6
+(2 rows)
+
+           model            | calls | cache_hits |  usd   
+----------------------------+-------+------------+--------
+ anthropic:claude-opus-5-5  |    24 |          0 | 1.1144
+ anthropic:claude-haiku-5-5 |    13 |          0 | 0.0039
+ cache                      |     0 |          1 | 0.0000
+(3 rows)
+
