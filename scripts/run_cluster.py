@@ -46,6 +46,7 @@ os.environ.setdefault("KUBECONFIG", str(INFRA / "kubeconfig"))
 OVERLAY = ROOT / "deploy/k8s/overlays/local"
 SHOP_URL = os.environ.get("SHOP_URL", "http://shop.192.168.56.10.nip.io")
 ALERTMANAGER = os.environ.get("ALERTMANAGER_URL", "http://192.168.56.10:30093")
+PROMETHEUS = os.environ.get("PROMETHEUS_URL", "http://192.168.56.10:30090")
 COLUMNS = [
     "scenario", "type", "alert", "incident_id", "fault_at", "occurred_at", "received_at", "finished_at", "reported_at",
     "detect_sec", "deliver_sec", "process_sec", "total_sec", "outcome", "expected_outcome", "outcome_correct",
@@ -99,9 +100,15 @@ def firing_automation_alerts() -> list[str]:
 
 def check_clock(max_skew_sec: float = 5) -> None:
     """맥이 잠들면 VM이 멈췄다가 시계가 늦은 채로 깨어날 수 있다. 그러면 시각 차이로 재는 값이 모두 틀린다."""
-    skew = float(psql("SELECT extract(epoch FROM now()) AS epoch")[0]["epoch"]) - time.time()
-    if abs(skew) > max_skew_sec:
-        raise RuntimeError(f"클러스터 DB 시계가 이 컴퓨터와 {skew:.0f}초 어긋난다. 노드 시계를 맞춘 뒤 다시 실행한다")
+    # 수신, 완료 시각은 DB(k3s-w1)가, 알림 시작 시각은 Prometheus(k3s-w2)가 찍는다
+    clocks = {
+        "DB(k3s-w1)": float(psql("SELECT extract(epoch FROM now()) AS epoch")[0]["epoch"]),
+        "Prometheus(k3s-w2)": float(httpx.get(f"{PROMETHEUS}/api/v1/query", params={"query": "time()"},
+                                              timeout=10).json()["data"]["result"][0]),
+    }
+    for name, t in clocks.items():
+        if abs(skew := t - time.time()) > max_skew_sec:
+            raise RuntimeError(f"{name} 시계가 이 컴퓨터와 {skew:.0f}초 어긋난다. 노드 시계를 맞춘 뒤 다시 실행한다")
 
 
 def wait_quiet(timeout_sec: float = 900) -> None:
