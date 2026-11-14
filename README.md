@@ -64,6 +64,14 @@ flowchart LR
 - 시그니처가 어긋난 버그(S08)는 조건마다 3회 돌려 6회 중 5회가 공개 테스트를 모두 통과한 잘못된 수정이었다. 숨은 테스트만 이를 잡았다. "테스트 통과"를 그대로 믿으면 안 되는 장애 유형이 있다.
 - Slack 실연동: shopapi 장애가 `#alert`에 올라오면 25~31초 안에 같은 스레드에 검증된 수정안이 회신된다(실제 LLM 3건, [results/phase1_slack.md](results/phase1_slack.md)).
 
+## 2단계 결과(진행 중)
+
+장애, LLM 호출, 수정안, 지식 문서를 PostgreSQL(pgvector, pg_trgm) 한 곳에 영구 저장하고, LangGraph 체크포인터로 워커가 죽어도 이어서 처리하게 했다. 1단계 시나리오 재실행 비교(2-6)는 아직이다. 설계는 [docs/plan.md](docs/plan.md) 8장, 기능 문서는 [F03](docs/features/F03-postgres.md)이다.
+
+- 이력: 장애 1건마다 `incidents` 한 줄, LLM 호출마다 `llm_calls` 한 줄, 수정 시도마다 `fixes` 한 줄이 남는다. 서비스별 장애 수와 평균 비용을 SQL 한 번으로 조회한다(1단계는 Redis 키 7~30일 TTL).
+- 검색: 에러 코드 질의 10개의 상위 3개 적중이 Qdrant 벡터 8/10, pgvector 벡터 8/10, pgvector + pg_trgm(RRF) 9/10이다. 저장소만 바꾼 효과는 없고, 키워드 순위가 식별자 질의(`TAX_RATE` 9위 → 2위)를 보완했다([results/phase2_retrieval.md](results/phase2_retrieval.md)).
+- 워커 강제 종료: 수정안 생성 뒤 `docker kill`로 죽이면 체크포인터가 고성능 호출 1회(장애 1건 비용의 절반쯤, 추정)를 아낀다. 원인 분석 직후 종료는 1단계의 응답 캐시가 이미 덮어서 차이가 없다. 회신은 모든 실행에서 한 번이었다([results/phase2_kill.md](results/phase2_kill.md)).
+
 ## 비용 최적화 포인트
 
 ### RAG
