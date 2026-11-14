@@ -39,17 +39,14 @@ TASK_TIER: dict[str, Tier] = {
 CACHEABLE_TASKS = {"classify", "summarize", "root_cause"}
 
 
-# 이 모델들은 temperature를 바꾸면 400을 돌려준다
-NO_SAMPLING_PREFIXES = ("claude-opus-5-5", "claude-sonnet-5-5", "claude-fable-5")
-
-
 def default_model_factory(name: str) -> Any:
     provider, _, model = name.partition(":")
     if provider == "anthropic":
         from langchain_anthropic import ChatAnthropic
 
-        sampling = {} if model.startswith(NO_SAMPLING_PREFIXES) else {"temperature": 0}
-        return ChatAnthropic(model=model, max_tokens=4096, **sampling)
+        # Opus 5.5, Sonnet 5.5, Fable 5.x는 기본값이 아닌 temperature를 400으로 거절한다.
+        # Haiku 5.5는 확인하지 못해 어느 모델에도 보내지 않는다
+        return ChatAnthropic(model=model, max_tokens=4096)
     if provider == "openai":
         from langchain_openai import ChatOpenAI
 
