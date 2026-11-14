@@ -10,3 +10,6 @@ __pycache__/
 artifacts/
 .venv/
 .DS_Store
+
+# 검증 스킬 증거(정리 후에도 남김)
+results/verify/
