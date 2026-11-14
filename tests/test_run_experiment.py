@@ -96,6 +96,7 @@ def test_startup_failure_scenario_is_config_incident(shopapi, tmp_path):
 def test_recurrence_reuses_fix_without_llm(shopapi, tmp_path):
     row = run("S12", shopapi, tmp_path)
     assert (row["outcome"], row["llm_calls"], row["reused_fix"], row["hidden_passed"]) == ("resolved", 0, True, True)
+    assert row["usd"] == 0 and row["procedure_usd"] > 0, "base 처리 비용은 절차 비용에 들어간다"
 
 
 def test_duplicate_alerts_create_one_incident(shopapi, tmp_path):
