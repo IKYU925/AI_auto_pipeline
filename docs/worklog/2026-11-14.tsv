@@ -75,3 +75,6 @@ ts	phase	decision	why	evidence	result
 2026-11-14T11:35Z	3-3	shopapi 메트릭을 앱별 CollectorRegistry로	기본 레지스트리는 프로세스에 하나라 시나리오 검사처럼 앱을 여러 번 만들면 나중 앱의 요청이 /metrics에 안 잡힘(테스트 순서에 따라 실패로 재현)	targets/shopapi/shopapi/observability.py	86개 통과
 2026-11-14T11:55Z	f04	같은 alert_fingerprint의 장애가 열려 있으면 새 장애를 만들지 않음	Alertmanager는 해소 전까지 1시간마다 같은 알림을 다시 보내는데 지문 중복 제거 TTL은 10분	app/core/store.py open_alert_incident, 테스트	-
 2026-11-14T11:55Z	f04	알림 이름별 대상 라벨과 Loki 조회 여부를 ALERT_KINDS 표 하나로	3-4에서 실제 라벨을 보고 고칠 곳을 한 군데로	app/alerts.py	-
+2026-11-14T12:30Z	3-1	api, worker, shopapi를 이미지 하나로 빌드	이미지를 둘로 나누면 버그 주입 때 배포된 shopapi와 워커의 /repo가 어긋날 수 있음, compose도 이미 한 이미지	Dockerfile, plan.md 9-1	로컬 빌드 897MB
+2026-11-14T12:30Z	3-1	커밋하지 않은 변경이 있으면 이미지 태그에 diff 해시를 붙임	같은 시나리오를 다시 주입하면 태그가 같아져 노드가 이전 이미지를 씀	scripts/build_push.sh	-
+2026-11-14T12:35Z	3-1	Docker insecure-registries 설정 변경이 권한 확인에서 거절돼 사용자에게 맡김	맥 Docker 설정 변경	-	push 미확인
