@@ -6,3 +6,4 @@ resources:
   - data.yaml
   - aiops.yaml
   - monitoring.yaml
+  - alert-rules.yaml
