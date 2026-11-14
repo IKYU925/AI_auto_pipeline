@@ -6,7 +6,8 @@ Slack 장애 알림을 받아 원인을 분석하고, 수정 코드를 만들고
 
 ```mermaid
 flowchart LR
-    S[Slack 장애 알림] --> N[n8n<br/>알림 파싱]
+    APP[대상 서비스 shopapi<br/>처리 못 한 예외] -->|Incoming Webhook| S
+    S[Slack 장애 알림] -->|Events API| N[n8n<br/>알림 파싱]
     N -->|POST /api/v1/incidents| F[FastAPI<br/>인증, 중복 제거]
     F -->|XADD| Q[(Redis Streams<br/>메시지 큐)]
     Q -->|XREADGROUP| W[Worker]
@@ -44,6 +45,24 @@ flowchart LR
 | 8. Diff 분석 | `app/analysis/diff_analyzer.py` | 추가, 삭제된 줄과 바뀐 함수, 클래스, 시그니처 변경을 AST로 찾는다 |
 | 9. 영향 범위 | `app/analysis/impact.py` | import 그래프를 역방향으로 따라가 영향받는 모듈과 위험도를 계산한다 |
 | 10. 테스트 선별, 실행 | `app/analysis/test_selector.py`, `app/testing/runner.py` | 관련 테스트만 골라 원본과 분리된 복사본에서 실행하고, 실패하면 LLM에 다시 보낸다 |
+
+## 1단계 결과
+
+직접 만든 대상 서비스(shopapi)에 버그 13종을 주입하고 실제 LLM(분류 Claude Haiku 5.5, 분석과 수정 Claude Opus 5.5)으로 처리했다. 수정은 LLM이 볼 수 없는 숨은 테스트로 판정했다. 상세와 원본 CSV는 [results/phase1_summary.md](results/phase1_summary.md), 실험 설계는 [docs/plan.md](docs/plan.md) 7장이다.
+
+| 지표 | 최적화 켬(A) | 최적화 끔(B) |
+| --- | --- | --- |
+| 코드 버그 자동 수정(숨은+전체 테스트 통과) | 9/9 | 8/9 |
+| 장애당 평균 LLM 비용 | $0.063 | $0.088 |
+| 비코드 장애(외부 결제 지연, 설정 누락) 비용 | 건당 $0.0003 | 건당 $0.044 |
+| 같은 장애 재발 시 LLM 호출 | 0회(검증된 수정안 재사용) | 3회 |
+| 같은 알림 10건 | 1건만 처리 | 1건만 처리 |
+| 처리 시간 중앙값 | 27초 | 30초 |
+
+- 행 기준 A가 B보다 28% 싸다. 차이의 출처는 코드 버그의 분류 모델(Haiku), 비코드 장애의 조기 종료, 재발 시 수정안 재사용이다(시나리오 유형별로 나눈 합이 전체 차이와 맞음).
+- 조건마다 1회 실행이다(비용 절약, [decisions/0010](docs/decisions/0010-single-run-ab.md)). 작은 차이는 판단을 보류한다.
+- 시그니처가 어긋난 버그(S08)는 조건마다 3회 돌려 6회 중 5회가 공개 테스트를 모두 통과한 잘못된 수정이었다. 숨은 테스트만 이를 잡았다. "테스트 통과"를 그대로 믿으면 안 되는 장애 유형이 있다.
+- Slack 실연동: shopapi 장애가 `#alert`에 올라오면 25~31초 안에 같은 스레드에 검증된 수정안이 회신된다(실제 LLM 3건, [results/day4_slack.md](results/day4_slack.md)).
 
 ## 비용 최적화 포인트
 
@@ -138,6 +157,8 @@ python -m scripts.run_experiment S01 S10 --condition A --repeat 3 --out results/
 ```
 
 `run_experiment`는 먼저 서버의 최적화 설정(`/api/v1/config`)이 `--condition`(A는 모두 켬, B는 `.env`의 `OPT_*`를 모두 끔)과 같은지 확인한다. 실행마다 캐시를 비우고, 버그를 주입한 shopapi로 장애를 재현해 `/api/v1/incidents`로 접수한 뒤 완료를 기다린다. 끝나면 AI 패치를 버그가 든 복사본에 적용해 숨은 테스트와 전체 테스트를 돌리고, 결과를 CSV에 한 줄 붙인다. 선별 테스트는 통과했지만 숨은 테스트가 실패하면 `false_pass`가 참이다. 재발(S12)과 중복(S13)도 같은 명령으로 실행한다.
+
+Slack 실연동은 Slack 앱(봇 토큰, Incoming Webhook, Signing Secret, Event Subscriptions)과 ngrok이 필요하다. 설정 절차는 [docs/features/F08-slack.md](docs/features/F08-slack.md)에 있고, `python -m scripts.setup_n8n`이 n8n 설정을, `python -m scripts.slack_e2e S01`이 알림부터 스레드 회신까지 확인을 한다.
 
 ### 4. 실제 서비스 저장소에 붙이기
 
