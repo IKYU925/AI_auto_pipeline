@@ -1,0 +1,2 @@
+# eval/retrieval의 Qdrant 기준선 측정에만 필요하다
+qdrant-client>=1.12
