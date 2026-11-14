@@ -1,0 +1,20 @@
+worker-1  | 2026-11-14T03:59:20.611333209Z 2026-11-14 03:59:20,610 INFO httpx HTTP Request: GET http://qdrant:6333 "HTTP/1.1 200 OK"
+worker-1  | 2026-11-14T03:59:24.336619503Z 2026-11-14 03:59:24,336 INFO httpx2 HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+worker-2  | 2026-11-14T03:59:51.993952043Z 2026-11-14 03:59:51,993 INFO httpx HTTP Request: GET http://qdrant:6333 "HTTP/1.1 200 OK"
+worker-1  | 2026-11-14T03:59:24.368295253Z 2026-11-14 03:59:24,368 INFO httpx HTTP Request: GET http://qdrant:6333/collections/knowledge/exists "HTTP/1.1 200 OK"
+worker-1  | 2026-11-14T03:59:24.405781795Z 2026-11-14 03:59:24,405 INFO httpx HTTP Request: POST http://qdrant:6333/collections/knowledge/points/query "HTTP/1.1 200 OK"
+worker-2  | 2026-11-14T03:59:55.146347545Z 2026-11-14 03:59:55,145 INFO httpx2 HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+worker-2  | 2026-11-14T03:59:55.174672753Z 2026-11-14 03:59:55,174 INFO httpx HTTP Request: GET http://qdrant:6333/collections/knowledge/exists "HTTP/1.1 200 OK"
+worker-2  | 2026-11-14T03:59:55.208106212Z 2026-11-14 03:59:55,207 INFO httpx HTTP Request: POST http://qdrant:6333/collections/knowledge/points/query "HTTP/1.1 200 OK"
+worker-2  | 2026-11-14T04:00:09.903819094Z 2026-11-14 04:00:09,903 INFO httpx2 HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+worker-2  | 2026-11-14T04:00:16.924693597Z 2026-11-14 04:00:16,923 INFO httpx2 HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+worker-1  | 2026-11-14T03:59:42.868068303Z 2026-11-14 03:59:42,867 INFO httpx2 HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+worker-1  | 2026-11-14T03:59:49.067911459Z 2026-11-14 03:59:49,067 INFO httpx2 HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+worker-1  | 2026-11-14T03:59:49.849579417Z 2026-11-14 03:59:49,849 INFO app.notify.slack [slack disabled] #C-EXPERIMENT *[수정안 검증 완료 (사람 승인 대기)]* `shopapi`
+worker-1  | 2026-11-14T03:59:49.849588042Z > TypeError: Inventory.reserve() got an unexpected keyword argument 'order_id' on POST /inventory/reserve
+worker-2  | 2026-11-14T04:00:17.707439750Z 2026-11-14 04:00:17,707 INFO app.notify.slack [slack disabled] #C-EXPERIMENT *[수정안 검증 완료 (사람 승인 대기)]* `shopapi`
+worker-2  | 2026-11-14T04:00:17.707457125Z > TypeError: Inventory.reserve() got an unexpected keyword argument 'order_id' on POST /inventory/reserve
+worker-2  | 2026-11-14T04:00:17.707459541Z *분류*: code_bug (신뢰도 0.90) - shopapi의 main.py 76행에서 Inventory.reserve()에 order_id 키워드 인자를 전달하지만 해당 메서드 시그니처에 order_id 파라미터가 없어 TypeError가 발생함. 코드 수정(시그니처 또는 호출부 정합성 맞추기) 필요.
+worker-2  | 2026-11-14T04:00:17.707462708Z *원인*: POST /inventory/reserve 핸들러(shopapi/main.py 76행)가 stock.reserve(sku, quantity, order_id=...)처럼 order_id 키워드 인자를 넘기지만, Inventory.reserve()에는 order_id 파라미터가 없습니다. 그래서 호출 시점에 TypeErro
+worker-1  | 2026-11-14T03:59:49.849589501Z *분류*: code_bug (신뢰도 0.90) - shopapi의 main.py 76행에서 stock.reserve()를 order_id 키워드 인자와 함께 호출하지만 Inventory.reserve() 시그니처에 order_id 파라미터가 없어 TypeError가 발생함. 코드 수정(시그니처 정합성 맞추기) 필요.
+worker-1  | 2026-11-14T03:59:49.849590584Z *원인*: POST /inventory/reserve 핸들러(shopapi/main.py 76행)는 stock.reserve(sku, quantity, order_id=...)처럼 order_id 키워드 인자를 넘깁니다. 그런데 shopapi.inventory.Inventory.reserve()의 시그니처에는 order_i

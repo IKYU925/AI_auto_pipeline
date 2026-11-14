@@ -1,0 +1,21 @@
+worker-1  | 2026-11-14T04:00:40.628231886Z 2026-11-14 04:00:40,628 INFO worker worker dde659d5aa4d-1 started
+worker-1  | 2026-11-14T04:00:43.065035970Z 2026-11-14 04:00:43,064 INFO httpx HTTP Request: GET http://qdrant:6333 "HTTP/1.1 200 OK"
+worker-1  | 2026-11-14T04:00:47.269726833Z 2026-11-14 04:00:47,269 INFO httpx2 HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+worker-1  | 2026-11-14T04:00:47.283045625Z 2026-11-14 04:00:47,282 INFO httpx HTTP Request: GET http://qdrant:6333/collections/knowledge/exists "HTTP/1.1 200 OK"
+worker-1  | 2026-11-14T04:00:47.313255166Z 2026-11-14 04:00:47,312 INFO httpx HTTP Request: POST http://qdrant:6333/collections/knowledge/points/query "HTTP/1.1 200 OK"
+worker-1  | 2026-11-14T04:01:01.906644090Z 2026-11-14 04:01:01,905 INFO httpx2 HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+worker-1  | 2026-11-14T04:01:13.859280471Z 2026-11-14 04:01:13,858 INFO httpx2 HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+worker-1  | 2026-11-14T04:01:14.870756596Z 2026-11-14 04:01:14,870 INFO app.notify.slack [slack disabled] #C-EXPERIMENT *[수정안 검증 완료 (사람 승인 대기)]* `shopapi`
+worker-1  | 2026-11-14T04:01:14.870801513Z > TypeError: Inventory.reserve() got an unexpected keyword argument 'order_id' on POST /inventory/reserve
+worker-2  | 2026-11-14T04:00:40.693766552Z 2026-11-14 04:00:40,693 INFO worker worker d49e1e964e03-1 started
+worker-1  | 2026-11-14T04:01:14.870803304Z *분류*: code_bug (신뢰도 0.93) - shopapi main.py의 reserve 엔드포인트가 Inventory.reserve()에 지원되지 않는 order_id 키워드 인자를 전달해 TypeError 발생 (호출부와 메서드 시그니처 불일치)
+worker-1  | 2026-11-14T04:01:14.870829263Z *원인*: shopapi/main.py 76행의 /inventory/reserve 엔드포인트가 stock.reserve(sku, quantity, order_id=...)처럼 order_id 키워드 인자를 넘긴다. 그런데 shopapi/inventory.py의 Inventory.reserve() 시그니처에는 order_id 파라미터가 없어서 호출할 때마다 TypeError가 난다. 이
+worker-1  | 2026-11-14T04:01:20.727709293Z 2026-11-14 04:01:20,727 INFO httpx2 HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+worker-1  | 2026-11-14T04:01:20.739971043Z 2026-11-14 04:01:20,739 INFO httpx HTTP Request: GET http://qdrant:6333/collections/knowledge/exists "HTTP/1.1 200 OK"
+worker-1  | 2026-11-14T04:01:20.798520085Z 2026-11-14 04:01:20,798 INFO httpx HTTP Request: POST http://qdrant:6333/collections/knowledge/points/query "HTTP/1.1 200 OK"
+worker-1  | 2026-11-14T04:01:35.470835467Z 2026-11-14 04:01:35,466 INFO httpx2 HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+worker-1  | 2026-11-14T04:01:43.793263304Z 2026-11-14 04:01:43,792 INFO httpx2 HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+worker-1  | 2026-11-14T04:01:44.658555763Z 2026-11-14 04:01:44,658 INFO app.notify.slack [slack disabled] #C-EXPERIMENT *[수정안 검증 완료 (사람 승인 대기)]* `shopapi`
+worker-1  | 2026-11-14T04:01:44.658567554Z > TypeError: Inventory.reserve() got an unexpected keyword argument 'order_id' on POST /inventory/reserve
+worker-1  | 2026-11-14T04:01:44.658569471Z *분류*: code_bug (신뢰도 0.93) - shopapi main.py의 reserve 엔드포인트가 Inventory.reserve()에 정의되지 않은 order_id 키워드 인자를 전달해 TypeError가 발생함 (호출부와 메서드 시그니처 불일치)
+worker-1  | 2026-11-14T04:01:44.658570846Z *원인*: POST /inventory/reserve 핸들러(shopapi/main.py:76)가 stock.reserve(sku, quantity, order_id=...)처럼 order_id 키워드 인자를 넘기는데, Inventory.reserve()의 시그니처에는 order_id 파라미터가 없다. 그래서 요청 내용과 관계없이 이 엔드포인트를 호출할 때마다 TypeError가 
