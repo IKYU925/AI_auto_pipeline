@@ -1,0 +1,29 @@
+# 검증 전용 덮어쓰기. 사용 중인 스택(ai_auto_pipeline)과 포트, 데이터, shopapi 소스를 나눈다.
+# docker compose -p aiops-verify -f docker-compose.yml -f .claude/skills/verify-aiops/verify.compose.yml ...
+x-verify-env: &verify-env
+  LIGHT_MODEL: ${VERIFY_LIGHT_MODEL:-fake:light}
+  HEAVY_MODEL: ${VERIFY_HEAVY_MODEL:-fake:heavy}
+  OPT_LLM_CACHE: "true"
+  OPT_MODEL_ROUTING: "true"
+  OPT_EARLY_EXIT: "true"
+  OPT_TEST_SELECTION: "true"
+  OPT_FIX_REUSE: "true"
+
+services:
+  redis:
+    ports: !override ["16379:6379"]
+  qdrant:
+    ports: !override ["16333:6333"]
+  api:
+    ports: !override ["18000:8000"]
+    environment: *verify-env
+  worker:
+    environment: *verify-env
+    volumes: !override
+      - ${VERIFY_SHOPAPI:?launch.sh가 정한다}:/repo:ro
+      - artifacts:/srv/artifacts
+      - fastembed-cache:/tmp/fastembed_cache
+  shopapi:
+    ports: !override ["18100:8100"]
+    volumes: !override
+      - ${VERIFY_SHOPAPI:?launch.sh가 정한다}:/repo:ro
