@@ -288,7 +288,7 @@ infra_local_set 설정에서 이 레포가 맞춰야 할 점은 다음과 같다
 - Alloy는 Pod 라벨 `app.kubernetes.io/name`을 Loki 스트림 라벨 `service`로 옮긴다. 이 라벨이 없으면 로그에 `service`가 비고, 알림 규칙과 Loki 조회가 shopapi 로그를 찾지 못한다.
 - Loki 로그 알림 규칙은 `monitoring` namespace의 `loki-alert-rules` ConfigMap으로 읽는다.
 - Grafana 대시보드는 `grafana_dashboard` 라벨을 단 ConfigMap을 아무 namespace에 만들면 자동으로 추가된다.
-- Grafana 데이터 소스는 Prometheus와 Loki만 등록되어 있다. PostgreSQL 데이터 소스는 3-6에 infra_local_set의 Grafana values에 추가한다.
+- Grafana 데이터 소스는 Prometheus와 Loki만 등록되어 있다. PostgreSQL 데이터 소스는 이 저장소의 `scripts/k8s_grafana.sh`가 `monitoring` namespace에 라벨 붙은 Secret으로 만든다([F11](features/F11-dashboards.md)).
 
 수집 대상은 다음과 같다.
 

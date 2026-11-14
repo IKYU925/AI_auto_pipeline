@@ -1,6 +1,6 @@
 # F11. 자동화 메트릭과 Grafana 대시보드
 
-상태: 구현 중
+상태: 완료
 관련: plan.md 9-5, 3-6
 
 ## 문제
@@ -32,11 +32,11 @@
 
 ## 완료 기준
 
-- [ ] 접수 요청이 카운터에 `source`와 중복 여부로 잡히고, 큐 게이지가 대기, 처리 중, DLQ 수와 맞는다(테스트)
-- [ ] Prometheus가 ai-api를 수집한다(`up{job="ai-api"} == 1`)
-- [ ] `grafana_ro`는 SELECT만 되고 쓰기는 거부된다(클러스터에서 확인)
-- [ ] 두 대시보드의 모든 패널 질의가 Grafana API에서 오류 없이 결과를 돌려준다(`scripts/check_dashboards.py`)
-- [ ] 대시보드에서 장애 수, 성공률, 비용, 큐 길이가 보인다(스크린샷)
+- [x] 접수 요청이 카운터에 `source`와 중복 여부로 잡히고, 큐 게이지가 대기, 처리 중, DLQ 수와 맞는다(테스트)
+- [x] Prometheus가 ai-api를 수집한다(`up{job="ai-api"} == 1`)
+- [x] `grafana_ro`는 SELECT만 되고 쓰기는 거부된다(클러스터에서 확인. DELETE는 read-only transaction, checkpoints 조회는 permission denied)
+- [x] 두 대시보드의 모든 패널 질의가 Grafana API에서 오류 없이 결과를 돌려준다(`scripts/check_dashboards.py`)
+- [x] 대시보드에서 장애 수, 성공률, 비용, 큐 길이가 보인다(`results/phase3_dashboards/`)
 
 ## 설계 메모
 
@@ -44,6 +44,11 @@
 - 큐 지표는 수집 시점에 Redis에서 읽는다. 카운터로 세면 api와 워커 양쪽을 고쳐야 하고 재시작 때 값이 어긋난다.
 - 워커 쪽 지표(LLM 비용, 결과)는 이미 PostgreSQL에 남으므로 워커에 `/metrics`를 두지 않는다.
 
+- `scripts/check_dashboards.py`는 Grafana 백엔드로 질의를 실행한다. 화면의 질의 방식 차이는 잡지 못한다. 통계 패널의 Prometheus instant 질의가 이 스크립트에서는 결과를 돌려줬지만 화면에서는 No data였다. 그래서 통계 패널도 range 질의로 바꿨고, 화면은 스크린샷으로 따로 확인했다.
+- 5xx 비율은 분자에 `or vector(0)`을 붙인다. 재시작 뒤 5xx가 한 건도 없으면 시계열이 없어서 비율 전체가 빈 값이 된다.
+
 ## 열린 질문
 
 ## 변경 이력
+
+- 2026-11-15 데이터 소스를 infra_local_set values 대신 이 저장소의 스크립트로 만들기로 했다(설계 메모).

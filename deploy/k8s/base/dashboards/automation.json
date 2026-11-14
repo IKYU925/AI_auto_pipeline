@@ -219,8 +219,8 @@
           "refId": "A",
           "expr": "aiops_queue_waiting",
           "legendFormat": "",
-          "range": false,
-          "instant": true
+          "range": true,
+          "instant": false
         }
       ],
       "fieldConfig": {
@@ -263,8 +263,8 @@
           "refId": "A",
           "expr": "aiops_queue_dead_letters",
           "legendFormat": "",
-          "range": false,
-          "instant": true
+          "range": true,
+          "instant": false
         }
       ],
       "fieldConfig": {
