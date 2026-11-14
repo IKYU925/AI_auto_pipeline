@@ -13,6 +13,8 @@ langchain-anthropic>=1.0
 # langchain-openai>=1.0   # OpenAI 모델이나 OpenAI 임베딩을 쓸 때만
 slack_sdk>=3.30
 httpx>=0.27
+# shopapi(대상 서비스)의 /metrics. 워커가 같은 이미지에서 shopapi 테스트를 돌리므로 여기에 둔다
+prometheus-fastapi-instrumentator>=7.0
 pyyaml>=6.0
 # 샌드박스에서 대상 저장소 테스트를 돌릴 때도 쓰인다
 pytest>=8.0

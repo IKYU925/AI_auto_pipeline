@@ -68,6 +68,12 @@ class Container:
         )
 
     @cached_property
+    def loki(self):
+        from app.loki import LokiClient
+
+        return LokiClient(self.settings.loki_url) if self.settings.loki_url else None
+
+    @cached_property
     def notifier(self) -> SlackNotifier:
         return SlackNotifier(self.settings.slack_bot_token)
 
