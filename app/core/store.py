@@ -14,10 +14,12 @@ class IncidentStore:
     def create(self, incident_id: str, fingerprint: str, incident: dict) -> None:
         with self.pool.connection() as conn:
             conn.execute(
-                """INSERT INTO incidents (id, fingerprint, source, service, severity, message, stacktrace, status)
-                   VALUES (%s, %s, %s, %s, %s, %s, %s, 'queued')""",
+                """INSERT INTO incidents (id, fingerprint, source, service, severity, message, stacktrace, status,
+                                        alertname, alert_fingerprint)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s, 'queued', %s, %s)""",
                 (incident_id, fingerprint, incident.get("source", "api"), incident["service"], incident.get("severity"),
-                 incident["message"], incident.get("stacktrace")),
+                 incident["message"], incident.get("stacktrace"), incident.get("alertname"),
+                 incident.get("alert_fingerprint")),
             )
 
     def set_status(self, incident_id: str, status: str, *, attempts: int | None = None, report: str | None = None,
@@ -48,6 +50,24 @@ class IncidentStore:
         if row["report"] is not None:
             out["report"] = row["report"]
         return out
+
+    def open_alert_incident(self, alert_fingerprint: str) -> str | None:
+        """같은 알림으로 만든 장애가 아직 해소되지 않았으면 그 ID. Alertmanager는 해소 전까지 같은 알림을 다시 보낸다."""
+        with self.pool.connection() as conn:
+            row = conn.execute(
+                """SELECT id FROM incidents WHERE alert_fingerprint = %s AND alert_resolved_at IS NULL
+                   ORDER BY created_at DESC LIMIT 1""",
+                (alert_fingerprint,),
+            ).fetchone()
+        return row["id"] if row else None
+
+    def resolve_alert(self, alert_fingerprint: str, resolved_at) -> int:
+        with self.pool.connection() as conn:
+            cur = conn.execute(
+                "UPDATE incidents SET alert_resolved_at = %s WHERE alert_fingerprint = %s AND alert_resolved_at IS NULL",
+                (resolved_at, alert_fingerprint),
+            )
+        return cur.rowcount
 
     def report_ts(self, incident_id: str) -> str | None:
         with self.pool.connection() as conn:

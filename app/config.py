@@ -65,6 +65,10 @@ class Settings(BaseSettings):
 
     # --- Slack 결과 회신 ---
     slack_bot_token: str = ""
+    alert_slack_channel: str = ""                # Alertmanager로 들어온 장애의 카드를 올릴 채널(스레드 없이 새 글)
+
+    # --- Alertmanager 입구(3단계) ---
+    loki_url: str = ""                           # 비우면 스택트레이스 조회를 하지 않는다
 
 
 @lru_cache
