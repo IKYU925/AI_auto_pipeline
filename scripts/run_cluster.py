@@ -324,6 +324,9 @@ def run_scenario(s: Scenario, shop: httpx.Client, timeout_sec: float) -> dict:
         if isinstance(s.trigger, Recurrence):
             print(f"  base {base.id} 완료({w.incident['status']}), 알림 해소 뒤 재발", file=sys.stderr)
             wait_alert_resolved(w.incident["id"])
+            # 중복 제거 기간(10분)이 지났다고 보고 같은 장애를 다시 받게 한다. 검증된 수정안은 남긴다(run_experiment와 같음)
+            fp = psql(f"SELECT fingerprint FROM incidents WHERE id = '{w.incident['id']}'")[0]["fingerprint"]
+            kubectl("-n", "aiops", "exec", "redis-0", "--", "redis-cli", "DEL", f"dedupe:{fp}")
             fault_at = now()
             send_requests(base.trigger.items, shop)
             w = wait_incident(base.cluster.alert, fault_at, timeout_sec, skip={w.incident["id"]})
