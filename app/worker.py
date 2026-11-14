@@ -12,6 +12,7 @@ from redis.exceptions import ConnectionError as RedisConnectionError
 
 from app.container import Container
 from app.graph.workflow import recursion_limit
+from app.notify.card import build_card, patch_message
 
 log = logging.getLogger("worker")
 
@@ -51,7 +52,10 @@ def process_message(c: Container, msg_id: str, payload: dict) -> dict:
         test_selection=final.get("test_selection", {}),
         test_result={k: v for k, v in final.get("test_result", {}).items() if k != "failure_log"},
     )
-    c.notifier.post(incident["channel"], final["report"], incident.get("thread_ts"))
+    text, blocks = build_card(final)
+    c.notifier.post(incident["channel"], text, incident.get("thread_ts"), blocks=blocks)
+    if patch := patch_message(final):
+        c.notifier.post(incident["channel"], patch, incident.get("thread_ts"))
     c.queue.ack(msg_id)
     return final
 
