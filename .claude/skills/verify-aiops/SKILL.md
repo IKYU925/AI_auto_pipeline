@@ -38,7 +38,7 @@ export RUN_ID=<마지막 줄의 값>
 RUN_ID=$RUN_ID .claude/skills/verify-aiops/bin/doctor.sh
 ```
 
-읽기만 한다. 컨테이너 6개, 스키마 최신(migrate 종료 코드 0, alembic 0001), 포트 소유(18000이 aiops-verify), api와 shopapi 응답, 토큰 인증과 최적화 설정(모두 켬), 경량 모델(가짜 또는 실제), shopapi 복사본이 커밋된 버전과 같은지(남은 버그 주입 없음)를 확인한다. 하나라도 FAIL이면 검증하지 말고 cleanup 후 다시 launch한다. 이상해 보이면 언제든 먼저 실행한다.
+읽기만 한다. 컨테이너 6개, 스키마 최신(migrate 종료 코드 0, alembic 버전이 `migrations/versions`의 마지막 번호), 포트 소유(18000이 aiops-verify), api와 shopapi 응답, 토큰 인증과 최적화 설정(모두 켬), 경량 모델(가짜 또는 실제), shopapi 복사본이 커밋된 버전과 같은지(남은 버그 주입 없음)를 확인한다. 하나라도 FAIL이면 검증하지 말고 cleanup 후 다시 launch한다. 이상해 보이면 언제든 먼저 실행한다.
 
 ## Drive
 
