@@ -13,6 +13,10 @@ AI_auto_pipeline의 주 사용 지점은 HTTP API다. 장애는 shopapi(FastAPI)
 
 실제 Anthropic API 호출은 사용자에게 비용이 든다. 기본은 가짜 LLM(`fake:light`, `fake:heavy`)이다. 가짜 LLM은 sample_repo용 답을 돌려주므로 shopapi 코드 버그는 고치지 못한다(에스컬레이션으로 끝남). 코드 수정 루프를 검증해야 할 때만 `VERIFY_REAL_LLM=1`로 띄우고, `drive.sh`는 실행마다 누적 0.5달러 상한(`VERIFY_MAX_USD`)을 건다. S01 한 건은 약 0.08달러다(results/day1.md).
 
+## Slack과의 관계
+
+검증 스택은 Slack에 아무것도 올리지 않는다. shopapi의 Incoming Webhook과 워커의 봇 토큰을 비운다. Slack 앱의 Request URL은 사용 중인 스택의 n8n 하나만 가리키므로, Slack 경로(알림, n8n, 스레드 회신)는 이 스킬의 격리 스택으로 검증할 수 없다. 그 경로는 [features/slack-thread-reply.md](features/slack-thread-reply.md)대로, 운영자가 허락할 때만 사용 중인 스택에서 `scripts/slack_e2e.py`로 확인한다.
+
 ## Launch
 
 ```bash
@@ -57,7 +61,7 @@ curl -s localhost:18000/api/v1/incidents/<incident_id> -H "X-Automation-Token: $
 
 증거는 `results/verify/<RUN_ID>/`에 남고 git에서 제외된다. cleanup 후에도 지우지 않는다.
 
-- `runs.csv`, `runs.jsonl`: 시나리오별 결과(29개 열, 분류, 결과, 시도, 시간, 비용, 테스트 선별, 숨은 테스트 판정, 중복 접수 수)
+- `runs.csv`, `runs.jsonl`: 시나리오별 결과(30개 열, 절차 전체 비용 `procedure_usd` 포함, 분류, 결과, 시도, 시간, 비용, 테스트 선별, 숨은 테스트 판정, 중복 접수 수)
 - `incident_<시나리오>_<id>.json`: 상태 조회 API의 응답 그대로(분류, 패치, 보고서, 비용)
 - `worker.log`: 워커 로그
 - `ingest.json`: 지식 문서 수집 결과
