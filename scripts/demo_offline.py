@@ -1,4 +1,4 @@
-"""API 키, Redis, Qdrant 없이 전체 파이프라인을 한 프로세스에서 돌려보는 데모. PostgreSQL은 필요하다.
+"""API 키, Redis 없이 전체 파이프라인을 한 프로세스에서 돌려보는 데모. PostgreSQL은 필요하다.
 
 실행: docker compose up -d postgres && python -m scripts.demo_offline
 
@@ -42,7 +42,6 @@ def offline_settings(**overrides) -> Settings:
     base = dict(
         redis_url="fakeredis://",
         database_url=TEST_DATABASE_URL,
-        qdrant_url=":memory:",
         embedding_provider="hash",
         light_model="fake:light",
         heavy_model="fake:heavy",

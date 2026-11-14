@@ -54,3 +54,7 @@ ts	phase	decision	why	evidence	result
 2026-11-14T08:00Z	f03	LLM 응답 캐시는 Redis에 남기고 장애 결과는 jsonb 칼럼에 둠	plan.md 8장과 다르게 결정	docs/decisions/0012-postgres-scope.md	-
 2026-11-14T08:01Z	f03	실험 초기화가 fixes를 지우지 않고 retired_at으로 재사용만 막게 변경	DELETE가 앞 시나리오의 시도 기록을 지워 이력 보존 목표와 충돌	results/verify/20261114-165726/postgres_rows.txt(S01 fixes 0건)	results/verify/20261114-170144(S01 fixes 3건 보존)
 2026-11-14T08:03Z	f03	실제 LLM 재확인은 생략	저장소만 바뀌었고 가짜 LLM으로 접수부터 보고까지 검증됨, 실제 호출 최소화 원칙	tests 76개, 검증 스택 S01 S10 S12	비용 $0
+2026-11-14T08:10Z	f03	검색 비교용 방해 문서 12개와 에러 코드 질의 10개를 측정 전에 고정	지식 문서 7개만으로는 세 방식 모두 만점에 가까워 비교 불가	eval/retrieval/	결과를 본 뒤 고치지 않음
+2026-11-14T08:12Z	f03	키워드 순위는 pg_trgm word_similarity로 결정(측정으로 고르지 않음)	질의 10개로 함수를 고르면 평가 집합에 맞추는 것이 됨	app/rag/retriever.py	-
+2026-11-14T08:14Z	f03	앱에서 Qdrant 제거, 기준선 측정용으로만 compose eval 프로필에 남김	2단계 목표 구조로 수렴, 기준선은 다시 잴 수 있어야 함	scripts/eval_retrieval.py	-
+2026-11-14T08:15Z	f03	검색 비교 결과: Qdrant 벡터 8/10, pgvector 벡터 8/10, 하이브리드 9/10	plan.md 8장 전후 비교 항목	results/phase2_retrieval.md	TAX_RATE 9위→2위, 표본 10개라 일반화하지 않음

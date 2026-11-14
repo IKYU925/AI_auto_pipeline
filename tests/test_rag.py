@@ -26,7 +26,8 @@ def test_only_changed_chunk_is_reembedded(container):
     edited = BODY.replace("두 번째 문단은 원인이다.", "두 번째 문단은 수정된 원인이다.")
     report = container.ingestor.ingest([_doc(edited)])
     assert (report.embedded_chunks, report.reused_chunks, report.deleted_chunks) == (1, 2, 1)
-    assert container.qdrant.count(container.settings.qdrant_collection).count == 3
+    with container.db.connection() as conn:
+        assert conn.execute("SELECT count(*) AS n FROM documents").fetchone()["n"] == 3
 
 
 def test_metadata_only_change_updates_payload_without_embedding(container):
@@ -64,3 +65,22 @@ def test_embedding_cache_shared_across_documents(container):
     container.ingestor.ingest([_doc("공통 안내 문단", doc_id="a.md")])
     container.ingestor.ingest([_doc("공통 안내 문단", doc_id="b.md")])
     assert container.embedder.stats["hits"] == 1
+
+
+def test_keyword_rank_finds_exact_error_code(container):
+    container.ingestor.ingest([
+        _doc("결제 승인 요청이 늦어지면 타임아웃 설정을 확인한다.", doc_id="vague.md"),
+        _doc("`PG_TIMEOUT_SEC` 기본값은 30이다.", doc_id="code.md"),
+    ])
+    flt = SearchFilter(service="checkout")
+    hybrid = container.retriever._search("PG_TIMEOUT_SEC", flt, top_k=1)
+    assert [h.doc_id for h in hybrid] == ["code.md"]
+    assert hybrid[0].score > 1 / 61, "벡터와 키워드 양쪽 순위에서 점수를 받는다"
+
+
+def test_embedding_model_change_reembeds(container):
+    container.ingestor.ingest([_doc(BODY)])
+    with container.db.connection() as conn:
+        conn.execute("UPDATE documents SET embed_model = 'old-model'")
+    report = container.ingestor.ingest([_doc(BODY)])
+    assert (report.embedded_chunks, report.reused_chunks, report.deleted_chunks) == (3, 0, 0)
