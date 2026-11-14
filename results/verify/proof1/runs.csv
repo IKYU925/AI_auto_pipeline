@@ -1,2 +1,0 @@
-condition,run,started_at,scenario,type,difficulty,incident_id,outcome,expected_outcome,outcome_correct,category,expected_category,category_correct,attempts,elapsed_sec,usd,tokens_in,tokens_out,llm_calls,calls_by_model,cache_hits,reused_fix,tests_selected,test_files_total,test_sec,hidden_passed,full_passed,false_pass,incidents_created
-A,1,2026-11-13T21:37:47+00:00,S13,duplicate,easy,cfc2f5f483d0,escalated,resolved,False,code_bug,code_bug,True,3,6.2,0.0,5441,538,5,"{""fake:heavy"": 4, ""fake:light"": 1}",0,False,1,7,0.0,False,False,False,1
