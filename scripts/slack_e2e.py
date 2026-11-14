@@ -1,6 +1,6 @@
 """Slack 실연동 경로를 끝까지 확인한다.
 
-실행: python -m scripts.slack_e2e S01 S02 S05 --out results/day4_slack.csv
+실행: python -m scripts.slack_e2e S01 S02 S05 --out results/phase1_slack.csv
 
 시나리오마다 shopapi에 버그를 주입하고, 시나리오 요청을 실제 shopapi(localhost:8100)로 보낸다.
 shopapi가 Slack에 올린 장애 알림의 스레드에 자동화 회신이 달릴 때까지 기다린 뒤 원복한다.

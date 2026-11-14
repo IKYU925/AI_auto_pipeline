@@ -11,7 +11,7 @@ AI_auto_pipeline의 주 사용 지점은 HTTP API다. 장애는 shopapi(FastAPI)
 
 ## 비용 규칙
 
-실제 Anthropic API 호출은 사용자에게 비용이 든다. 기본은 가짜 LLM(`fake:light`, `fake:heavy`)이다. 가짜 LLM은 sample_repo용 답을 돌려주므로 shopapi 코드 버그는 고치지 못한다(에스컬레이션으로 끝남). 코드 수정 루프를 검증해야 할 때만 `VERIFY_REAL_LLM=1`로 띄우고, `drive.sh`는 실행마다 누적 0.5달러 상한(`VERIFY_MAX_USD`)을 건다. S01 한 건은 약 0.08달러다(results/day1.md).
+실제 Anthropic API 호출은 사용자에게 비용이 든다. 기본은 가짜 LLM(`fake:light`, `fake:heavy`)이다. 가짜 LLM은 sample_repo용 답을 돌려주므로 shopapi 코드 버그는 고치지 못한다(에스컬레이션으로 끝남). 코드 수정 루프를 검증해야 할 때만 `VERIFY_REAL_LLM=1`로 띄우고, `drive.sh`는 실행마다 누적 0.5달러 상한(`VERIFY_MAX_USD`)을 건다. S01 한 건은 약 0.08달러다(results/phase1_first_run.md).
 
 ## Slack과의 관계
 

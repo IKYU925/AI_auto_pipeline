@@ -1,7 +1,7 @@
 # F08. Slack 실연동
 
 상태: 완료
-관련: plan.md 5장, Day 4
+관련: plan.md 5장, 1-4
 
 ## 문제
 
@@ -30,7 +30,7 @@
 - [x] 파서가 shopapi 알림 형식, 스레드 댓글, 일반 대화, HTML 엔티티를 올바르게 처리한다(node로 실행하는 테스트)
 - [x] n8n에 워크플로를 가져올 수 있다(`n8n import:workflow`), n8n 컨테이너에서 api로 토큰 인증 요청이 닿는다. 활성화는 Slack 자격 증명을 연결한 뒤 가능
 - [x] 가짜 LLM으로 Slack 알림 1건이 스레드 회신까지 이어진다(비용 없음)
-- [x] 실제 LLM으로 Slack 알림 3건이 스레드 회신까지 이어진다(S01, S02, S05, 25~31초, $0.24, results/day4_slack.md)
+- [x] 실제 LLM으로 Slack 알림 3건이 스레드 회신까지 이어진다(S01, S02, S05, 25~31초, $0.24, results/phase1_slack.md)
 
 ## 설계 메모
 
