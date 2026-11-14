@@ -33,7 +33,8 @@ from app.infra import make_redis
 from app.testing.runner import SandboxTestRunner
 
 ROOT = Path(__file__).resolve().parents[1]
-SHOPAPI = ROOT / "targets" / "shopapi"
+# 검증 스택은 사용 중인 스택과 소스를 나누려고 shopapi 복사본 경로를 넘긴다
+SHOPAPI = Path(os.environ.get("SHOPAPI_DIR", ROOT / "targets" / "shopapi"))
 SCENARIOS = ROOT / "scenarios"
 FINAL_STATUSES = {"resolved", "escalated", "no_code_fix", "budget_exceeded", "failed"}
 
