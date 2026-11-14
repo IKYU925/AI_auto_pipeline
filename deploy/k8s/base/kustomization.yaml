@@ -5,3 +5,4 @@ resources:
   - shopapi.yaml
   - data.yaml
   - aiops.yaml
+  - monitoring.yaml
