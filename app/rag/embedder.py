@@ -22,7 +22,7 @@ class Embedder(Protocol):
 class HashEmbedder:
     """외부 의존성 없는 결정적 임베딩(테스트, 오프라인 데모용). 의미 검색 품질은 낮다."""
 
-    def __init__(self, dim: int = 256):
+    def __init__(self, dim: int = 384):
         self.dim = dim
         self.model_id = f"hash-{dim}"
 

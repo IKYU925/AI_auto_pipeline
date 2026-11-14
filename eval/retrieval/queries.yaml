@@ -1,0 +1,22 @@
+# 에러 코드, 식별자가 들어간 질의 10개. expected 중 하나가 상위 3개에 있으면 적중이다.
+# 문서 ID는 knowledge/ 기준 상대 경로, 방해 문서는 distractors/ 접두사.
+- q: "MissingSetting: PG_API_KEY is not set"
+  expected: [shopapi/config-env.md]
+- q: "PaymentTimeout PG approve timeout"
+  expected: [shopapi/payment-timeout.md]
+- q: "POST /payments 504"
+  expected: [shopapi/payment-timeout.md]
+- q: "ZeroDivisionError: float division by zero on POST /orders/summary"
+  expected: [shopapi/orders-summary.md]
+- q: "PG_TIMEOUT_SEC"
+  expected: [shopapi/payment-timeout.md]
+- q: "gift_wrap express 옵션 추가금"
+  expected: [shopapi/pricing-coupon.md]
+- q: "TAX_RATE"
+  expected: [shopapi/pricing-coupon.md]
+- q: "checkout average_unit_price ZeroDivisionError"
+  expected: [runbooks/checkout-unit-price.md]
+- q: "쿠폰 rate 범위 밖 400"
+  expected: [shopapi/pricing-coupon.md]
+- q: "배포 직후 에러율 3배 롤백"
+  expected: [common/deploy-rollback.md]

@@ -1,6 +1,6 @@
 ---
 name: verify-aiops
-description: AI 장애 대응 자동화(AI_auto_pipeline)를 실제로 띄우고 사용자 경로로 검증할 때 쓴다. 대상 서비스 shopapi에 버그를 주입해 장애를 재현하고, 자동화 API(/api/v1/incidents)로 접수해 워커가 분류, 분석, 수정, 검증, 보고까지 하는지 확인하고 증거를 남긴다. 사용 중인 docker compose 스택과 분리된 aiops-verify 스택(포트 18000, 18100, 16379, 16333, 15432)을 띄우므로 실험 중에도 쓸 수 있다. 기본은 가짜 LLM(비용 없음)이고, 실제 LLM은 VERIFY_REAL_LLM=1일 때만 쓴다.
+description: AI 장애 대응 자동화(AI_auto_pipeline)를 실제로 띄우고 사용자 경로로 검증할 때 쓴다. 대상 서비스 shopapi에 버그를 주입해 장애를 재현하고, 자동화 API(/api/v1/incidents)로 접수해 워커가 분류, 분석, 수정, 검증, 보고까지 하는지 확인하고 증거를 남긴다. 사용 중인 docker compose 스택과 분리된 aiops-verify 스택(포트 18000, 18100, 16379, 15432)을 띄우므로 실험 중에도 쓸 수 있다. 기본은 가짜 LLM(비용 없음)이고, 실제 LLM은 VERIFY_REAL_LLM=1일 때만 쓴다.
 ---
 
 # verify-aiops
@@ -29,8 +29,8 @@ export RUN_ID=<마지막 줄의 값>
 
 1. `aiops-verify` 스택이 이미 떠 있으면 멈춘다. 다른 검증이 쓰는 인스턴스를 같이 조작하지 않는다.
 2. 커밋된 `targets/shopapi`를 `$TMPDIR/aiops-verify/<RUN_ID>/`에 꺼낸다. 사용 중인 `targets/shopapi`에는 실험 중 주입된 버그가 있을 수 있어서 쓰지 않는다.
-3. `docker-compose.yml`에 `verify.compose.yml`을 덮어써서 redis, qdrant, postgres, api, worker 2개, shopapi를 띄운다. 데이터 볼륨은 `aiops-verify_*`라 처음에는 비어 있고, `migrate` 서비스가 빈 PostgreSQL에 스키마를 만든 뒤 api와 worker가 뜬다.
-4. api(18000)와 shopapi(18100)가 응답할 때까지 기다리고, 지식 문서를 Qdrant에 넣는다. 지식 문서까지 들어가야 쓸 수 있는 상태다. 출력 끝의 `ready`와 `RUN_ID=...`가 준비 완료 신호다.
+3. `docker-compose.yml`에 `verify.compose.yml`을 덮어써서 redis, postgres, api, worker 2개, shopapi를 띄운다. 데이터 볼륨은 `aiops-verify_*`라 처음에는 비어 있고, `migrate` 서비스가 빈 PostgreSQL에 스키마를 만든 뒤 api와 worker가 뜬다.
+4. api(18000)와 shopapi(18100)가 응답할 때까지 기다리고, 지식 문서를 PostgreSQL(`documents`)에 넣는다. 지식 문서까지 들어가야 쓸 수 있는 상태다. 출력 끝의 `ready`와 `RUN_ID=...`가 준비 완료 신호다.
 
 ## Doctor
 
@@ -38,7 +38,7 @@ export RUN_ID=<마지막 줄의 값>
 RUN_ID=$RUN_ID .claude/skills/verify-aiops/bin/doctor.sh
 ```
 
-읽기만 한다. 컨테이너 7개, 스키마 최신(migrate 종료 코드 0, alembic 0001), 포트 소유(18000이 aiops-verify), api와 shopapi 응답, 토큰 인증과 최적화 설정(모두 켬), 경량 모델(가짜 또는 실제), shopapi 복사본이 커밋된 버전과 같은지(남은 버그 주입 없음)를 확인한다. 하나라도 FAIL이면 검증하지 말고 cleanup 후 다시 launch한다. 이상해 보이면 언제든 먼저 실행한다.
+읽기만 한다. 컨테이너 6개, 스키마 최신(migrate 종료 코드 0, alembic 0001), 포트 소유(18000이 aiops-verify), api와 shopapi 응답, 토큰 인증과 최적화 설정(모두 켬), 경량 모델(가짜 또는 실제), shopapi 복사본이 커밋된 버전과 같은지(남은 버그 주입 없음)를 확인한다. 하나라도 FAIL이면 검증하지 말고 cleanup 후 다시 launch한다. 이상해 보이면 언제든 먼저 실행한다.
 
 ## Drive
 

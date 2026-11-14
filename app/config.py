@@ -18,12 +18,8 @@ class Settings(BaseSettings):
     queue_group: str = "ai-workers"
     queue_dlq_stream: str = "incidents:dlq"
 
-    # --- 영구 저장소 (PostgreSQL: 장애, LLM 호출, 수정안) ---
+    # --- 영구 저장소 (PostgreSQL: 장애, LLM 호출, 수정안, 지식 문서와 벡터) ---
     database_url: str = "postgresql://aiops:aiops@localhost:5432/aiops"
-
-    # --- Vector DB (Qdrant) ---
-    qdrant_url: str = "http://localhost:6333"    # :memory: 를 주면 프로세스 내 Qdrant로 동작
-    qdrant_collection: str = "knowledge"
 
     # --- 임베딩 ---
     embedding_provider: str = "fastembed"        # fastembed(로컬, 무료) | openai | hash(테스트용)

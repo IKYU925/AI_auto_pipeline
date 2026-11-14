@@ -1,0 +1,31 @@
+mode,query,expected,rank,hit_at_3,top3
+qdrant_vector,MissingSetting: PG_API_KEY is not set,shopapi/config-env.md,1,True,shopapi/config-env.md shopapi/config-env.md distractors/billing-config.md
+qdrant_vector,PaymentTimeout PG approve timeout,shopapi/payment-timeout.md,1,True,shopapi/payment-timeout.md shopapi/payment-timeout.md shopapi/payment-timeout.md
+qdrant_vector,POST /payments 504,shopapi/payment-timeout.md,1,True,shopapi/payment-timeout.md distractors/billing-config.md distractors/pg-cert.md
+qdrant_vector,ZeroDivisionError: float division by zero on POST /orders/summary,shopapi/orders-summary.md,6,False,distractors/search-score.md distractors/search-score.md distractors/report-batch.md
+qdrant_vector,PG_TIMEOUT_SEC,shopapi/payment-timeout.md,1,True,shopapi/payment-timeout.md postmortems/2026-08-payment-timeout.md distractors/pg-cert.md
+qdrant_vector,gift_wrap express 옵션 추가금,shopapi/pricing-coupon.md,1,True,shopapi/pricing-coupon.md shopapi/orders-summary.md distractors/shipping-timeout.md
+qdrant_vector,TAX_RATE,shopapi/pricing-coupon.md,9,False,runbooks/checkout-unit-price.md runbooks/checkout-unit-price.md shopapi/orders-summary.md
+qdrant_vector,checkout average_unit_price ZeroDivisionError,runbooks/checkout-unit-price.md,1,True,runbooks/checkout-unit-price.md runbooks/checkout-unit-price.md distractors/report-batch.md
+qdrant_vector,쿠폰 rate 범위 밖 400,shopapi/pricing-coupon.md,1,True,shopapi/pricing-coupon.md distractors/membership-discount.md runbooks/checkout-unit-price.md
+qdrant_vector,배포 직후 에러율 3배 롤백,common/deploy-rollback.md,1,True,common/deploy-rollback.md common/deploy-rollback.md postmortems/2026-08-payment-timeout.md
+pg_vector,MissingSetting: PG_API_KEY is not set,shopapi/config-env.md,1,True,shopapi/config-env.md shopapi/config-env.md distractors/billing-config.md
+pg_vector,PaymentTimeout PG approve timeout,shopapi/payment-timeout.md,1,True,shopapi/payment-timeout.md shopapi/payment-timeout.md shopapi/payment-timeout.md
+pg_vector,POST /payments 504,shopapi/payment-timeout.md,1,True,shopapi/payment-timeout.md distractors/billing-config.md distractors/pg-cert.md
+pg_vector,ZeroDivisionError: float division by zero on POST /orders/summary,shopapi/orders-summary.md,6,False,distractors/search-score.md distractors/search-score.md distractors/report-batch.md
+pg_vector,PG_TIMEOUT_SEC,shopapi/payment-timeout.md,1,True,shopapi/payment-timeout.md postmortems/2026-08-payment-timeout.md distractors/pg-cert.md
+pg_vector,gift_wrap express 옵션 추가금,shopapi/pricing-coupon.md,1,True,shopapi/pricing-coupon.md shopapi/orders-summary.md distractors/shipping-timeout.md
+pg_vector,TAX_RATE,shopapi/pricing-coupon.md,9,False,runbooks/checkout-unit-price.md runbooks/checkout-unit-price.md shopapi/orders-summary.md
+pg_vector,checkout average_unit_price ZeroDivisionError,runbooks/checkout-unit-price.md,1,True,runbooks/checkout-unit-price.md runbooks/checkout-unit-price.md distractors/report-batch.md
+pg_vector,쿠폰 rate 범위 밖 400,shopapi/pricing-coupon.md,1,True,shopapi/pricing-coupon.md distractors/membership-discount.md runbooks/checkout-unit-price.md
+pg_vector,배포 직후 에러율 3배 롤백,common/deploy-rollback.md,1,True,common/deploy-rollback.md common/deploy-rollback.md postmortems/2026-08-payment-timeout.md
+pg_hybrid,MissingSetting: PG_API_KEY is not set,shopapi/config-env.md,1,True,shopapi/config-env.md shopapi/config-env.md distractors/billing-config.md
+pg_hybrid,PaymentTimeout PG approve timeout,shopapi/payment-timeout.md,1,True,shopapi/payment-timeout.md shopapi/payment-timeout.md distractors/inventory-timeout.md
+pg_hybrid,POST /payments 504,shopapi/payment-timeout.md,1,True,shopapi/payment-timeout.md distractors/gateway-upstream.md distractors/pg-cert.md
+pg_hybrid,ZeroDivisionError: float division by zero on POST /orders/summary,shopapi/orders-summary.md,5,False,distractors/search-score.md distractors/search-score.md runbooks/checkout-unit-price.md
+pg_hybrid,PG_TIMEOUT_SEC,shopapi/payment-timeout.md,1,True,shopapi/payment-timeout.md distractors/inventory-timeout.md shopapi/payment-timeout.md
+pg_hybrid,gift_wrap express 옵션 추가금,shopapi/pricing-coupon.md,1,True,shopapi/pricing-coupon.md distractors/membership-discount.md distractors/incident-notice.md
+pg_hybrid,TAX_RATE,shopapi/pricing-coupon.md,2,True,shopapi/orders-summary.md shopapi/pricing-coupon.md shopapi/payment-timeout.md
+pg_hybrid,checkout average_unit_price ZeroDivisionError,runbooks/checkout-unit-price.md,2,True,shopapi/orders-summary.md runbooks/checkout-unit-price.md distractors/search-score.md
+pg_hybrid,쿠폰 rate 범위 밖 400,shopapi/pricing-coupon.md,1,True,shopapi/pricing-coupon.md distractors/membership-discount.md shopapi/orders-summary.md
+pg_hybrid,배포 직후 에러율 3배 롤백,common/deploy-rollback.md,1,True,common/deploy-rollback.md common/deploy-rollback.md shopapi/payment-timeout.md
