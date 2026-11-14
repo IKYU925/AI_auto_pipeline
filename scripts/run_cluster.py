@@ -97,6 +97,13 @@ def firing_automation_alerts() -> list[str]:
     return [a["labels"]["alertname"] for a in alerts if any(r["name"] == "ai-automation" for r in a["receivers"])]
 
 
+def check_clock(max_skew_sec: float = 5) -> None:
+    """맥이 잠들면 VM이 멈췄다가 시계가 늦은 채로 깨어날 수 있다. 그러면 시각 차이로 재는 값이 모두 틀린다."""
+    skew = float(psql("SELECT extract(epoch FROM now()) AS epoch")[0]["epoch"]) - time.time()
+    if abs(skew) > max_skew_sec:
+        raise RuntimeError(f"클러스터 DB 시계가 이 컴퓨터와 {skew:.0f}초 어긋난다. 노드 시계를 맞춘 뒤 다시 실행한다")
+
+
 def wait_quiet(timeout_sec: float = 900) -> None:
     deadline = time.monotonic() + timeout_sec
     while names := firing_automation_alerts():
@@ -239,6 +246,7 @@ def summarize(s: Scenario, fault_at: datetime, w: Waited, created: int) -> dict:
 def run_scenario(s: Scenario, shop: httpx.Client, timeout_sec: float) -> dict:
     base = load_scenario(s.trigger.base) if isinstance(s.trigger, Recurrence | Duplicate) else s
     code_bug = isinstance(base.trigger, Requests)
+    check_clock()
     wait_quiet()
     clear_caches()
     stop = threading.Event()
