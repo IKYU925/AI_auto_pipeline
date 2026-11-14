@@ -9,6 +9,7 @@ from app.core.store import FixStore, IncidentStore
 from app.db import checkpointer, make_pool
 from app.infra import make_redis
 from app.llm.cost import CostTracker
+from app.metrics import Metrics
 from app.llm.router import LLMRouter, default_model_factory
 from app.notify.slack import SlackNotifier
 from app.rag.embedder import CachedEmbedder, build_embedder
@@ -33,6 +34,10 @@ class Container:
     def queue(self) -> IncidentQueue:
         s = self.settings
         return IncidentQueue(self.redis, s.queue_stream, s.queue_group, s.queue_dlq_stream)
+
+    @cached_property
+    def metrics(self) -> Metrics:
+        return Metrics(self.queue)
 
     @cached_property
     def store(self) -> IncidentStore:

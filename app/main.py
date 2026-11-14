@@ -4,7 +4,8 @@ import logging
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Request, status
+from fastapi import Depends, FastAPI, Header, HTTPException, Request, Response, status
+from prometheus_client import CONTENT_TYPE_LATEST
 
 from app.container import Container
 from app.alerts import Alert
@@ -21,6 +22,7 @@ def accept(c: Container, body: IncidentIn) -> IncidentAccepted:
 
     # 같은 에러가 알림 폭주로 여러 번 들어와도 LLM 파이프라인은 한 번만 돈다
     existing = c.store.claim_fingerprint(fp, incident_id, c.settings.dedupe_ttl_sec)
+    c.metrics.received.labels(source=body.source, deduplicated=str(bool(existing)).lower()).inc()
     if existing:
         current = c.store.get(existing) or {}
         return IncidentAccepted(
@@ -54,6 +56,10 @@ def create_app(container: Container | None = None) -> FastAPI:
         with c.db.connection() as conn:
             conn.execute("SELECT 1")
         return {"status": "ok"}
+
+    @app.get("/metrics", include_in_schema=False)
+    def metrics(c: Container = Depends(get_container)) -> Response:
+        return Response(c.metrics.render(), media_type=CONTENT_TYPE_LATEST)
 
     @app.post(
         "/api/v1/incidents",

@@ -57,6 +57,7 @@ kind: Service
 metadata:
   name: ai-api
   namespace: aiops
+  labels: {app.kubernetes.io/name: ai-api}
 spec:
   selector: {app.kubernetes.io/name: ai-api}
   ports: [{name: http, port: 8000, targetPort: http}]

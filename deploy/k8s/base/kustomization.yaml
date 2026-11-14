@@ -7,3 +7,11 @@ resources:
   - aiops.yaml
   - monitoring.yaml
   - alert-rules.yaml
+# Grafana 사이드카가 모든 namespace에서 grafana_dashboard 라벨을 단 ConfigMap을 읽는다(plan.md 9-2)
+configMapGenerator:
+  - name: grafana-dashboards
+    namespace: aiops
+    files: [dashboards/shopapi.json, dashboards/automation.json]
+    options:
+      disableNameSuffixHash: true
+      labels: {grafana_dashboard: "1"}
