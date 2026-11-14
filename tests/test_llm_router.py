@@ -4,6 +4,12 @@ from app.llm.cost import BudgetExceeded
 from app.llm.schemas import Classification, FixProposal
 
 
+@pytest.fixture(autouse=True)
+def incidents(container):
+    for i in ("i1", "i2", "i3"):
+        container.store.create(i, f"fp-{i}", {"service": "checkout", "message": "err"})
+
+
 def test_task_routing_light_vs_heavy(container):
     r = container.router
     assert r.model_for("classify") == "fake:light"

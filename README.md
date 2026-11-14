@@ -97,10 +97,11 @@ flowchart LR
 
 ### 1. API 키 없이 전체 흐름 확인
 
-Redis, Qdrant, LLM 모두 메모리 대역으로 바꿔서 한 프로세스에서 돌린다. 첫 수정안은 일부러 회귀를 일으키도록(정수 나눗셈) 만들어 두어서 재시도 루프를 볼 수 있다.
+Redis, Qdrant, LLM은 메모리 대역으로 바꿔서 한 프로세스에서 돌린다. 장애 기록은 PostgreSQL에만 있으므로 PostgreSQL 컨테이너 하나는 띄운다(데모와 테스트는 `aiops_test` 데이터베이스를 만들어 쓴다). 첫 수정안은 일부러 회귀를 일으키도록(정수 나눗셈) 만들어 두어서 재시도 루프를 볼 수 있다.
 
 ```bash
 pip install -r requirements.txt
+docker compose up -d postgres
 python -m scripts.demo_offline
 python -m pytest
 ```

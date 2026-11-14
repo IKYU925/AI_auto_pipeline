@@ -6,7 +6,8 @@ need_run_id
 set -a; source "$ROOT/.env"; source "$STATE_BASE/$RUN_ID/run.env"; set +a
 ok=1
 check() { if eval "$2" >/dev/null 2>&1; then echo "OK   $1"; else echo "FAIL $1"; ok=0; fi; }
-check "컨테이너 6개 실행 중(redis, qdrant, api, worker 2, shopapi)" '[ "$(compose ps --status running -q | wc -l | tr -d " ")" = 6 ]'
+check "컨테이너 7개 실행 중(redis, qdrant, postgres, api, worker 2, shopapi)" '[ "$(compose ps --status running -q | wc -l | tr -d " ")" = 7 ]'
+check "스키마가 최신(migrate 성공, alembic 0001)" '[ "$(compose ps -a migrate --format "{{.ExitCode}}")" = 0 ] && compose exec -T postgres psql -U aiops -d aiops -tAc "SELECT version_num FROM alembic_version" | grep -qx 0001'
 check "18000 포트가 aiops-verify api" 'compose port api 8000 | grep -q 18000'
 check "api 상태 확인(/healthz)" 'curl -sf localhost:18000/healthz'
 check "shopapi 상태 확인(18100)" 'curl -sf localhost:18100/healthz'

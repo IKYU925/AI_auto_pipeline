@@ -43,11 +43,21 @@ def responder(fix: str):
 
 
 @pytest.fixture
-def shopapi(tmp_path, monkeypatch):
+def shopapi(tmp_path, monkeypatch, database):
     repo = tmp_path / "shopapi"
     shutil.copytree(rx.SHOPAPI, repo, ignore=shutil.ignore_patterns("__pycache__", ".pytest_cache"))
     monkeypatch.setattr(rx, "SHOPAPI", repo)
     return repo
+
+
+OPEN_POOLS = []
+
+
+@pytest.fixture(autouse=True)
+def close_pools():
+    yield
+    while OPEN_POOLS:
+        OPEN_POOLS.pop().close()
 
 
 def backend(shopapi, tmp_path, fix=GOOD_FIX) -> rx.Backend:
@@ -60,8 +70,9 @@ def backend(shopapi, tmp_path, fix=GOOD_FIX) -> rx.Backend:
         for mid, payload in c.queue.consume("t", count=20, block_ms=10):
             process_message(c, mid, payload)
 
+    OPEN_POOLS.append(c.db)
     api = TestClient(create_app(c), headers={"X-Automation-Token": "demo-token"})
-    return rx.Backend(api, c.redis, process=drain, interval_sec=0)
+    return rx.Backend(api, c.redis, c.db, process=drain, interval_sec=0)
 
 
 def run(sid, shopapi, tmp_path, fix=GOOD_FIX) -> dict:

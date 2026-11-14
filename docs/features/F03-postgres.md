@@ -1,6 +1,6 @@
 # F03. PostgreSQL 이전과 체크포인터 재개
 
-상태: 구현 중(Day 8~9)
+상태: 구현 중(Day 8~9 완료, Day 10 다음)
 관련: plan.md 8장, Day 8~13
 
 ## 문제
@@ -33,17 +33,17 @@
   - `GET /api/v1/incidents/{id}` 응답 모양은 1단계와 같다. 실험 스크립트와 n8n이 그대로 동작해야 한다.
   - 중복 제거(`dedupe:*`)는 Redis에 남긴다.
 - `CostTracker`: LLM 호출과 캐시 적중을 `llm_calls`에 한 줄씩 쌓는다. 요약(`usd`, `tokens_in`, `tokens_out`, `calls:<모델>`, `task:<작업>`, `cache_hit:<작업>`)과 예산 확인은 이 테이블을 집계한다.
-- 수정안: 검증 시도마다 `fixes`에 한 줄을 남긴다(실패한 시도는 `passed=false`). 재사용은 같은 지문의 가장 최근 `passed=true` 수정안을 쓴다.
-- 실험 스크립트의 캐시 비움은 Redis 키에 더해 `fixes`를 비운다.
+- 수정안: 검증 시도마다 `fixes`에 한 줄을 남긴다(실패한 시도는 `passed=false`). 재사용은 같은 지문의 가장 최근 `passed=true`이고 `retired_at`이 빈 수정안을 쓴다. 위험도(`risk`)도 저장해 재사용 카드에 보인다.
+- 실험 스크립트의 캐시 비움은 Redis 키를 지우고, `fixes`는 지우지 않고 `retired_at`을 채운다. 배포된 수정안을 다시 쓰지 않는 것과 같은 뜻이다.
 - 테스트는 실제 PostgreSQL(pgvector 이미지)에서 돈다. 테스트마다 테이블을 비운다.
 
 ## 완료 기준
 
-- [ ] `alembic upgrade head` 후 테이블 6개와 확장 2개가 있다(테스트)
-- [ ] `docker compose up -d`로 빈 볼륨에서 마이그레이션 후 api가 `/healthz`에 응답한다
-- [ ] 기존 파이프라인 테스트가 PostgreSQL 저장소로 모두 통과한다
-- [ ] 같은 장애 ID로 `incidents` 한 줄, `llm_calls` 호출 수만큼, `fixes` 시도 수만큼 쌓인다(테스트)
-- [ ] 서비스별 장애 수와 평균 비용을 SQL 한 번으로 조회한다(테스트)
+- [x] `alembic upgrade head` 후 테이블 6개와 확장 2개가 있다(`tests/test_postgres_store.py`)
+- [x] `docker compose up -d`로 빈 볼륨에서 마이그레이션 후 api가 `/healthz`에 응답한다(verify-aiops 스택, `results/verify/20261114-170144`)
+- [x] 기존 파이프라인 테스트가 PostgreSQL 저장소로 모두 통과한다(71개, 새 테스트 포함 76개)
+- [x] 같은 장애 ID로 `incidents` 한 줄, `llm_calls` 호출 수만큼, `fixes` 시도 수만큼 쌓인다(테스트, 검증 스택 S01 시도 3건)
+- [x] 서비스별 장애 수와 평균 비용을 SQL 한 번으로 조회한다(테스트, 검증 스택 `postgres_rows.txt`)
 - [ ] Day 10~13 완료 기준은 해당 작업을 시작할 때 이 문서에 추가한다
 
 ## 설계 메모
@@ -57,3 +57,5 @@
 - 없음
 
 ## 변경 이력
+
+- 2026-11-14 실험 초기화가 `fixes`를 지우면 앞 시나리오의 시도 기록이 사라졌다(검증 스택에서 S01의 시도 3건이 S10 초기화 때 삭제). 지우는 대신 `retired_at`으로 재사용 대상에서만 뺀다.

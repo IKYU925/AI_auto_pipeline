@@ -1,6 +1,6 @@
-"""API 키, Redis, Qdrant 없이 전체 파이프라인을 한 프로세스에서 돌려보는 데모.
+"""API 키, Redis, Qdrant 없이 전체 파이프라인을 한 프로세스에서 돌려보는 데모. PostgreSQL은 필요하다.
 
-실행: python -m scripts.demo_offline
+실행: docker compose up -d postgres && python -m scripts.demo_offline
 
 1) 지식 문서 증분 임베딩(두 번째 수집은 임베딩 0회)
 2) Slack(n8n) -> FastAPI 장애 접수, 중복 알림 제거
@@ -10,12 +10,14 @@
 5) 인프라 장애는 고성능 모델 없이 런북 안내로 종료
 """
 import json
+import os
 import tempfile
 
 from fastapi.testclient import TestClient
 
 from app.config import Settings
 from app.container import Container
+from app.db import ensure_database, migrate, truncate_all
 from app.llm.fake import fake_model_factory
 from app.main import create_app
 from app.rag.loader import load_markdown_dir
@@ -32,9 +34,14 @@ STACK = """Traceback (most recent call last):
 ZeroDivisionError: float division by zero"""
 
 
+# 장애 기록은 PostgreSQL에만 있다. 개발용 DB와 섞이지 않게 별도 데이터베이스를 쓴다
+TEST_DATABASE_URL = os.environ.get("TEST_DATABASE_URL", "postgresql://aiops:aiops@localhost:5432/aiops_test")
+
+
 def offline_settings(**overrides) -> Settings:
     base = dict(
         redis_url="fakeredis://",
+        database_url=TEST_DATABASE_URL,
         qdrant_url=":memory:",
         embedding_provider="hash",
         light_model="fake:light",
@@ -62,7 +69,10 @@ def drain(c: Container) -> list[dict]:
 
 def main() -> None:
     calls: list = []
+    ensure_database(TEST_DATABASE_URL)
+    migrate(TEST_DATABASE_URL)
     c = Container(offline_settings(), model_factory=fake_model_factory(demo_responder, calls))
+    truncate_all(c.db)
     client = TestClient(create_app(c))
     headers = {"X-Automation-Token": "demo-token"}
 

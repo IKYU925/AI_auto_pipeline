@@ -29,6 +29,8 @@ def create_app(container: Container | None = None) -> FastAPI:
     @app.get("/healthz")
     def healthz(c: Container = Depends(get_container)) -> dict:
         c.redis.ping()
+        with c.db.connection() as conn:
+            conn.execute("SELECT 1")
         return {"status": "ok"}
 
     @app.post(
@@ -49,7 +51,7 @@ def create_app(container: Container | None = None) -> FastAPI:
                 incident_id=existing, status=current.get("status", "queued"), deduplicated=True, fingerprint=fp
             )
 
-        c.store.set_status(incident_id, "queued", fingerprint=fp)
+        c.store.create(incident_id, fp, body.model_dump(mode="json"))
         c.queue.enqueue({"incident_id": incident_id, "fingerprint": fp, "incident": body.model_dump(mode="json")})
         return IncidentAccepted(incident_id=incident_id, status="queued", fingerprint=fp)
 
