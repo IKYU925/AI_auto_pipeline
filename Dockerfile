@@ -10,6 +10,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY app ./app
 COPY scripts ./scripts
 COPY knowledge ./knowledge
+COPY alembic.ini .
+COPY migrations ./migrations
 
 # fastembed 모델 캐시 볼륨도 runner가 쓸 수 있게 미리 만들어 둔다(없으면 볼륨이 root 소유로 생성됨)
 RUN useradd -m runner && mkdir -p /srv/artifacts /tmp/fastembed_cache && chown -R runner /srv /tmp/fastembed_cache

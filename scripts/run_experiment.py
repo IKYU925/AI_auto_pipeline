@@ -27,8 +27,11 @@ from pathlib import Path
 
 import httpx
 import yaml
+from psycopg_pool import ConnectionPool
 from redis import Redis
 
+from app.core.store import FixStore
+from app.db import make_pool
 from app.infra import make_redis
 from app.testing.runner import SandboxTestRunner
 
@@ -247,7 +250,7 @@ def judge(s: Scenario, patch: str) -> dict:
         shutil.rmtree(tmp, ignore_errors=True)
 
 
-CACHE_PATTERNS = ("llm:*", "fix:resolved:*", "dedupe:*", "rag:q:*")
+CACHE_PATTERNS = ("llm:*", "dedupe:*", "rag:q:*")
 CONDITIONS = {"A": True, "B": False}
 COLUMNS = [
     "condition", "run", "started_at", "scenario", "type", "difficulty", "incident_id",
@@ -258,11 +261,13 @@ COLUMNS = [
 ]
 
 
-def reset_caches(redis: Redis) -> None:
-    """임베딩 캐시는 LLM 비용과 무관한 로컬 계산이라 남긴다."""
+def reset_caches(redis: Redis, db: ConnectionPool) -> None:
+    """임베딩 캐시는 LLM 비용과 무관한 로컬 계산이라 남긴다.
+    검증된 수정안은 지우지 않고 배포된 것으로 표시해 재사용 대상에서만 뺀다(이력은 남는다)."""
     for pattern in CACHE_PATTERNS:
         for key in redis.scan_iter(pattern):
             redis.delete(key)
+    FixStore(db).retire_all()
 
 
 def verify_condition(api: httpx.Client, condition: str) -> dict:
@@ -278,6 +283,7 @@ def verify_condition(api: httpx.Client, condition: str) -> dict:
 class Backend:
     api: httpx.Client
     redis: Redis
+    db: ConnectionPool
     process: Callable[[], None] = lambda: None  # 실제 실행에서는 워커 컨테이너가 처리한다
     timeout_sec: float = 600
     interval_sec: float = 3
@@ -315,7 +321,7 @@ def _run_duplicate(base: Scenario, times: int, b: Backend) -> tuple[Run, int]:
 
 
 def run_scenario(s: Scenario, b: Backend) -> dict:
-    reset_caches(b.redis)
+    reset_caches(b.redis, b.db)
     match s.trigger:
         case Recurrence(base=base):
             base_s = load_scenario(base)
@@ -413,6 +419,7 @@ def main() -> None:
     ap.add_argument("--out", type=Path, help="결과를 붙일 CSV. 없으면 JSON 줄로만 출력")
     ap.add_argument("--api", default=os.environ.get("AUTOMATION_API", "http://localhost:8000"))
     ap.add_argument("--redis", default=os.environ.get("EXPERIMENT_REDIS_URL", "redis://localhost:6379/0"))
+    ap.add_argument("--database", default=os.environ.get("EXPERIMENT_DATABASE_URL", "postgresql://aiops:aiops@localhost:5432/aiops"))
     ap.add_argument("--timeout", type=float, default=600)
     ap.add_argument("--max-usd", type=float, help="누적 LLM 비용이 이 금액에 닿으면 남은 실행을 멈춘다")
     args = ap.parse_args()
@@ -420,7 +427,7 @@ def main() -> None:
     scenarios = [load_scenario(sid) for sid in args.scenarios]
     api = httpx.Client(base_url=args.api, headers={"X-Automation-Token": os.environ["AUTOMATION_TOKEN"]}, timeout=30)
     verify_condition(api, args.condition)
-    backend = Backend(api, make_redis(args.redis), timeout_sec=args.timeout)
+    backend = Backend(api, make_redis(args.redis), make_pool(args.database), timeout_sec=args.timeout)
 
     spent = run_all(scenarios, backend, args.condition, args.repeat, args.out, args.max_usd)
     print(f"누적 LLM 비용 ${spent:.4f}", file=sys.stderr)
