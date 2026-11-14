@@ -111,9 +111,18 @@ def check_clock(max_skew_sec: float = 5) -> None:
             raise RuntimeError(f"{name} 시계가 이 컴퓨터와 {skew:.0f}초 어긋난다. 노드 시계를 맞춘 뒤 다시 실행한다")
 
 
+def open_alert_incidents() -> list[str]:
+    """해소 알림을 아직 못 받은 장애. 같은 알림이 다시 뜨면 새 장애가 아니라 이 장애에 묶인다."""
+    rows = psql("""SELECT alertname FROM incidents WHERE source = 'alertmanager' AND alert_resolved_at IS NULL
+                   AND created_at > now() - interval '3 hours'""")
+    return [r["alertname"] for r in rows]
+
+
 def wait_quiet(timeout_sec: float = 900) -> None:
+    """Alertmanager에 firing 알림이 없고, 자동화도 이전 알림의 해소를 받았을 때까지 기다린다.
+    Alertmanager에서 풀린 직후 다음 장애를 넣으면 같은 알림이 다시 이어져 새 장애로 접수되지 않는다(S02에서 확인)."""
     deadline = time.monotonic() + timeout_sec
-    while names := firing_automation_alerts():
+    while names := firing_automation_alerts() + open_alert_incidents():
         if time.monotonic() > deadline:
             raise TimeoutError(f"자동화로 가는 알림이 풀리지 않는다: {names}")
         print(f"  알림 해소 대기: {names}", file=sys.stderr)
