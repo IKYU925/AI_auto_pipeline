@@ -29,11 +29,24 @@ CATALOG = [{"sku": f"SKU-{n:03d}", "name": f"상품 {n}", "price": 1000.0 * n} f
 INITIAL_STOCK = {p["sku"]: 10 for p in CATALOG}
 
 
+# Slack은 4,000자가 넘는 메시지를 둘로 나눠 올린다. 나뉘면 코드 블록이 닫히지 않아 스택트레이스를 읽을 수 없다
+SLACK_TEXT_LIMIT = 3500
+
+
+def slack_alert_text(request: Request, exc: Exception) -> str:
+    head = f"[shopapi] critical: {type(exc).__name__}: {exc} on {request.method} {request.url.path}\n```\n"
+    tb = "".join(traceback.format_exception(exc))
+    room = SLACK_TEXT_LIMIT - len(head) - len("...\n```")
+    if len(tb) > room:
+        # 원인에 가까운 안쪽 프레임과 예외 줄은 끝에 있으므로 앞부분을 줄 단위로 버린다
+        tb = "...\n" + tb[-room:].split("\n", 1)[-1]
+    return f"{head}{tb}```"
+
+
 def notify_slack(webhook_url: str, request: Request, exc: Exception) -> None:
     if not webhook_url:
         return
-    tb = "".join(traceback.format_exception(exc))
-    text = f"[shopapi] critical: {type(exc).__name__}: {exc} on {request.method} {request.url.path}\n```\n{tb}```"
+    text = slack_alert_text(request, exc)
     try:
         httpx.post(webhook_url, json={"text": text}, timeout=5)
     except httpx.HTTPError:
