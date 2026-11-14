@@ -28,7 +28,6 @@ services:
     volumes: !override
       - ${VERIFY_SHOPAPI:?launch.sh가 정한다}:/repo:ro
       - artifacts:/srv/artifacts
-      - fastembed-cache:/tmp/fastembed_cache
   shopapi:
     ports: !override ["18100:8100"]
     environment:
