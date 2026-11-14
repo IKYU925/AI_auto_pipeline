@@ -122,6 +122,7 @@ class Traffic:
 class NodeHalt:
     vm: str
     for_sec: float
+    during: str | None = None  # 노드를 멈추기 전에 처리를 걸어 둘 코드 버그 시나리오(재개 확인)
 
 
 @dataclass(frozen=True)

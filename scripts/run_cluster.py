@@ -51,7 +51,7 @@ COLUMNS = [
     "scenario", "type", "alert", "incident_id", "fault_at", "occurred_at", "received_at", "finished_at", "reported_at",
     "detect_sec", "deliver_sec", "process_sec", "total_sec", "outcome", "expected_outcome", "outcome_correct",
     "category", "expected_category", "category_correct", "attempts", "usd", "llm_calls", "heavy_calls",
-    "incidents_created", "other_incidents", "procedure_usd",
+    "incidents_created", "other_incidents", "procedure_usd", "note",
 ]
 
 
@@ -171,7 +171,8 @@ def run_traffic(t: Traffic, shop: httpx.Client, stop: threading.Event) -> None:
 
 
 def halt_node(vm: str, for_sec: float) -> None:
-    sh("vagrant", "halt", vm, cwd=INFRA)
+    """전원을 바로 끈다. 정상 종료면 워커가 SIGTERM을 받고 하던 일을 마칠 수 있어 장애가 아니다."""
+    sh("vagrant", "halt", "--force", vm, cwd=INFRA)
     print(f"  {vm} 정지, {for_sec:.0f}초 뒤 기동", file=sys.stderr)
     time.sleep(for_sec)
     sh("vagrant", "up", vm, cwd=INFRA)
@@ -195,14 +196,42 @@ class Waited:
 def wait_incident(alert: str, since: datetime, timeout_sec: float, skip: set[str] = frozenset()) -> Waited:
     deadline = time.monotonic() + timeout_sec
     while time.monotonic() < deadline:
-        rows = psql(f"""SELECT id, alertname, status, category, attempts, created_at, occurred_at, finished_at, report_ts
-                        FROM incidents WHERE source = 'alertmanager' AND created_at >= '{since.isoformat()}'
-                        ORDER BY created_at""")
+        try:
+            rows = psql(f"""SELECT id, alertname, status, category, attempts, created_at, occurred_at, finished_at,
+                                   report_ts FROM incidents
+                            WHERE source = 'alertmanager' AND created_at >= '{since.isoformat()}' ORDER BY created_at""")
+        except RuntimeError:
+            time.sleep(10)  # 노드 장애 중에는 DB가 없다
+            continue
         mine = [r for r in rows if r["alertname"] == alert and r["id"] not in skip]
         if mine and mine[0]["status"] in FINAL_STATUSES and mine[0]["report_ts"]:
             return Waited(mine[0], [r for r in rows if r["id"] != mine[0]["id"] and r["id"] not in skip])
         time.sleep(5)
     raise TimeoutError(f"{alert} 장애가 {timeout_sec:.0f}초 안에 끝나지 않았다")
+
+
+def wait_status(incident_id: str, statuses: set[str], timeout_sec: float) -> dict:
+    deadline = time.monotonic() + timeout_sec
+    while time.monotonic() < deadline:
+        try:
+            rows = psql(f"SELECT id, status, report_ts FROM incidents WHERE id = '{incident_id}'")
+        except RuntimeError:
+            rows = []
+        if rows and rows[0]["status"] in statuses:
+            return rows[0]
+        time.sleep(1)
+    raise TimeoutError(f"{incident_id}가 {sorted(statuses)} 상태가 되지 않았다")
+
+
+def resume_note(incident_id: str, timeout_sec: float) -> str:
+    """노드 장애 전에 처리 중이던 장애가 이어서 끝났는지. 같은 단계 호출이 2번 이상이면 그 단계를 다시 했다."""
+    try:
+        row = wait_status(incident_id, FINAL_STATUSES, timeout_sec)
+    except TimeoutError:
+        return f"재개 대상 {incident_id}: {timeout_sec:.0f}초 안에 끝나지 않음"
+    calls = psql(f"SELECT task, count(*) AS n FROM llm_calls WHERE incident_id = '{incident_id}' GROUP BY task ORDER BY task")
+    per_task = ",".join(f"{c['task']}x{c['n']}" for c in calls)
+    return f"재개 대상 {incident_id}: {row['status']}, 회신 {'있음' if row['report_ts'] else '없음'}, 호출 {per_task}"
 
 
 def wait_alert_resolved(incident_id: str, timeout_sec: float = 600) -> None:
@@ -271,7 +300,7 @@ def run_scenario(s: Scenario, shop: httpx.Client, timeout_sec: float) -> dict:
         if s.cluster.traffic:
             threading.Thread(target=run_traffic, args=(s.cluster.traffic, shop, stop), daemon=True).start()
         if s.cluster.node_halt:
-            halt_node(s.cluster.node_halt.vm, s.cluster.node_halt.for_sec)
+            return run_node_halt(s, shop, started, timeout_sec)
         w = wait_incident(base.cluster.alert, fault_at, timeout_sec)
         if isinstance(s.trigger, Recurrence):
             print(f"  base {base.id} 완료({w.incident['status']}), 알림 해소 뒤 재발", file=sys.stderr)
@@ -284,6 +313,39 @@ def run_scenario(s: Scenario, shop: httpx.Client, timeout_sec: float) -> dict:
     finally:
         stop.set()
         restore()
+
+
+def run_node_halt(s: Scenario, shop: httpx.Client, started: datetime, timeout_sec: float) -> dict:
+    h = s.cluster.node_halt
+    during_id = None
+    if h.during:
+        during = load_scenario(h.during)
+        deploy_bug(during.id)
+        send_requests(during.trigger.items, shop)
+        during_id = wait_incident_created(during.cluster.alert, started, timeout_sec)
+        wait_status(during_id, {"running"}, timeout_sec)
+        print(f"  {during.id} 장애 {during_id} 처리 중, 노드 정지", file=sys.stderr)
+    fault_at = now()
+    halt_node(h.vm, h.for_sec)
+    note = resume_note(during_id, timeout_sec) if during_id else ""
+    try:
+        w = wait_incident(s.cluster.alert, fault_at, timeout_sec, skip={during_id} if during_id else frozenset())
+    except TimeoutError:
+        return {"scenario": s.id, "type": s.type, "alert": s.cluster.alert, "fault_at": fault_at.isoformat(),
+                "outcome": "not_delivered", "expected_outcome": s.expected.outcome, "outcome_correct": False,
+                "procedure_usd": procedure_usd(started), "note": f"{s.cluster.alert} 알림이 자동화에 전달되지 않음. {note}"}
+    return {**summarize(s, fault_at, w, 1), "procedure_usd": procedure_usd(started), "note": note}
+
+
+def wait_incident_created(alert: str, since: datetime, timeout_sec: float) -> str:
+    deadline = time.monotonic() + timeout_sec
+    while time.monotonic() < deadline:
+        rows = psql(f"""SELECT id FROM incidents WHERE source = 'alertmanager' AND alertname = '{alert}'
+                        AND created_at >= '{since.isoformat()}' ORDER BY created_at LIMIT 1""")
+        if rows:
+            return rows[0]["id"]
+        time.sleep(2)
+    raise TimeoutError(f"{alert} 장애가 접수되지 않았다")
 
 
 def main() -> None:

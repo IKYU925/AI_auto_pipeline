@@ -11,4 +11,4 @@ alert:
   severity: critical
 cluster:
   alert: KubeNodeNotReady
-  node_halt: {vm: k3s-w1, for_sec: 180}
+  node_halt: {vm: k3s-w1, for_sec: 180, during: S02}
