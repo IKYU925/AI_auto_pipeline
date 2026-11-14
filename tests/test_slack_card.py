@@ -84,3 +84,11 @@ def test_long_fields_stay_inside_block_kit_limits():
 def test_reused_fix_card_says_no_llm_call():
     _, blocks = build_card(_state("resolved", reused_fix=True, fix={"explanation": "가드 추가", "risk": "low", "patch": "p"}))
     assert "수정안 재사용(LLM 호출 없음)" in _texts(blocks) and "0회" not in _texts(blocks)
+
+
+def test_card_body_sections_are_short_summaries():
+    long = "가" * 1000
+    _, blocks = build_card(_state("resolved", root_cause={"root_cause": long}, fix={"explanation": long, "risk": "low", "patch": "p"}))
+    bodies = [b["text"]["text"] for b in blocks if b["type"] == "section" and "text" in b and b["text"]["text"].startswith(("*원인*", "*수정*"))]
+    assert len(bodies) == 2 and all(len(t) < 340 for t in bodies)
+    assert bodies[1].endswith("(위험도 low)"), "잘라도 위험도는 남는다"
