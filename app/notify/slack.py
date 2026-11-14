@@ -16,4 +16,10 @@ class SlackNotifier:
         if not self.client:
             log.info("[slack disabled] #%s %s", channel, text[:500])
             return
-        self.client.chat_postMessage(channel=channel, text=text, thread_ts=thread_ts, mrkdwn=True)
+        from slack_sdk.errors import SlackApiError
+
+        try:
+            self.client.chat_postMessage(channel=channel, text=text, thread_ts=thread_ts, mrkdwn=True)
+        except SlackApiError as e:
+            # 처리 결과는 이미 저장됐다. 회신 실패로 워커가 멈추거나 메시지를 다시 처리하면 안 된다
+            log.warning("slack reply to #%s failed: %s", channel, e.response.get("error"))
