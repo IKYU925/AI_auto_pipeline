@@ -8,6 +8,7 @@ shopapi가 Slack에 올린 장애 알림의 스레드에 자동화 회신이 달
 """
 import argparse
 import csv
+import json
 import re
 import time
 from pathlib import Path
@@ -65,7 +66,7 @@ def run(sid: str, slack: Slack, timeout_sec: float) -> dict:
     if reply is None:
         raise SystemExit(f"{sid}: {timeout_sec}초 안에 스레드 회신이 없다")
     text = reply.get("text", "")
-    cost = re.search(r"LLM 비용\*: \$([\d.]+)", text)
+    cost = re.search(r"LLM 비용\*[^$]*\$([\d.]+)", json.dumps(reply.get("blocks", []), ensure_ascii=False))
     return {
         "scenario": sid,
         "alert_ts": alert["ts"],
