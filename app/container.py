@@ -6,7 +6,7 @@ from typing import Any
 from app.config import Settings, get_settings
 from app.core.queue import IncidentQueue
 from app.core.store import FixStore, IncidentStore
-from app.db import make_pool
+from app.db import checkpointer, make_pool
 from app.infra import make_redis
 from app.llm.cost import CostTracker
 from app.llm.router import LLMRouter, default_model_factory
@@ -77,4 +77,5 @@ class Container:
         from app.graph.workflow import build_graph
 
         nodes = Nodes(self.settings, self.router, self.retriever, self.cost, self.fixes)
-        return build_graph(nodes, self.settings.max_fix_attempts, early_exit=self.settings.opt_early_exit)
+        return build_graph(nodes, self.settings.max_fix_attempts, early_exit=self.settings.opt_early_exit,
+                           checkpointer=checkpointer(self.db) if self.settings.checkpoint_enabled else None)

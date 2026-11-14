@@ -1,6 +1,6 @@
 # F03. PostgreSQL 이전과 체크포인터 재개
 
-상태: 구현 중(Day 8~10 완료, Day 11 다음)
+상태: 구현 중(Day 8~11 완료, Day 12 다음)
 관련: plan.md 8장, Day 8~13
 
 ## 문제
@@ -46,13 +46,20 @@
 - [x] 서비스별 장애 수와 평균 비용을 SQL 한 번으로 조회한다(테스트, 검증 스택 `postgres_rows.txt`)
 - [x] 지식 문서 수집과 검색이 `documents` 테이블을 쓰고, 앱에서 Qdrant 의존이 없다(테스트 78개, 검증 스택 S10이 shopapi 결제 지연 런북을 찾음)
 - [x] 에러 코드 질의 10개의 상위 3개 적중률과 검색 지연을 Qdrant 벡터, pgvector 벡터, 하이브리드로 비교한 결과가 있다([phase2_retrieval.md](../../results/phase2_retrieval.md): 8/10, 8/10, 9/10)
-- [ ] Day 11~13 완료 기준은 해당 작업을 시작할 때 이 문서에 추가한다
+- [x] 테스트 단계에서 워커가 죽으면 다른 워커가 회수해 `run_tests`부터 이어 가고, 분류, 원인 분석, 첫 수정안 생성을 다시 부르지 않는다(`tests/test_resume.py`)
+- [x] 회신을 마친 메시지가 다시 처리돼도 Slack 회신은 한 번이다(`incidents.report_ts`)
+- [x] 체크포인트를 끄면(`CHECKPOINT_ENABLED=false`) 회수한 메시지를 처음부터 다시 처리한다. 재개 실험의 비교 조건이다
+- [ ] Day 12~13 완료 기준은 해당 작업을 시작할 때 이 문서에 추가한다
 
 ## 설계 메모
 
 - 저장소 클래스(`IncidentStore`, `CostTracker`)의 메서드는 그대로 두고 내부만 바꾼다. 호출부(API, 워커, 라우터, 그래프)를 건드리지 않아서 이전 전후 비교가 저장소 차이만 보여 준다.
 - 드라이버는 psycopg 3과 커넥션 풀이다. 체크포인터(`langgraph-checkpoint-postgres`)도 psycopg 3을 쓴다.
 - LLM 응답 캐시는 Redis에 남긴다. [0012](../decisions/0012-postgres-scope.md) 참고.
+- 체크포인터는 `thread_id = incident_id`다. 워커는 메시지를 받으면 체크포인트를 먼저 본다. 남은 단계가 있으면 그 단계부터 잇고, 그래프가 끝났으면 저장과 회신만 하고, 없으면 새로 시작한다.
+- 체크포인터 테이블은 `migrate` 서비스(`python -m app.db`)가 Alembic 다음에 만든다. 라이브러리가 자기 마이그레이션 버전을 따로 관리하기 때문이다.
+- 재개하면 보고 단계가 다시 돌 수 있다. 그래서 `fixes`에 `(incident_id, attempt, passed)` 유일 조건을 두었다(0002).
+- `checkpoint_enabled`는 `OPT_*` 묶음에 넣지 않았다. 비용 최적화가 아니라 장애 복구 기능이라, 넣으면 1단계 A/B 조건 확인이 깨진다.
 
 ## 열린 질문
 
