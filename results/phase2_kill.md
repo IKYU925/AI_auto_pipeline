@@ -1,4 +1,4 @@
-# 2단계 워커 강제 종료 실험(Day 12)
+# 2단계 워커 강제 종료 실험(2-5)
 
 실행: `scripts/kill_experiment.py` (2026-11-14, verify-aiops 스택, 원자료 `results/phase2_kill.csv`)
 

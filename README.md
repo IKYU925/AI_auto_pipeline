@@ -62,7 +62,7 @@ flowchart LR
 - 행 기준 A가 B보다 28% 싸다. 차이의 출처는 코드 버그의 분류 모델(Haiku), 비코드 장애의 조기 종료, 재발 시 수정안 재사용이다(시나리오 유형별로 나눈 합이 전체 차이와 맞음).
 - 조건마다 1회 실행이다(비용 절약, [decisions/0010](docs/decisions/0010-single-run-ab.md)). 작은 차이는 판단을 보류한다.
 - 시그니처가 어긋난 버그(S08)는 조건마다 3회 돌려 6회 중 5회가 공개 테스트를 모두 통과한 잘못된 수정이었다. 숨은 테스트만 이를 잡았다. "테스트 통과"를 그대로 믿으면 안 되는 장애 유형이 있다.
-- Slack 실연동: shopapi 장애가 `#alert`에 올라오면 25~31초 안에 같은 스레드에 검증된 수정안이 회신된다(실제 LLM 3건, [results/day4_slack.md](results/day4_slack.md)).
+- Slack 실연동: shopapi 장애가 `#alert`에 올라오면 25~31초 안에 같은 스레드에 검증된 수정안이 회신된다(실제 LLM 3건, [results/phase1_slack.md](results/phase1_slack.md)).
 
 ## 비용 최적화 포인트
 
