@@ -1,0 +1,7 @@
+Defaulted container "worker" out of: worker, wait (init)
+Defaulted container "worker" out of: worker, wait (init)
+2026-11-14 11:58:18,826 INFO httpx2 HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-11-14 11:58:32,959 INFO httpx2 HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-11-14 11:58:40,227 INFO httpx2 HTTP Request: POST https://api.anthropic.com/v1/messages "HTTP/1.1 200 OK"
+2026-11-14 11:58:41,457 WARNING app.notify.slack slack reply to #C-EXPERIMENT failed: channel_not_found
+2026-11-14 11:58:41,751 WARNING app.notify.slack slack reply to #C-EXPERIMENT failed: channel_not_found
