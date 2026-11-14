@@ -162,10 +162,20 @@ def deploy_bug(scenario_id: str) -> None:
         kubectl("-n", ns, "rollout", "status", f"deploy/{deploy}", "--timeout=300s")
 
 
+GATEWAY_ERRORS = {502, 503, 504}
+
+
 def send_requests(items: list[dict], shop: httpx.Client) -> None:
+    """배포 직후에는 ingress가 아직 새 Pod로 연결하지 못해 502가 난다(S08에서 확인). 앱의 응답이 올 때까지 다시 보낸다."""
     for req in items:
-        r = shop.request(req["method"], req["path"], json=req.get("json"), params=req.get("params"))
-        print(f"  {req['method']} {req['path']} -> {r.status_code}", file=sys.stderr)
+        for _ in range(10):
+            r = shop.request(req["method"], req["path"], json=req.get("json"), params=req.get("params"))
+            print(f"  {req['method']} {req['path']} -> {r.status_code}", file=sys.stderr)
+            if r.status_code not in GATEWAY_ERRORS:
+                break
+            time.sleep(3)
+        else:
+            raise RuntimeError(f"{req['path']}가 계속 {r.status_code}로 끝나 장애를 넣지 못했다")
 
 
 def run_traffic(t: Traffic, shop: httpx.Client, stop: threading.Event) -> None:
