@@ -29,7 +29,8 @@ COLUMNS = ["started_at", "checkpoint", "kill_after", "run", "incident_id", "kill
 
 
 def docker(*args: str) -> str:
-    return subprocess.run(["docker", *args], check=True, capture_output=True, text=True).stdout
+    # 컨테이너 로그(python logging)는 stderr로 나오므로 둘 다 읽는다
+    return subprocess.run(["docker", *args], check=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True).stdout
 
 
 def wait_until(fn, timeout_sec: float, interval_sec: float = 0.2):

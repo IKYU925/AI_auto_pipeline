@@ -1,0 +1,13 @@
+started_at,checkpoint,kill_after,run,incident_id,killed,resumed_from,outcome,llm_calls,llm_calls_after_kill,heavy_calls_after_kill,cache_hits,elapsed_sec,replies
+2026-11-14T08:32:45+00:00,False,root_cause,1,f75fb72bdd57,8f7548eb44a5,,escalated,5,3,3,2,45.3,1
+2026-11-14T08:33:30+00:00,False,root_cause,2,ef8cb76fca7f,d09cb64161a0,,escalated,5,3,3,2,40.9,1
+2026-11-14T08:34:12+00:00,False,root_cause,3,584179877b79,8f7548eb44a5,,escalated,5,3,3,2,40.9,1
+2026-11-14T08:34:53+00:00,False,generate_fix,1,9b16b38a7617,d09cb64161a0,,escalated,6,3,3,2,41.0,1
+2026-11-14T08:35:34+00:00,False,generate_fix,2,f494458f6862,8f7548eb44a5,,escalated,6,3,3,2,40.8,1
+2026-11-14T08:36:15+00:00,False,generate_fix,3,96ffc616d529,d09cb64161a0,,escalated,6,3,3,2,40.8,1
+2026-11-14T08:37:57+00:00,True,root_cause,1,739d31220838,4feab5a2c8ec,generate_fix,escalated,5,3,3,0,41.0,1
+2026-11-14T08:38:39+00:00,True,root_cause,2,85de20fbe246,abc7ce54daa5,generate_fix,escalated,5,3,3,0,40.9,1
+2026-11-14T08:39:20+00:00,True,root_cause,3,cbe28649c23b,4feab5a2c8ec,generate_fix,escalated,5,3,3,0,40.7,1
+2026-11-14T08:40:01+00:00,True,generate_fix,1,5771d516271b,abc7ce54daa5,generate_fix,escalated,5,2,2,0,37.9,1
+2026-11-14T08:40:40+00:00,True,generate_fix,2,173ed19f01fb,4feab5a2c8ec,generate_fix,escalated,5,2,2,0,37.8,1
+2026-11-14T08:41:18+00:00,True,generate_fix,3,87014e9a0038,abc7ce54daa5,generate_fix,escalated,5,2,2,0,37.8,1
