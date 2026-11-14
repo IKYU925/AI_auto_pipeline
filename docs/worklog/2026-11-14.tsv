@@ -36,3 +36,10 @@ ts	phase	decision	why	evidence	result
 2026-11-13T21:10Z	exp	B의 S08 거짓 통과를 최적화 효과로 보지 않음	A와 B 모두 같은 Opus가 수정을 생성했고 1회 실행	results/phase1_summary.md, 두 조건의 S08 패치 비교	LLM 결과 흔들림으로 기록
 2026-11-13T21:15Z	verify	검증 스킬 verify-aiops 작성 후 launch, doctor, 장애 접수 기능, cleanup까지 증명	사용자가 본 실험 후 검증 스킬 생성을 지시	results/verify/proof1/, .claude/skills/verify-aiops	doctor 7개 OK, cleanup 후 증거 6개 파일 남음
 2026-11-13T21:38Z	verify	launch 직후 첫 장애가 10~20초 걸리는 것을 기능 지도 주의사항에 추가	워커가 임베딩 모델을 처음 불러옴	results/verify/proof1/worker.log	기능 지도 수정
+2026-11-14T03:40Z	start	이어서 작업. 이전 행(2026-11-13T15:45Z~21:38Z)은 같은 대화의 앞 단계에서 썼음	새 지시(S08 반복, Day 4 Slack)를 받아 계속	이 대화	-
+2026-11-14T03:40Z	review	Sonnet 교차 검토 지적 확인: PR #10에 results/verify 커밋, S12 base 비용 미집계, 요약의 추정 표시와 결과 정확도 누락	작업한 모델과 다른 모델의 검토	git ls-tree origin/results/phase1, Redis incident 6a766eb6c7c5, 07b6517146c1	지적이 사실로 확인됨
+2026-11-14T03:45Z	f02	재발 절차 비용을 procedure_usd로 남기고 --max-usd 누적에 사용	S12 base 비용(A $0.081, B $0.086)이 총비용과 상한에서 빠짐	PR #12 커밋, tests/test_run_experiment.py	테스트 통과
+2026-11-14T03:50Z	exp	S08만 조건마다 2회 추가 실행	사용자가 A/B 결과가 갈린 S08 반복을 선택	results/s08_repeat/, 실행마다 워커 로그 저장	A 1/3, B 0/3 올바른 수정, 6회 중 5회 거짓 통과, $0.35
+2026-11-14T04:00Z	pr	사용자가 #7~#11을 병합한 뒤 그 브랜치에 올린 커밋 3개를 새 PR로 옮김	병합 후 커밋은 main에 들어가지 않음	PR #12(cherry-pick 693ffb5, b5c4a27, 6fb99c9)	충돌 없음, 테스트 61개 통과
+2026-11-14T04:10Z	f08	Slack 이벤트의 HTML 엔티티 복원을 n8n 파서에 추가, node로 파서를 실행하는 테스트 작성	트레이스백의 <module> 등이 &lt;module&gt;로 깨짐	PR #13, tests/test_n8n_parser.py	수정 전 실패, 수정 후 통과
+2026-11-14T04:15Z	f08	n8n 기동, 워크플로 가져오기, n8n에서 api 토큰 요청 확인	Slack 토큰 없이 확인할 수 있는 범위	n8n import:workflow 성공, /api/v1/config 응답	Slack 앱과 ngrok 대기
