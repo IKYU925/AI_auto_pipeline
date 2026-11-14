@@ -45,7 +45,8 @@ def offline_settings(**overrides) -> Settings:
         automation_token="demo-token",
     )
     base.update(overrides)
-    return Settings(**base)
+    # 개발자 .env(실제 Slack 토큰, OPT_* 등)가 데모와 테스트에 섞이지 않게 읽지 않는다
+    return Settings(_env_file=None, **base)
 
 
 def section(title: str) -> None:
