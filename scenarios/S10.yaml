@@ -9,3 +9,8 @@ expected:
 alert:
   message: "ShopapiSlowPayment: POST /payments p95 8.4s > 5s for 2m, PaymentTimeout 17건 (PG approve timeout after 3.0s)"
   severity: warning
+# 응답하지 않는 주소로 결제 대행사 연결을 보내 실제로 느리게 만든다. 타임아웃 예외로 ShopapiException도 함께 뜰 수 있다
+cluster:
+  alert: ShopapiSlowPayment
+  env: {PG_URL: "http://10.255.255.1:8200", PG_TIMEOUT_SEC: "8"}
+  traffic: {method: POST, path: /payments, json: {order_id: O-1001, amount: 12000}, every_sec: 2, for_sec: 300}

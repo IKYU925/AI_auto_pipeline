@@ -64,8 +64,9 @@ def test_firing_alerts_become_incidents_and_resolved_marks_the_incident(containe
     res = client.post("/api/v1/alerts/alertmanager", json=webhook(alert("KubePodCrashLooping", "resolved", fp="fp-crash")))
     assert res.json()["resolved"] == 1
     with container.db.connection() as conn:
-        row = conn.execute("SELECT alertname, alert_resolved_at FROM incidents WHERE id = %s", (crash_id,)).fetchone()
+        row = conn.execute("SELECT alertname, occurred_at, alert_resolved_at FROM incidents WHERE id = %s", (crash_id,)).fetchone()
     assert row["alertname"] == "KubePodCrashLooping" and row["alert_resolved_at"].isoformat().startswith("2026-11-14T10:20")
+    assert row["occurred_at"].isoformat().startswith("2026-11-14T10:00"), "알림 시작 시각이 감지 시간 측정의 기준"
 
 
 def test_repeated_firing_alert_does_not_open_a_second_incident(container):

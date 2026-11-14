@@ -1,0 +1,15 @@
+id: S15
+title: 메모리 limit보다 큰 요청으로 shopapi Pod가 OOMKilled
+type: infra
+difficulty: easy
+expected:
+  category: infra
+  needs_code_fix: false
+  outcome: no_code_fix
+alert:
+  message: "PodOOMKilled: shop/shopapi 컨테이너가 메모리 limit(128Mi)을 넘어 OOMKilled로 재시작됨"
+  severity: critical
+cluster:
+  alert: PodOOMKilled
+  memory_limit: 128Mi
+  traffic: {method: POST, path: /orders/summary, json: {items: [{sku: SKU-001, price: 1000, quantity: 1}]}, repeat_items: 400000, every_sec: 10, for_sec: 60}
