@@ -1,0 +1,51 @@
+# 대상 서비스. aiops 이미지의 /repo에 든 shopapi 소스로 뜬다(plan.md 9-1)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shopapi
+  namespace: shop
+spec:
+  replicas: 2
+  selector:
+    matchLabels: {app.kubernetes.io/name: shopapi}
+  template:
+    metadata:
+      # Alloy가 이 라벨을 Loki 스트림 라벨 service로 옮긴다. 없으면 알림 규칙이 로그를 못 찾는다
+      labels: {app.kubernetes.io/name: shopapi}
+    spec:
+      nodeSelector: {workload: app}
+      containers:
+        - name: shopapi
+          image: aiops
+          workingDir: /repo
+          command: ["uvicorn", "shopapi.main:create_app", "--factory", "--host", "0.0.0.0", "--port", "8100"]
+          env:
+            - {name: PG_API_KEY, value: dev-key}
+          ports: [{name: http, containerPort: 8100}]
+          readinessProbe: {httpGet: {path: /healthz, port: http}, periodSeconds: 5}
+          # S15(OOMKilled)에서 이 limit을 낮춰 쓴다
+          resources:
+            requests: {memory: 96Mi, cpu: 50m}
+            limits: {memory: 256Mi}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: shopapi
+  namespace: shop
+  labels: {app.kubernetes.io/name: shopapi}
+spec:
+  selector: {app.kubernetes.io/name: shopapi}
+  ports: [{name: http, port: 8100, targetPort: http}]
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: shopapi
+  namespace: shop
+spec:
+  rules:
+    - host: shop.192.168.56.10.nip.io
+      http:
+        paths:
+          - {path: /, pathType: Prefix, backend: {service: {name: shopapi, port: {name: http}}}}

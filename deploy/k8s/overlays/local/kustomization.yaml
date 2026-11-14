@@ -1,0 +1,9 @@
+# 로컬 K3s(infra_local_set). 이미지 태그는 scripts/build_push.sh가 고친다
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../base
+images:
+  - name: aiops
+    newName: 192.168.56.10:30500/aiops
+    newTag: base-eb616c4-97cd721

@@ -1,0 +1,80 @@
+# 영구 저장소. local-path PVC라 데이터가 k3s-w1 디스크에 묶인다(plan.md 9-6 S16 설명)
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+  namespace: aiops
+spec:
+  serviceName: postgres
+  replicas: 1
+  selector:
+    matchLabels: {app.kubernetes.io/name: postgres}
+  template:
+    metadata:
+      labels: {app.kubernetes.io/name: postgres}
+    spec:
+      nodeSelector: {workload: app}
+      containers:
+        - name: postgres
+          image: pgvector/pgvector:pg17
+          env:
+            - {name: POSTGRES_USER, value: aiops}
+            - {name: POSTGRES_DB, value: aiops}
+            - {name: POSTGRES_PASSWORD, valueFrom: {secretKeyRef: {name: aiops-secrets, key: POSTGRES_PASSWORD}}}
+            - {name: PGDATA, value: /var/lib/postgresql/data/pgdata}
+          ports: [{name: pg, containerPort: 5432}]
+          readinessProbe: {exec: {command: ["pg_isready", "-U", "aiops", "-d", "aiops"]}, periodSeconds: 5}
+          volumeMounts: [{name: data, mountPath: /var/lib/postgresql/data}]
+          resources:
+            requests: {memory: 192Mi, cpu: 100m}
+            limits: {memory: 512Mi}
+  volumeClaimTemplates:
+    - metadata: {name: data}
+      spec: {accessModes: [ReadWriteOnce], resources: {requests: {storage: 2Gi}}}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: aiops
+spec:
+  selector: {app.kubernetes.io/name: postgres}
+  ports: [{name: pg, port: 5432, targetPort: pg}]
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: redis
+  namespace: aiops
+spec:
+  serviceName: redis
+  replicas: 1
+  selector:
+    matchLabels: {app.kubernetes.io/name: redis}
+  template:
+    metadata:
+      labels: {app.kubernetes.io/name: redis}
+    spec:
+      nodeSelector: {workload: app}
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          # 큐 메시지가 재시작 후에도 남도록 AOF 사용
+          args: ["redis-server", "--appendonly", "yes"]
+          ports: [{name: redis, containerPort: 6379}]
+          volumeMounts: [{name: data, mountPath: /data}]
+          resources:
+            requests: {memory: 48Mi, cpu: 20m}
+            limits: {memory: 128Mi}
+  volumeClaimTemplates:
+    - metadata: {name: data}
+      spec: {accessModes: [ReadWriteOnce], resources: {requests: {storage: 512Mi}}}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: aiops
+spec:
+  selector: {app.kubernetes.io/name: redis}
+  ports: [{name: redis, port: 6379, targetPort: redis}]
