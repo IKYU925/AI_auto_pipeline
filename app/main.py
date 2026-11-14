@@ -71,6 +71,7 @@ def create_app(container: Container | None = None) -> FastAPI:
             "heavy_model": s.heavy_model,
             "max_fix_attempts": s.max_fix_attempts,
             "incident_budget_usd": s.incident_budget_usd,
+            "checkpoint_enabled": s.checkpoint_enabled,
             "optimizations": {name.removeprefix("opt_"): getattr(s, name) for name in type(s).model_fields if name.startswith("opt_")},
         }
 

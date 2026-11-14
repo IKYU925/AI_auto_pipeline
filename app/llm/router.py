@@ -8,6 +8,7 @@
 import hashlib
 import json
 import logging
+import os
 from collections.abc import Callable
 from enum import Enum
 from typing import Any, TypeVar
@@ -55,7 +56,7 @@ def default_model_factory(name: str) -> Any:
         from app.llm.fake import FakeChatModel
         from scripts.demo_responder import demo_responder
 
-        return FakeChatModel(name, demo_responder, [])
+        return FakeChatModel(name, demo_responder, [], delay_sec=float(os.environ.get("FAKE_LLM_DELAY_SEC", "0")))
     raise ValueError(f"unsupported model provider: {name}")
 
 

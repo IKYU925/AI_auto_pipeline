@@ -10,6 +10,10 @@ x-verify-env: &verify-env
   OPT_FIX_REUSE: "true"
   # 검증 스택은 실제 Slack에 아무것도 올리지 않는다(회신은 로그로만 남는다)
   SLACK_BOT_TOKEN: ""
+  # 워커 강제 종료 실험(scripts/kill_experiment.py)용. 죽은 워커의 메시지를 30초 뒤 회수한다
+  QUEUE_CLAIM_IDLE_MS: "30000"
+  CHECKPOINT_ENABLED: ${VERIFY_CHECKPOINT:-true}
+  FAKE_LLM_DELAY_SEC: ${VERIFY_FAKE_LLM_DELAY_SEC:-0}
 
 services:
   redis:

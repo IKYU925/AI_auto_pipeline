@@ -30,7 +30,7 @@ services:
     env_file: .env
     environment: &db
       - DATABASE_URL=postgresql://aiops:${POSTGRES_PASSWORD:-aiops}@postgres:5432/aiops
-    command: ["alembic", "upgrade", "head"]
+    command: ["python", "-m", "app.db"]   # alembic upgrade head + LangGraph 체크포인트 테이블
     depends_on:
       postgres: {condition: service_healthy}
 

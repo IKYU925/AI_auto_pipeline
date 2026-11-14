@@ -22,7 +22,7 @@ def _stopped(state: IncidentState) -> bool:
     return state.get("outcome") == "budget_exceeded"
 
 
-def build_graph(nodes: Nodes, max_attempts: int, early_exit: bool = True):
+def build_graph(nodes: Nodes, max_attempts: int, early_exit: bool = True, checkpointer=None):
     g = StateGraph(IncidentState)
     g.add_node("classify", nodes.classify)
     g.add_node("retrieve_context", nodes.retrieve_context)
@@ -87,7 +87,7 @@ def build_graph(nodes: Nodes, max_attempts: int, early_exit: bool = True):
     g.add_conditional_edges("run_tests", after_tests, ["report", "generate_fix", "analyze_root_cause", "escalate"])
     g.add_edge("escalate", "report")
     g.add_edge("report", END)
-    return g.compile()
+    return g.compile(checkpointer=checkpointer)
 
 
 def recursion_limit(max_attempts: int) -> int:

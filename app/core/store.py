@@ -49,6 +49,15 @@ class IncidentStore:
             out["report"] = row["report"]
         return out
 
+    def report_ts(self, incident_id: str) -> str | None:
+        with self.pool.connection() as conn:
+            row = conn.execute("SELECT report_ts FROM incidents WHERE id = %s", (incident_id,)).fetchone()
+        return row["report_ts"] if row else None
+
+    def set_report_ts(self, incident_id: str, ts: str) -> None:
+        with self.pool.connection() as conn:
+            conn.execute("UPDATE incidents SET report_ts = %s WHERE id = %s", (ts, incident_id))
+
     def claim_fingerprint(self, fp: str, incident_id: str, ttl_sec: int) -> str | None:
         """처음 보는 지문이면 None, 이미 처리 중인 지문이면 기존 incident_id를 돌려준다."""
         key = f"dedupe:{fp}"
@@ -68,7 +77,8 @@ class FixStore:
         with self.pool.connection() as conn:
             conn.execute(
                 """INSERT INTO fixes (incident_id, fingerprint, attempt, patch, explanation, risk, test_summary, passed)
-                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s)""",
+                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                   ON CONFLICT ON CONSTRAINT fixes_attempt_once DO NOTHING""",
                 (incident_id, fingerprint, attempt, fix["patch"], fix.get("explanation"), fix.get("risk"),
                  test_summary, passed),
             )
