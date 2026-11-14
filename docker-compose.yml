@@ -47,7 +47,7 @@ services:
       - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
       - AUTOMATION_TOKEN=${AUTOMATION_TOKEN}
       - N8N_BLOCK_ENV_ACCESS_IN_NODE=false
-      - WEBHOOK_URL=${N8N_WEBHOOK_URL:-http://localhost:5678/}
+      - N8N_WEBHOOK_URL=${N8N_WEBHOOK_URL:-http://localhost:5678/}
     ports: ["5678:5678"]
     volumes: [n8n-data:/home/node/.n8n]
 
