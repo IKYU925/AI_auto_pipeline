@@ -82,3 +82,6 @@ ts	phase	decision	why	evidence	result
 2026-11-14T13:40Z	3-2	init container(python -m app.wait)로 DB, Redis 준비와 스키마 완료를 기다린 뒤 앱 시작	첫 배포에서 api, 워커가 postgres보다 먼저 떠 접속 실패, 커넥션 풀이 DB 준비 뒤에도 30초 PoolTimeout으로 회복 못 함	deploy/k8s/base/aiops.yaml, app/wait.py	재배포에서 재시작 0회
 2026-11-14T13:40Z	3-2	Secret은 Git에 두지 않고 scripts/k8s_secrets.sh가 .env와 .ai-automation-token에서 읽어 생성	비밀값 저장소 노출 방지, 값은 임시 파일(600)로 넘겨 ps에 안 보이게	scripts/k8s_secrets.sh	키 5개 생성
 2026-11-14T13:45Z	3-2	VM 할당 축소는 보류	앱 Pod 8개 합계 약 380MB, 배포 뒤 맥 스왑 5.28GB로 변화 없음, 워커가 장애를 처리할 때(3-3) 다시 측정	kubectl top, vm.swapusage	-
+2026-11-14T20:50Z	3-3	클러스터에서 S01 실제 LLM 실행, resolved 1회 시도 $0.092	plan.md 3-3 완료 기준(1, 2단계와 같은 결과)	results/phase3_s01_cluster.md	46.6초 중 약 14초는 워커의 임베딩 모델 첫 다운로드
+2026-11-14T20:52Z	3-3	migrate Job을 api init container로 이동	Job은 이미지를 바꿀 수 없어 버그 주입 이미지 재배포 때 적용 실패	deploy/k8s/base/aiops.yaml	-
+2026-11-14T20:55Z	3-3	shopapi setup_logging이 로거 레벨을 정하지 않게 변경	실험 스크립트와 시나리오 검사가 로거를 끈 설정을 create_app이 INFO로 되돌려 결과 출력에 로그가 섞임	targets/shopapi/shopapi/observability.py	재현 출력 확인

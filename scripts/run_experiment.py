@@ -12,6 +12,7 @@
 import argparse
 import csv
 import json
+import logging
 import os
 import shutil
 import subprocess
@@ -162,6 +163,8 @@ def _load_shopapi(repo: Path):
         from shopapi.main import create_app
     finally:
         sys.path.remove(str(repo))
+    # shopapi는 클러스터 수집용 JSON 로그를 stdout에 쓴다. 재현 중에는 실험 결과(JSON 줄)와 섞이지 않게 끈다
+    logging.getLogger("shopapi").setLevel(logging.CRITICAL)
     return Settings, create_app
 
 

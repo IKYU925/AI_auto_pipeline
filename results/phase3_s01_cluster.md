@@ -1,0 +1,36 @@
+# 3-3 클러스터에서 S01 실행
+
+실행: 2026-11-14 KST 20시 44분, 로컬 K3s(infra_local_set, VirtualBox 3노드), 실제 LLM(Haiku 5.5, Opus 5.5), 최적화 모두 켬, 체크포인터 켬.
+원본은 [phase3_s01_cluster.csv](phase3_s01_cluster.csv), 실행 로그와 워커 로그는 `phase3_logs/`다.
+
+절차는 다음과 같다.
+
+1. S01 버그를 넣은 이미지(`aiops:s01-3bc3756-d600a24`)로 shopapi와 워커를 배포했다.
+2. 클러스터 shopapi에 S01 요청을 보내 관측 도구를 확인했다.
+3. 실험 스크립트로 클러스터 API(`aiops.192.168.56.10.nip.io`)에 접수했다.
+4. 버그 없는 이미지로 되돌렸다.
+
+## 결과
+
+| 항목 | 1단계 A | 2단계 A | 3단계 클러스터 |
+| --- | --- | --- | --- |
+| 결과 | resolved | resolved | resolved |
+| 시도 | 1 | 2 | 1 |
+| 숨은 테스트, 전체 테스트 | 통과 | 통과 | 통과 |
+| LLM 호출, 비용 | 3회, $0.078 | 4회, $0.129 | 3회, $0.092 |
+| 처리 시간(실험 스크립트) | 27.2초 | 42.3초 | 48.4초 |
+
+- 클러스터 shopapi는 S01 요청에 500을 돌려줬다.
+  - Loki에는 `{namespace="shop", service="shopapi"}` 스트림에 `level=ERROR`, `path=/orders/summary`, `exc_info` 마지막 줄 `ZeroDivisionError`인 로그 1건이 들어왔다.
+  - Prometheus에는 `http_requests_total{namespace="shop", status="5xx"}` 1건이 잡혔다.
+  - Grafana에 등록된 두 데이터 소스에서 shopapi 메트릭과 로그가 보인다.
+
+## 처리 시간
+
+DB 기준으로 접수부터 완료까지 46.6초가 걸렸다. 이 중 약 14초는 워커가 처음 임베딩 모델을 HuggingFace에서 내려받고 로드한 시간이다(워커 로그 44:10~44:25). 모델 캐시가 Pod와 함께 사라지는 emptyDir라서, 워커 Pod가 새로 뜰 때마다 첫 장애에서 다시 받는다. 이 시간을 빼면 1, 2단계와 비슷하다.
+
+## 실행 중 찾아 고친 것
+
+- migrate Job은 이미지를 바꿀 수 없다. 그래서 버그 주입 이미지로 재배포할 때 적용이 실패했다. 마이그레이션을 api의 init container로 옮겼다(멱등이고 api는 1개).
+- 실험 스크립트가 로컬에서 버그를 재현할 때 shopapi의 JSON 로그가 결과 출력(stdout)에 섞였다. 원인은 shopapi의 로깅 설정이 로거 레벨을 INFO로 덮어써서, 스크립트가 로거를 끈 설정을 되돌린 것이었다. 레벨을 정하지 않게 고쳤다.
+- 이미지를 바꾼 직후 shopapi Ingress 요청 1건이 502를 받았고, 10초 뒤에는 200이었다. Pod 종료 실험(3-8)에서 다시 확인한다.

@@ -29,8 +29,8 @@ def setup_logging(logger: logging.Logger) -> None:
         return
     handler = logging.StreamHandler(sys.stdout)
     handler.setFormatter(JsonFormatter())
+    # 레벨은 정하지 않는다. shopapi는 WARNING 이상만 남기고, 실험 스크립트가 로거를 끈 설정을 덮어쓰지 않기 위해서다
     logger.addHandler(handler)
-    logger.setLevel(logging.INFO)
 
 
 def instrument(app: FastAPI) -> None:
