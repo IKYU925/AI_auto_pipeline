@@ -1,0 +1,45 @@
+worker-2  | 2026-11-13 21:37:03,712 INFO worker worker 29214fd8ddf0-1 started
+worker-2  | 2026-11-13 21:37:47,896 INFO httpx HTTP Request: GET http://qdrant:6333 "HTTP/1.1 200 OK"
+worker-2  | 2026-11-13 21:37:48,603 INFO httpx HTTP Request: GET https://huggingface.co/api/agent-harnesses "HTTP/1.1 200 OK"
+worker-2  | 2026-11-13 21:37:48,995 INFO httpx HTTP Request: GET https://huggingface.co/api/models/Qdrant/paraphrase-multilingual-MiniLM-L12-v2-onnx-Q "HTTP/1.1 200 OK"
+worker-2  | 2026-11-13 21:37:49,412 INFO httpx HTTP Request: GET https://huggingface.co/api/models/Qdrant/paraphrase-multilingual-MiniLM-L12-v2-onnx-Q/tree/faf4aa4225822f3bc6376869cb1164e8e3feedd0?recursive=true&expand=false "HTTP/1.1 200 OK"
+worker-2  | 2026-11-13 21:37:49,634 INFO httpx HTTP Request: GET https://huggingface.co/api/models/Qdrant/paraphrase-multilingual-MiniLM-L12-v2-onnx-Q/revision/main "HTTP/1.1 200 OK"
+worker-1  | 2026-11-13 21:37:03,646 INFO worker worker 2e26cf010a67-1 started
+worker-1  | 2026-11-13 21:37:38,298 INFO httpx HTTP Request: GET http://qdrant:6333 "HTTP/1.1 200 OK"
+worker-1  | 2026-11-13 21:37:38,507 INFO httpx HTTP Request: GET https://huggingface.co/api/agent-harnesses "HTTP/1.1 200 OK"
+worker-1  | 2026-11-13 21:37:38,714 INFO httpx HTTP Request: GET https://huggingface.co/api/models/Qdrant/paraphrase-multilingual-MiniLM-L12-v2-onnx-Q "HTTP/1.1 200 OK"
+worker-1  | 2026-11-13 21:37:38,939 INFO httpx HTTP Request: GET https://huggingface.co/api/models/Qdrant/paraphrase-multilingual-MiniLM-L12-v2-onnx-Q/tree/faf4aa4225822f3bc6376869cb1164e8e3feedd0?recursive=true&expand=false "HTTP/1.1 200 OK"
+worker-1  | 2026-11-13 21:37:39,143 INFO httpx HTTP Request: GET https://huggingface.co/api/models/Qdrant/paraphrase-multilingual-MiniLM-L12-v2-onnx-Q/revision/main "HTTP/1.1 200 OK"
+worker-2  | Fetching 5 files:   0%|          | 0/5 [00:00<?, ?it/s]Fetching 5 files: 100%|██████████| 5/5 [00:00<00:00,  7.08it/s]Fetching 5 files: 100%|██████████| 5/5 [00:00<00:00,  7.07it/s]
+worker-2  | 2026-11-13 21:37:51,135 INFO httpx HTTP Request: GET http://qdrant:6333/collections/knowledge/exists "HTTP/1.1 200 OK"
+worker-2  | 2026-11-13 21:37:51,158 INFO httpx HTTP Request: POST http://qdrant:6333/collections/knowledge/points/query "HTTP/1.1 200 OK"
+worker-2  | 2026-11-13 21:37:51,224 INFO app.notify.slack [slack disabled] #C-EXPERIMENT *[자동 수정 실패 - 담당자 확인 필요]* `shopapi`
+worker-1  | 2026-11-13 21:37:39,352 INFO httpx HTTP Request: GET https://huggingface.co/api/models/Qdrant/paraphrase-multilingual-MiniLM-L12-v2-onnx-Q/tree/faf4aa4225822f3bc6376869cb1164e8e3feedd0?recursive=true&expand=false "HTTP/1.1 200 OK"
+worker-2  | > AttributeError: 'NoneType' object has no attribute 'rate' on POST /orders/summary
+worker-2  | *분류*: code_bug (신뢰도 0.92) - 주문 요약 API에서 수량 0으로 나누기 발생
+worker-2  | *원인*: 빈 장바구니에서 average_unit_price가 수량 0으로 unit_price를 호출해 ZeroDivisionError가 난다
+worker-2  | *수정 내용*: 수량 0 가드만 추가하고 기존 실수 나눗셈은 유지, 회귀 테스트 추가 (위험도 low)
+worker-2  | *영향 범위*: 변경 ['tests.test_pricing'] / 영향 [] / 위험도 low
+worker-2  | *회귀 테스트*: 전체 7개 테스트 파일 중 1개 선별 ['tests/test_pricing.py']
+worker-2  | *테스트 결과*: 패치 적용 실패 (시도 3회)
+worker-2  | *LLM 비용*: $0.0000 (입력 5441 / 출력 538 토큰, 캐시 적중 0회)
+worker-1  | Fetching 5 files:   0%|          | 0/5 [00:00<?, ?it/s]2026-11-13 21:37:39,561 INFO httpx HTTP Request: HEAD https://huggingface.co/Qdrant/paraphrase-multilingual-MiniLM-L12-v2-onnx-Q/resolve/faf4aa4225822f3bc6376869cb1164e8e3feedd0/config.json "HTTP/1.1 307 Temporary Redirect"
+worker-1  | Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+worker-1  | 2026-11-13 21:37:39,563 WARNING huggingface_hub.utils._http Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+worker-1  | 2026-11-13 21:37:39,573 INFO httpx HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/Qdrant/paraphrase-multilingual-MiniLM-L12-v2-onnx-Q/faf4aa4225822f3bc6376869cb1164e8e3feedd0/config.json?%2FQdrant%2Fparaphrase-multilingual-MiniLM-L12-v2-onnx-Q%2Fresolve%2Ffaf4aa4225822f3bc6376869cb1164e8e3feedd0%2Fconfig.json=&etag=%225b496dbbbe502a10e2d64525481c6f444d125403%22 "HTTP/1.1 200 OK"
+worker-1  | 2026-11-13 21:37:39,585 INFO httpx HTTP Request: GET https://huggingface.co/api/resolve-cache/models/Qdrant/paraphrase-multilingual-MiniLM-L12-v2-onnx-Q/faf4aa4225822f3bc6376869cb1164e8e3feedd0/config.json?%2FQdrant%2Fparaphrase-multilingual-MiniLM-L12-v2-onnx-Q%2Fresolve%2Ffaf4aa4225822f3bc6376869cb1164e8e3feedd0%2Fconfig.json=&etag=%225b496dbbbe502a10e2d64525481c6f444d125403%22 "HTTP/1.1 200 OK"
+worker-1  | Fetching 5 files:  20%|██        | 1/5 [00:00<00:00,  4.38it/s]2026-11-13 21:37:39,600 INFO httpx HTTP Request: HEAD https://huggingface.co/Qdrant/paraphrase-multilingual-MiniLM-L12-v2-onnx-Q/resolve/faf4aa4225822f3bc6376869cb1164e8e3feedd0/special_tokens_map.json "HTTP/1.1 307 Temporary Redirect"
+worker-1  | 2026-11-13 21:37:39,602 INFO httpx HTTP Request: HEAD https://huggingface.co/Qdrant/paraphrase-multilingual-MiniLM-L12-v2-onnx-Q/resolve/faf4aa4225822f3bc6376869cb1164e8e3feedd0/tokenizer_config.json "HTTP/1.1 307 Temporary Redirect"
+worker-1  | 2026-11-13 21:37:39,605 INFO httpx HTTP Request: GET https://huggingface.co/api/models/Qdrant/paraphrase-multilingual-MiniLM-L12-v2-onnx-Q/xet-read-token/faf4aa4225822f3bc6376869cb1164e8e3feedd0 "HTTP/1.1 200 OK"
+worker-1  | 2026-11-13 21:37:39,612 INFO httpx HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/Qdrant/paraphrase-multilingual-MiniLM-L12-v2-onnx-Q/faf4aa4225822f3bc6376869cb1164e8e3feedd0/special_tokens_map.json?%2FQdrant%2Fparaphrase-multilingual-MiniLM-L12-v2-onnx-Q%2Fresolve%2Ffaf4aa4225822f3bc6376869cb1164e8e3feedd0%2Fspecial_tokens_map.json=&etag=%22b1879d702821e753ffe4245048eee415d54a9385%22 "HTTP/1.1 200 OK"
+worker-1  | 2026-11-13 21:37:39,616 INFO httpx HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/Qdrant/paraphrase-multilingual-MiniLM-L12-v2-onnx-Q/faf4aa4225822f3bc6376869cb1164e8e3feedd0/tokenizer_config.json?%2FQdrant%2Fparaphrase-multilingual-MiniLM-L12-v2-onnx-Q%2Fresolve%2Ffaf4aa4225822f3bc6376869cb1164e8e3feedd0%2Ftokenizer_config.json=&etag=%226af3e8bba20e4425103afb1ae3dee3cacdbe7afb%22 "HTTP/1.1 200 OK"
+worker-1  | 2026-11-13 21:37:39,624 INFO httpx HTTP Request: GET https://huggingface.co/api/resolve-cache/models/Qdrant/paraphrase-multilingual-MiniLM-L12-v2-onnx-Q/faf4aa4225822f3bc6376869cb1164e8e3feedd0/special_tokens_map.json?%2FQdrant%2Fparaphrase-multilingual-MiniLM-L12-v2-onnx-Q%2Fresolve%2Ffaf4aa4225822f3bc6376869cb1164e8e3feedd0%2Fspecial_tokens_map.json=&etag=%22b1879d702821e753ffe4245048eee415d54a9385%22 "HTTP/1.1 200 OK"
+worker-1  | 2026-11-13 21:37:39,626 INFO httpx HTTP Request: GET https://huggingface.co/api/resolve-cache/models/Qdrant/paraphrase-multilingual-MiniLM-L12-v2-onnx-Q/faf4aa4225822f3bc6376869cb1164e8e3feedd0/tokenizer_config.json?%2FQdrant%2Fparaphrase-multilingual-MiniLM-L12-v2-onnx-Q%2Fresolve%2Ffaf4aa4225822f3bc6376869cb1164e8e3feedd0%2Ftokenizer_config.json=&etag=%226af3e8bba20e4425103afb1ae3dee3cacdbe7afb%22 "HTTP/1.1 200 OK"
+worker-1  | Fetching 5 files:  80%|████████  | 4/5 [00:02<00:00,  1.29it/s]Fetching 5 files: 100%|██████████| 5/5 [00:10<00:00,  2.79s/it]Fetching 5 files: 100%|██████████| 5/5 [00:10<00:00,  2.19s/it]
+worker-1  | 2026-11-13 21:37:51,082 INFO httpx HTTP Request: GET http://qdrant:6333/collections/knowledge/exists "HTTP/1.1 200 OK"
+worker-1  | 2026-11-13 21:37:51,117 INFO httpx HTTP Request: POST http://qdrant:6333/collections/knowledge/points/query "HTTP/1.1 200 OK"
+worker-1  | 2026-11-13 21:37:51,161 INFO app.notify.slack [slack disabled] #C-VERIFY *[코드 수정 대상 아님 - 런북 안내]* `shopapi`
+worker-1  | > PG approve timeout order_id=1
+worker-1  | *분류*: infra (신뢰도 0.85) - 외부 PG 응답 지연으로 인한 타임아웃
+worker-1  | *참고 문서*: shopapi/payment-timeout.md, common/deploy-rollback.md
+worker-1  | *LLM 비용*: $0.0000 (입력 74 / 출력 32 토큰, 캐시 적중 0회)

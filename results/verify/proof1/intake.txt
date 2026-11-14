@@ -1,0 +1,10 @@
+## 인증 실패
+401
+## 접수
+{"incident_id":"156c943e3ea7","status":"queued","deduplicated":false,"fingerprint":"83efd1aa165ac041ac68788e"}
+## 중복
+{"incident_id":"156c943e3ea7","status":"running","deduplicated":true,"fingerprint":"83efd1aa165ac041ac68788e"}
+## 상태
+running None
+## 상태(재조회)
+no_code_fix infra
