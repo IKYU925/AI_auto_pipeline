@@ -89,3 +89,6 @@ ts	phase	decision	why	evidence	result
 2026-11-14T21:00Z	3-3	모델 폴더를 chown하지 않고 같은 RUN에서 chmod a+rX	chown -R이 모델 253MB를 새 레이어에 한 번 더 담아 이미지가 1.84GB가 됨, 런타임 쓰기 권한은 필요 없음(nobody, --network none으로 확인)	Dockerfile	1.37GB
 2026-11-14T21:20Z	3-4	알림 규칙 4개(ShopapiException, ShopapiHighErrorRate, ShopapiSlowPayment, PodOOMKilled)를 이 레포에서 관리	plan.md 9-3, Prometheus는 모든 namespace의 PrometheusRule을 읽고 Loki ruler는 monitoring의 loki-alert-rules를 읽음	deploy/k8s/base/alert-rules.yaml	4개 모두 health ok
 2026-11-14T21:20Z	3-4	infra_local_set 라우팅 변경은 사용자 확인 뒤로 미룸	다른 레포 변경은 먼저 알리는 규칙, infra_local_set에 다른 세션의 커밋 안 된 변경 있음	-	-
+2026-11-14T21:25Z	3-5	실제 PodOOMKilled 알림이 자동화와 #aiops-report 카드까지 이어진 것을 막지 않고 관찰	실제 장애이고 비코드라 분류 1회($0.0003)로 끝남, 알림 경로 첫 실사례	results/phase3_alert_path.md	5초, no_code_fix
+2026-11-14T21:30Z	3-5	Kubernetes 런북 카테고리를 general로	OOM이 config로 분류되자 infra로 묶인 OOM 런북이 검색 후보에서 빠지고 기동 실패 런북이 안내됨	knowledge/k8s/*.md, 클러스터 검색 확인 5/5	-
+2026-11-14T21:31Z	3-5	api 컨테이너 안에서 무거운 확인 프로세스를 실행하지 않음	임베딩 모델이 이미 올라간 api에 모델을 하나 더 올려 OOMKilled	임시 Pod(메모리 1Gi)로 확인	-
