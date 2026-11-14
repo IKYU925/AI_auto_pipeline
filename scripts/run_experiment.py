@@ -254,7 +254,7 @@ COLUMNS = [
     "outcome", "expected_outcome", "outcome_correct", "category", "expected_category", "category_correct",
     "attempts", "elapsed_sec", "usd", "tokens_in", "tokens_out", "llm_calls", "calls_by_model", "cache_hits",
     "reused_fix", "tests_selected", "test_files_total", "test_sec",
-    "hidden_passed", "full_passed", "false_pass", "incidents_created",
+    "hidden_passed", "full_passed", "false_pass", "incidents_created", "procedure_usd",
 ]
 
 
@@ -322,12 +322,19 @@ def run_scenario(s: Scenario, b: Backend) -> dict:
             first = _run(base_s, b)
             # 중복 제거 기간이 지났다고 보고 같은 장애를 다시 접수한다. 캐시와 검증된 수정안은 남긴다
             b.redis.delete(f"dedupe:{first.accepted['fingerprint']}")
-            return summarize(s, _run(base_s, b))
+            row = summarize(s, _run(base_s, b))
+            # 행의 지표는 재접수 건이지만, 실제로 쓴 비용에는 base 처리 비용도 들어간다
+            row["procedure_usd"] = round(row["usd"] + _usd(first.status), 6)
+            return row
         case Duplicate(base=base, times=times):
             run, created = _run_duplicate(load_scenario(base), times, b)
             return summarize(s, run, incidents_created=created)
         case _:
             return summarize(s, _run(s, b))
+
+
+def _usd(status: dict) -> float:
+    return float((status.get("cost") or {}).get("usd", 0))
 
 
 def summarize(s: Scenario, run: Run, incidents_created: int | None = None) -> dict:
@@ -366,6 +373,7 @@ def summarize(s: Scenario, run: Run, incidents_created: int | None = None) -> di
         "full_passed": verdict.get("full_passed"),
         "false_pass": outcome == "resolved" and verdict.get("hidden_passed") is False,
         "incidents_created": incidents_created,
+        "procedure_usd": cost.get("usd", 0),
     }
 
 
@@ -390,7 +398,7 @@ def run_all(scenarios: list[Scenario], b: Backend, condition: str, repeat: int, 
                 return spent
             started_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
             row = {"condition": condition, "run": n, "started_at": started_at, **run_scenario(s, b)}
-            spent += float(row["usd"] or 0)
+            spent += float(row["procedure_usd"] or 0)
             print(json.dumps(row, ensure_ascii=False), flush=True)
             if out:
                 append_csv(out, row)
