@@ -1,37 +1,52 @@
-"""장애 처리 상태 저장소(Redis Hash)."""
-import json
-from datetime import datetime, timezone
-
+"""장애 처리 상태 저장소. 영구 기록은 PostgreSQL, 중복 제거 키는 Redis."""
+from psycopg.types.json import Jsonb
+from psycopg_pool import ConnectionPool
 from redis import Redis
+
+TERMINAL = {"resolved", "escalated", "no_code_fix", "budget_exceeded", "failed"}
 
 
 class IncidentStore:
-    def __init__(self, redis: Redis, ttl_sec: int = 7 * 86400):
+    def __init__(self, pool: ConnectionPool, redis: Redis):
+        self.pool = pool
         self.redis = redis
-        self.ttl = ttl_sec
 
-    @staticmethod
-    def _key(incident_id: str) -> str:
-        return f"incident:{incident_id}"
+    def create(self, incident_id: str, fingerprint: str, incident: dict) -> None:
+        with self.pool.connection() as conn:
+            conn.execute(
+                """INSERT INTO incidents (id, fingerprint, source, service, severity, message, stacktrace, status)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s, 'queued')""",
+                (incident_id, fingerprint, incident.get("source", "api"), incident["service"], incident.get("severity"),
+                 incident["message"], incident.get("stacktrace")),
+            )
 
-    def set_status(self, incident_id: str, status: str, **extra) -> None:
-        data = {"status": status, "updated_at": datetime.now(timezone.utc).isoformat()}
-        data.update({k: json.dumps(v, default=str) if not isinstance(v, str) else v for k, v in extra.items()})
-        self.redis.hset(self._key(incident_id), mapping=data)
-        self.redis.expire(self._key(incident_id), self.ttl)
+    def set_status(self, incident_id: str, status: str, *, attempts: int | None = None, report: str | None = None,
+                   **result) -> None:
+        cls = result.get("classification") or {}
+        with self.pool.connection() as conn:
+            conn.execute(
+                """UPDATE incidents SET status = %s, updated_at = now(),
+                     attempts = coalesce(%s, attempts), report = coalesce(%s, report),
+                     category = coalesce(%s, category), needs_code_fix = coalesce(%s, needs_code_fix),
+                     result = result || %s,
+                     finished_at = CASE WHEN %s THEN now() ELSE finished_at END
+                   WHERE id = %s""",
+                (status, attempts, report, cls.get("category"), cls.get("needs_code_fix"), Jsonb(result),
+                 status in TERMINAL, incident_id),
+            )
 
     def get(self, incident_id: str) -> dict | None:
-        raw = self.redis.hgetall(self._key(incident_id))
-        if not raw:
+        with self.pool.connection() as conn:
+            row = conn.execute(
+                "SELECT status, updated_at, fingerprint, attempts, report, result FROM incidents WHERE id = %s",
+                (incident_id,),
+            ).fetchone()
+        if not row:
             return None
-        out = {}
-        for k, v in raw.items():
-            key = k.decode() if isinstance(k, bytes) else k
-            val = v.decode() if isinstance(v, bytes) else v
-            try:
-                out[key] = json.loads(val) if key not in ("status", "updated_at") else val
-            except (json.JSONDecodeError, TypeError):
-                out[key] = val
+        out = {"status": row["status"], "updated_at": row["updated_at"].isoformat(), "fingerprint": row["fingerprint"],
+               "attempts": row["attempts"], **row["result"]}
+        if row["report"] is not None:
+            out["report"] = row["report"]
         return out
 
     def claim_fingerprint(self, fp: str, incident_id: str, ttl_sec: int) -> str | None:
@@ -41,3 +56,32 @@ class IncidentStore:
             return None
         existing = self.redis.get(key)
         return existing.decode() if isinstance(existing, bytes) else existing
+
+
+class FixStore:
+    """검증 시도마다 한 줄. 재사용은 같은 지문의 가장 최근 통과 수정안 중 아직 배포되지 않은(retired_at 없음) 것."""
+
+    def __init__(self, pool: ConnectionPool):
+        self.pool = pool
+
+    def record(self, incident_id: str, fingerprint: str, attempt: int, fix: dict, test_summary: str, passed: bool) -> None:
+        with self.pool.connection() as conn:
+            conn.execute(
+                """INSERT INTO fixes (incident_id, fingerprint, attempt, patch, explanation, risk, test_summary, passed)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s)""",
+                (incident_id, fingerprint, attempt, fix["patch"], fix.get("explanation"), fix.get("risk"),
+                 test_summary, passed),
+            )
+
+    def latest_passed(self, fingerprint: str) -> dict | None:
+        with self.pool.connection() as conn:
+            row = conn.execute(
+                """SELECT patch, explanation, risk FROM fixes WHERE fingerprint = %s AND passed AND retired_at IS NULL
+                   ORDER BY created_at DESC, id DESC LIMIT 1""",
+                (fingerprint,),
+            ).fetchone()
+        return dict(row) if row else None
+
+    def retire_all(self) -> None:
+        with self.pool.connection() as conn:
+            conn.execute("UPDATE fixes SET retired_at = now() WHERE retired_at IS NULL")

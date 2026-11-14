@@ -5,7 +5,8 @@ from typing import Any
 
 from app.config import Settings, get_settings
 from app.core.queue import IncidentQueue
-from app.core.store import IncidentStore
+from app.core.store import FixStore, IncidentStore
+from app.db import make_pool
 from app.infra import make_qdrant, make_redis
 from app.llm.cost import CostTracker
 from app.llm.router import LLMRouter, default_model_factory
@@ -25,6 +26,10 @@ class Container:
         return make_redis(self.settings.redis_url)
 
     @cached_property
+    def db(self):
+        return make_pool(self.settings.database_url)
+
+    @cached_property
     def qdrant(self):
         return make_qdrant(self.settings.qdrant_url)
 
@@ -35,7 +40,11 @@ class Container:
 
     @cached_property
     def store(self) -> IncidentStore:
-        return IncidentStore(self.redis)
+        return IncidentStore(self.db, self.redis)
+
+    @cached_property
+    def fixes(self) -> FixStore:
+        return FixStore(self.db)
 
     @cached_property
     def embedder(self) -> CachedEmbedder:
@@ -52,7 +61,7 @@ class Container:
 
     @cached_property
     def cost(self) -> CostTracker:
-        return CostTracker(self.redis, self.settings.model_prices, self.settings.incident_budget_usd)
+        return CostTracker(self.db, self.settings.model_prices, self.settings.incident_budget_usd)
 
     @cached_property
     def router(self) -> LLMRouter:
@@ -71,5 +80,5 @@ class Container:
         from app.graph.nodes import Nodes
         from app.graph.workflow import build_graph
 
-        nodes = Nodes(self.settings, self.router, self.retriever, self.cost, self.redis)
+        nodes = Nodes(self.settings, self.router, self.retriever, self.cost, self.fixes)
         return build_graph(nodes, self.settings.max_fix_attempts, early_exit=self.settings.opt_early_exit)

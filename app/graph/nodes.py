@@ -1,6 +1,5 @@
 """LangGraph 노드 구현. 각 노드는 상태의 일부만 갱신해서 돌려준다."""
 import functools
-import json
 import logging
 from pathlib import Path
 
@@ -10,6 +9,7 @@ from app.analysis.impact import ImportGraph, analyze_impact
 from app.analysis.test_selector import TestSelection, select_tests
 from app.config import Settings
 from app.core.fingerprint import normalize
+from app.core.store import FixStore
 from app.graph.state import IncidentState
 from app.llm import prompts
 from app.llm.cost import BudgetExceeded, CostTracker
@@ -36,9 +36,9 @@ def budget_guard(fn):
 
 
 class Nodes:
-    def __init__(self, settings: Settings, router: LLMRouter, retriever: Retriever, cost: CostTracker, redis):
+    def __init__(self, settings: Settings, router: LLMRouter, retriever: Retriever, cost: CostTracker, fixes: FixStore):
         self.s = settings
-        self.redis = redis
+        self.fixes = fixes
         self.router = router
         self.retriever = retriever
         self.cost = cost
@@ -79,10 +79,10 @@ class Nodes:
     def lookup_known_fix(self, state: IncidentState) -> dict:
         if not self.s.opt_fix_reuse:
             return {}
-        raw = self.redis.get(f"fix:resolved:{state['fingerprint']}")
-        if not raw:
+        fix = self.fixes.latest_passed(state["fingerprint"])
+        if not fix:
             return {}
-        return {"fix": json.loads(raw), "reused_fix": True}
+        return {"fix": fix, "reused_fix": True}
 
     # 3. 원인 분석 (HEAVY 모델)
     @budget_guard
@@ -184,7 +184,11 @@ class Nodes:
             p = out_dir / f"{state['incident_id']}.patch"
             p.write_text(state["fix"]["patch"], encoding="utf-8")
             patch_path = str(p)
-            self.redis.set(f"fix:resolved:{state['fingerprint']}", json.dumps(state["fix"]), ex=7 * 86400)
+        for h in state.get("history", []):
+            self.fixes.record(state["incident_id"], state["fingerprint"], h["attempt"], h, h["failure"][:500], passed=False)
+        if outcome == "resolved":
+            self.fixes.record(state["incident_id"], state["fingerprint"], state.get("attempts", 0), state["fix"],
+                              state["test_result"].get("summary", ""), passed=True)
 
         cost = self.cost.summary(state["incident_id"])
         return {

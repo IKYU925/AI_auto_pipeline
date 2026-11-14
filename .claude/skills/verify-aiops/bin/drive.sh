@@ -9,7 +9,7 @@ OUT="$EVIDENCE_BASE/$RUN_ID"
 cost_cap=(); [ "$VERIFY_REAL_LLM" = 1 ] && cost_cap=(--max-usd "${VERIFY_MAX_USD:-0.5}")
 cd "$ROOT"
 SHOPAPI_DIR="$VERIFY_SHOPAPI" .venv/bin/python -m scripts.run_experiment "$@" --condition A --repeat 1 \
-  --api http://localhost:18000 --redis redis://localhost:16379/0 ${cost_cap[@]+"${cost_cap[@]}"} --timeout 300 \
+  --api http://localhost:18000 --redis redis://localhost:16379/0 --database postgresql://aiops:aiops@localhost:15432/aiops ${cost_cap[@]+"${cost_cap[@]}"} --timeout 300 \
   --out "$OUT/runs.csv" | tee -a "$OUT/runs.jsonl"
 .venv/bin/python - "$OUT" <<'PY'
 import csv, json, subprocess, sys

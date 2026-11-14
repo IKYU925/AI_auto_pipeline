@@ -16,6 +16,8 @@ services:
     ports: !override ["16379:6379"]
   qdrant:
     ports: !override ["16333:6333"]
+  postgres:
+    ports: !override ["15432:5432"]
   api:
     ports: !override ["18000:8000"]
     environment: *verify-env

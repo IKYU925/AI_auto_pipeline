@@ -21,7 +21,8 @@ if [ "${VERIFY_REAL_LLM:-0}" = 1 ]; then
 fi
 printf 'RUN_ID=%s\nVERIFY_SHOPAPI=%s\nVERIFY_REAL_LLM=%s\n' "$RUN_ID" "$VERIFY_SHOPAPI" "${VERIFY_REAL_LLM:-0}" > "$STATE/run.env"
 
-compose up -d --build redis qdrant api worker shopapi >/dev/null
+# api와 worker는 migrate(빈 볼륨에 스키마 생성)가 성공한 뒤에 뜬다
+compose up -d --build redis qdrant postgres api worker shopapi >/dev/null
 for _ in $(seq 1 60); do
   curl -sf localhost:18000/healthz >/dev/null && curl -sf localhost:18100/healthz >/dev/null && break
   sleep 2
