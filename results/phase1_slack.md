@@ -1,6 +1,6 @@
-# Day 4 결과: Slack 실연동
+# 1-4 결과: Slack 실연동
 
-실행: 2026-11-14 KST 14시, 실제 LLM(Haiku 5.5, Opus 5.5), 최적화 모두 켬. 원본은 [day4_slack.csv](day4_slack.csv), 재실행은 `python -m scripts.slack_e2e S01 S02 S05 --out results/day4_slack.csv`.
+실행: 2026-11-14 KST 14시, 실제 LLM(Haiku 5.5, Opus 5.5), 최적화 모두 켬. 원본은 [phase1_slack.csv](phase1_slack.csv), 재실행은 `python -m scripts.slack_e2e S01 S02 S05 --out results/phase1_slack.csv`.
 
 경로: shopapi 500 → Incoming Webhook으로 `#alert`에 알림 → Slack Events API(`message.channels`) → ngrok → n8n Slack Trigger와 파서 → `POST /api/v1/incidents` → 워커 → 봇 토큰으로 알림 스레드에 회신
 

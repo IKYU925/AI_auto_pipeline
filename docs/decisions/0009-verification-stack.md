@@ -13,7 +13,7 @@
 - shopapi는 임시 복사본을 워커와 shopapi 컨테이너에 마운트하고, 실험 스크립트도 그 복사본에 버그를 주입한다.
 - 증거(CSV, 장애 상태 JSON, 워커 로그)는 정리 단계에서 지우지 않는 위치에 남긴다.
 
-본 실험(Day 5~6)은 기존 기본 스택(compose 프로젝트 `ai_auto_pipeline`)에서 돈다. 분리 스택은 검증 스킬이 기본 스택과 실험 결과를 건드리지 않게 하기 위한 것이다.
+본 실험(1-5~1-6)은 기존 기본 스택(compose 프로젝트 `ai_auto_pipeline`)에서 돈다. 분리 스택은 검증 스킬이 기본 스택과 실험 결과를 건드리지 않게 하기 위한 것이다.
 
 `!override` 동작은 `docker compose -p aiops-verify -f docker-compose.yml -f <덮어쓰기 파일> config --format json`으로 확인했다. api 포트가 18000:8000 하나로, worker의 `/repo` 볼륨이 지정한 경로 하나로 바뀌었다.
 

@@ -2,7 +2,7 @@
 
 작성일: 2026-11-13, 개정일: 2026-11-14
 
-이 문서는 전체 목표, 단계, 일정을 다룬다. 기능별 요구사항과 완료 기준은 [features](features/README.md)에, 계획을 바꾼 결정과 그 이유는 [decisions](decisions/README.md)에 둔다.
+이 문서는 전체 목표, 단계, 작업 순서를 다룬다. 기능별 요구사항과 완료 기준은 [features](features/README.md)에, 계획을 바꾼 결정과 그 이유는 [decisions](decisions/README.md)에 둔다.
 
 ### 1. 목표
 
@@ -29,44 +29,45 @@
 - Python 외 언어는 지원하지 않는다.
 - 사람 승인 없이 조치하지 않는다. 조치는 3단계 로컬 노드에서 허용 목록에 있는 Ansible 플레이북(로그와 임시 파일 정리, 서비스 재시작)만 승인 후 실행한다. 쿠버네티스 객체 변경(재시작, 스케일 조정)과 AWS 리소스 조치는 하지 않는다.
 
-### 2. 전체 일정
+### 2. 작업 순서
 
 단계를 섞지 않는다. 1단계 결과가 있어야 2단계에서 무엇이 좋아졌는지 비교할 수 있고, 2단계의 PostgreSQL 데이터와 체크포인터가 있어야 3단계에서 자동화 현황 대시보드와 Pod 종료 중 재개를 보여줄 수 있다. 1, 2단계는 docker compose에서, 3단계는 로컬 K3s에서, 4단계는 AWS에서 진행한다. 4단계는 3단계에서 감지부터 회신까지 완주한 뒤에만 시작한다. 로컬에서 안 되는 경로를 클라우드에서 고치면 비용만 든다.
 
-3단계의 클러스터 준비 중 상당 부분은 infra_local_set에 이미 들어가 있다. 워커 노드 메모리 4GB 증설, 배치용 노드 라벨, 로컬 레지스트리, 관측 도구(kube-prometheus-stack, Loki, Alloy) 설치, Alertmanager 웹훅 수신처와 Bearer 토큰 설정이 끝났다. 그래서 줄어든 하루와 4단계를 줄여 생긴 시간을 3단계의 고객사 분리와 승인 조치(Day 23, 24)에 쓰고, 26일 차를 예비일로 둔다.
+3단계의 클러스터 준비 중 상당 부분은 infra_local_set에 이미 들어가 있다. 워커 노드 메모리 4GB 증설, 배치용 노드 라벨, 로컬 레지스트리, 관측 도구(kube-prometheus-stack, Loki, Alloy) 설치, Alertmanager 웹훅 수신처와 Bearer 토큰 설정이 끝났다. 그래서 줄어든 작업과 4단계를 줄여 생긴 여유를 3단계의 고객사 분리와 승인 조치(3-9, 3-10)에 쓴다.
 
-| Day | 단계 | 작업 | 완료 기준 |
+작업 ID `2-3`은 2단계의 세 번째 작업이라는 뜻이다. 순서만 나타내고 기간을 약속하지 않는다. 실제 걸린 시간은 결과 문서에 적는다.
+
+| 작업 | 단계 | 내용 | 완료 기준 |
 | --- | --- | --- | --- |
-| 1 | 1단계 | 대상 서비스 shopapi 구축, 테스트 작성, 워커 연결 | S01 시나리오 1건이 실제 LLM으로 끝까지 실행됨 |
-| 2 | 1단계 | 장애 시나리오 13개 작성, 시나리오별 정답과 숨은 테스트 정의 | 시나리오마다 버그 주입 후 숨은 테스트가 실패함을 확인 |
-| 3 | 1단계 | 실험 스크립트, 지표 수집, 최적화 끄기 옵션 구현 | 시나리오 1개를 스크립트로 실행하면 CSV 한 줄이 나옴 |
-| 4 | 1단계 | Slack 실연동(테스트 채널, ngrok, n8n, 봇 회신) | 실제 Slack 알림 3건이 스레드 회신까지 완주 |
-| 5 | 1단계 | 본 실험 A(최적화 켬), 전 시나리오 3회 반복 | phase1_A.csv 완성 |
-| 6 | 1단계 | 본 실험 B(최적화 끔), 결과 분석 | phase1_B.csv, 비교 요약 완성 |
-| 7 | 1단계 | 정리(README 결과 표, velog 초안, 영상) | 1단계 결과 공개 가능 |
-| 8 | 2단계 | 스키마 설계, PostgreSQL(pgvector) 컨테이너, Alembic 마이그레이션 | 테이블 생성, 확장 활성화 확인 |
-| 9 | 2단계 | 상태, 비용, 수정안 저장을 PostgreSQL로 이전 | 기존 테스트 전부 통과 |
-| 10 | 2단계 | pgvector 검색 + pg_trgm 하이브리드 검색(RRF) | 검색 품질 비교 데이터 확보 |
-| 11 | 2단계 | LangGraph PostgreSQL 체크포인터, 멱등성 처리 | 워커를 죽여도 중간부터 재개 |
-| 12 | 2단계 | 장애 상황 실험(워커 강제 종료, 재시작 후 이력 확인) | 재개 실험 결과 기록 |
-| 13 | 2단계 | 1단계와 같은 시나리오 재실행, 전후 비교 | phase2.csv, 전후 비교 표 완성 |
-| 14 | 2단계 | 정리(README, velog 2편, 영상) | 2단계 결과 공개 가능 |
-| 15 | 3단계 | `./up.sh`로 클러스터 점검, 빌드 스크립트(`scripts/build_push.sh`), 이미지 등록 | 세 노드 Ready, 레지스트리에서 이미지 pull 성공, Grafana에서 클러스터 지표가 보임 |
-| 16 | 3단계 | 자동화 시스템과 shopapi 매니페스트(kustomize), Secret, PVC, Ingress | 모든 Pod Running, Ingress로 API 접근 |
-| 17 | 3단계 | 클러스터에서 S01 실행(API 직접 호출), shopapi와 자동화의 `/metrics`, JSON 로그, ServiceMonitor | 1, 2단계와 같은 결과가 K3s에서도 나옴. Grafana에서 shopapi 메트릭과 로그가 보임 |
-| 18 | 3단계 | PrometheusRule, `loki-alert-rules` ConfigMap, infra_local_set의 Alertmanager 라우팅 조정(9-3) | 버그 주입 시 Alertmanager에 알림이 1건 뜨고 `ai-automation` 수신처로 감 |
-| 19 | 3단계 | Alertmanager 웹훅 어댑터, Loki 스택트레이스 조회, K8s 런북 추가 | 알림 1건이 사람 개입 없이 Slack 회신까지 완주 |
-| 20 | 3단계 | 자동화 메트릭, Grafana PostgreSQL 데이터 소스, 대시보드 2개 | 대시보드에서 장애 수, 성공률, 비용, 큐 길이가 보임 |
-| 21 | 3단계 | K8s 장애 시나리오(S14~S16) 작성, 실제 감지 경로로 전체 시나리오 실행 | 감지 시간, 전체 처리 시간 측정 완료 |
-| 22 | 3단계 | 알림 묶기, 비코드 알림 분류, Pod 종료 중 재개 실험, 결과 분석 | phase3.csv, 요약 완성 |
-| 23 | 3단계 | 고객사 namespace 2개(tenant-a, tenant-b), 고객사 라벨과 Alertmanager 라우팅, 고객사별 Slack 채널과 런북 필터(9-7) | 같은 버그를 두 고객사에 주입하면 각 고객사 채널로 1건씩 회신 |
-| 24 | 3단계 | 승인 조치 Job과 허용 목록 플레이북, Slack 승인 버튼, 조치 기록, S17 노드 디스크 부족(9-8) | S17 알림이 승인 후 플레이북 실행, 알림 해소까지 사람 개입은 승인 1번 |
-| 25 | 3단계 | 정리(README, 아키텍처 그림 갱신, velog 3편, 영상) | 3단계 결과 공개 가능 |
-| 26 | 예비 | 밀린 작업 | |
-| 27 | 4단계 | Terraform으로 EC2 1대, CloudWatch Agent 설정, 경보, EventBridge 규칙, SQS 생성. SQS 어댑터, S18, S19 실행 | 경보 1건이 사람 개입 없이 Slack 회신까지 완주 |
-| 28 | 4단계 | 정리(README, 환경별 비교 표, velog 4편), `terraform destroy` 후 남은 리소스 확인 | 4단계 결과 공개 가능, 과금 리소스 0개 |
+| 1-1 | 1단계 | 대상 서비스 shopapi 구축, 테스트 작성, 워커 연결 | S01 시나리오 1건이 실제 LLM으로 끝까지 실행됨 |
+| 1-2 | 1단계 | 장애 시나리오 13개 작성, 시나리오별 정답과 숨은 테스트 정의 | 시나리오마다 버그 주입 후 숨은 테스트가 실패함을 확인 |
+| 1-3 | 1단계 | 실험 스크립트, 지표 수집, 최적화 끄기 옵션 구현 | 시나리오 1개를 스크립트로 실행하면 CSV 한 줄이 나옴 |
+| 1-4 | 1단계 | Slack 실연동(테스트 채널, ngrok, n8n, 봇 회신) | 실제 Slack 알림 3건이 스레드 회신까지 완주 |
+| 1-5 | 1단계 | 본 실험 A(최적화 켬), 전 시나리오 3회 반복 | phase1_A.csv 완성 |
+| 1-6 | 1단계 | 본 실험 B(최적화 끔), 결과 분석 | phase1_B.csv, 비교 요약 완성 |
+| 1-7 | 1단계 | 정리(README 결과 표, velog 초안, 영상) | 1단계 결과 공개 가능 |
+| 2-1 | 2단계 | 스키마 설계, PostgreSQL(pgvector) 컨테이너, Alembic 마이그레이션 | 테이블 생성, 확장 활성화 확인 |
+| 2-2 | 2단계 | 상태, 비용, 수정안 저장을 PostgreSQL로 이전 | 기존 테스트 전부 통과 |
+| 2-3 | 2단계 | pgvector 검색 + pg_trgm 하이브리드 검색(RRF) | 검색 품질 비교 데이터 확보 |
+| 2-4 | 2단계 | LangGraph PostgreSQL 체크포인터, 멱등성 처리 | 워커를 죽여도 중간부터 재개 |
+| 2-5 | 2단계 | 장애 상황 실험(워커 강제 종료, 재시작 후 이력 확인) | 재개 실험 결과 기록 |
+| 2-6 | 2단계 | 1단계와 같은 시나리오 재실행, 전후 비교 | phase2.csv, 전후 비교 표 완성 |
+| 2-7 | 2단계 | 정리(README, velog 2편, 영상) | 2단계 결과 공개 가능 |
+| 3-1 | 3단계 | `./up.sh`로 클러스터 점검, 빌드 스크립트(`scripts/build_push.sh`), 이미지 등록 | 세 노드 Ready, 레지스트리에서 이미지 pull 성공, Grafana에서 클러스터 지표가 보임 |
+| 3-2 | 3단계 | 자동화 시스템과 shopapi 매니페스트(kustomize), Secret, PVC, Ingress | 모든 Pod Running, Ingress로 API 접근 |
+| 3-3 | 3단계 | 클러스터에서 S01 실행(API 직접 호출), shopapi와 자동화의 `/metrics`, JSON 로그, ServiceMonitor | 1, 2단계와 같은 결과가 K3s에서도 나옴. Grafana에서 shopapi 메트릭과 로그가 보임 |
+| 3-4 | 3단계 | PrometheusRule, `loki-alert-rules` ConfigMap, infra_local_set의 Alertmanager 라우팅 조정(9-3) | 버그 주입 시 Alertmanager에 알림이 1건 뜨고 `ai-automation` 수신처로 감 |
+| 3-5 | 3단계 | Alertmanager 웹훅 어댑터, Loki 스택트레이스 조회, K8s 런북 추가 | 알림 1건이 사람 개입 없이 Slack 회신까지 완주 |
+| 3-6 | 3단계 | 자동화 메트릭, Grafana PostgreSQL 데이터 소스, 대시보드 2개 | 대시보드에서 장애 수, 성공률, 비용, 큐 길이가 보임 |
+| 3-7 | 3단계 | K8s 장애 시나리오(S14~S16) 작성, 실제 감지 경로로 전체 시나리오 실행 | 감지 시간, 전체 처리 시간 측정 완료 |
+| 3-8 | 3단계 | 알림 묶기, 비코드 알림 분류, Pod 종료 중 재개 실험, 결과 분석 | phase3.csv, 요약 완성 |
+| 3-9 | 3단계 | 고객사 namespace 2개(tenant-a, tenant-b), 고객사 라벨과 Alertmanager 라우팅, 고객사별 Slack 채널과 런북 필터(9-7) | 같은 버그를 두 고객사에 주입하면 각 고객사 채널로 1건씩 회신 |
+| 3-10 | 3단계 | 승인 조치 Job과 허용 목록 플레이북, Slack 승인 버튼, 조치 기록, S17 노드 디스크 부족(9-8) | S17 알림이 승인 후 플레이북 실행, 알림 해소까지 사람 개입은 승인 1번 |
+| 3-11 | 3단계 | 정리(README, 아키텍처 그림 갱신, velog 3편, 영상) | 3단계 결과 공개 가능 |
+| 4-1 | 4단계 | Terraform으로 EC2 1대, CloudWatch Agent 설정, 경보, EventBridge 규칙, SQS 생성. SQS 어댑터, S18, S19 실행 | 경보 1건이 사람 개입 없이 Slack 회신까지 완주 |
+| 4-2 | 4단계 | 정리(README, 환경별 비교 표, velog 4편), `terraform destroy` 후 남은 리소스 확인 | 4단계 결과 공개 가능, 과금 리소스 0개 |
 
-일정이 밀리면 측정, Slack 연동, 영상 순으로 우선순위를 둔다. 측정 결과가 없으면 나머지는 의미가 없다. 3단계가 밀리면 대시보드는 shopapi 하나로 줄이고, S16(노드 장애)은 뒤로 미루고, K3s 위에서 감지부터 회신까지 완주하는 것을 우선한다. 3단계 추가 작업이 밀리면 승인 조치를 먼저 하고 고객사 분리는 라우팅만 남긴다. 4단계가 밀리면 S19를 빼고 S18 한 건으로 경로 완주만 확인한다.
+작업이 밀리면 측정, Slack 연동, 영상 순으로 우선순위를 둔다. 측정 결과가 없으면 나머지는 의미가 없다. 3단계가 밀리면 대시보드는 shopapi 하나로 줄이고, S16(노드 장애)은 뒤로 미루고, K3s 위에서 감지부터 회신까지 완주하는 것을 우선한다. 3단계 추가 작업이 밀리면 승인 조치를 먼저 하고 고객사 분리는 라우팅만 남긴다. 4단계가 밀리면 S19를 빼고 S18 한 건으로 경로 완주만 확인한다.
 
 ### 3. 대상 서비스 설계 (1단계)
 
@@ -154,9 +155,9 @@ hidden_test: hidden_tests/test_s01.py
 
 1, 2단계의 알림 경로다. 3단계에서는 Slack 메시지 파싱 대신 클러스터 안의 Alertmanager 웹훅이 입구가 된다(9장). 1, 2단계에서는 측정과 실연동 검증을 나눈다.
 
-측정용 경로(Day 5~6 본 실험)는 실험 스크립트가 FastAPI `/api/v1/incidents`를 직접 호출한다. Slack과 n8n을 거치지 않아서 재현이 쉽고, 시간 측정이 정확하다.
+측정용 경로(1-5~1-6 본 실험)는 실험 스크립트가 FastAPI `/api/v1/incidents`를 직접 호출한다. Slack과 n8n을 거치지 않아서 재현이 쉽고, 시간 측정이 정확하다.
 
-실연동 검증 경로(Day 4)는 실제 운영과 같은 흐름이다.
+실연동 검증 경로(1-4)는 실제 운영과 같은 흐름이다.
 
 1. shopapi 예외 핸들러가 Slack Incoming Webhook으로 `[shopapi] critical: 메시지` + 스택트레이스 코드 블록을 보낸다.
 2. n8n Slack Trigger가 메시지를 받는다. Slack이 이벤트를 보낼 수 있도록 ngrok으로 n8n을 공개 주소에 연결하고 `WEBHOOK_URL`을 설정한다.
@@ -200,7 +201,7 @@ hidden_test: hidden_tests/test_s01.py
 | 테스트 선별 | 영향 범위 기반 선별 | 매번 전체 테스트 |
 | 수정안 재사용 | 사용 | 사용 안 함 |
 
-조건 B를 만들려면 환경변수로 각 최적화를 끌 수 있게 해야 한다. Day 3에 `OPT_LLM_CACHE`, `OPT_MODEL_ROUTING`, `OPT_EARLY_EXIT`, `OPT_TEST_SELECTION`, `OPT_FIX_REUSE`를 추가한다.
+조건 B를 만들려면 환경변수로 각 최적화를 끌 수 있게 해야 한다. 1-3에 `OPT_LLM_CACHE`, `OPT_MODEL_ROUTING`, `OPT_EARLY_EXIT`, `OPT_TEST_SELECTION`, `OPT_FIX_REUSE`를 추가한다.
 
 시나리오 1회 실행 순서는 다음과 같다.
 
@@ -401,7 +402,7 @@ infra_local_set 설정에서 이 레포가 맞춰야 할 점은 다음과 같다
 - Alloy는 Pod 라벨 `app.kubernetes.io/name`을 Loki 스트림 라벨 `service`로 옮긴다. 이 라벨이 없으면 로그에 `service`가 비고, 알림 규칙과 Loki 조회가 shopapi 로그를 찾지 못한다.
 - Loki 로그 알림 규칙은 `monitoring` namespace의 `loki-alert-rules` ConfigMap으로 읽는다.
 - Grafana 대시보드는 `grafana_dashboard` 라벨을 단 ConfigMap을 아무 namespace에 만들면 자동으로 추가된다.
-- Grafana 데이터 소스는 Prometheus와 Loki만 등록되어 있다. PostgreSQL 데이터 소스는 Day 20에 infra_local_set의 Grafana values에 추가한다.
+- Grafana 데이터 소스는 Prometheus와 Loki만 등록되어 있다. PostgreSQL 데이터 소스는 3-6에 infra_local_set의 Grafana values에 추가한다.
 
 수집 대상은 다음과 같다.
 
@@ -454,7 +455,7 @@ Alertmanager 설정은 infra_local_set에 이미 들어 있다.
 #### 9-4. Alertmanager 웹훅 어댑터
 
 1. Alertmanager가 보낸 묶음에서 `status=firing`인 알림만 처리한다. `resolved`는 `alert_fingerprint`가 같은 장애 기록의 `alert_resolved_at`에 시각만 남긴다.
-2. 알림 라벨에서 대상과 이름, 심각도를 꺼낸다. Shopapi 알림은 `service`를 쓴다. kube-state-metrics 기반 알림(`KubePodCrashLooping`, `PodOOMKilled`)의 `service` 라벨은 shopapi가 아니라 kube-state-metrics 자신일 수 있으므로 `namespace`, `pod`, `container`로 대상을 정한다. Day 18에 실제 알림 라벨을 확인하고 매핑을 고정한다. `KubeNodeNotReady`는 `node`를 쓴다. 요약 문구는 주석(annotations)에서 꺼낸다.
+2. 알림 라벨에서 대상과 이름, 심각도를 꺼낸다. Shopapi 알림은 `service`를 쓴다. kube-state-metrics 기반 알림(`KubePodCrashLooping`, `PodOOMKilled`)의 `service` 라벨은 shopapi가 아니라 kube-state-metrics 자신일 수 있으므로 `namespace`, `pod`, `container`로 대상을 정한다. 3-4에 실제 알림 라벨을 확인하고 매핑을 고정한다. `KubeNodeNotReady`는 `node`를 쓴다. 요약 문구는 주석(annotations)에서 꺼낸다.
 3. 코드 버그 계열 알림이면 Loki에 `startsAt` 5분 전부터 지금까지 해당 서비스의 ERROR 로그를 조회해 가장 최근 `exc_info`를 스택트레이스로 쓴다.
 4. 스택트레이스가 없는 알림(지연, CrashLoop, OOMKilled, 노드 장애)은 알림 내용과 Pod 상태 요약만 넘긴다. 분류 단계에서 비코드 장애로 판단해 런북 안내로 끝나는지 확인한다. Kubernetes 장애 런북은 `knowledge/k8s/`에 둔다.
 5. 기존 `IncidentIn` 형식으로 바꿔 같은 중복 제거와 큐 적재 경로를 탄다. n8n의 Slack 메시지 파싱은 3단계에서 빠지고, Slack은 결과 보고와 승인 용도로만 쓴다.
@@ -642,7 +643,7 @@ SQS를 두는 이유는 두 가지다. 자동화가 SQS를 가져가는 방식�
 | 환경 추가에 든 코드 변경 | 기준 | 어댑터 파일 수, 줄 수 |
 | 실험 기간 AWS 비용 | 0 | |
 
-### 13. Day 1 체크리스트
+### 13. 1-1 체크리스트
 
 - [ ] `targets/shopapi` 생성(FastAPI 앱, 모듈 6개)
 - [ ] 모듈별 테스트 30개 내외 작성, 전부 통과 확인
@@ -652,6 +653,6 @@ SQS를 두는 이유는 두 가지다. 자동화가 SQS를 가져가는 방식�
 - [ ] `scenarios/` 구조 만들고 S01(patch, yaml, 숨은 테스트) 작성
 - [ ] Anthropic 요금표 확인 후 `.env`의 `MODEL_PRICES` 갱신
 - [ ] S01을 수동으로 주입하고 API로 장애 접수, 실제 LLM으로 끝까지 실행
-- [ ] S01 결과(분류, 시도 횟수, 처리 시간, 비용, 숨은 테스트 결과)를 `results/day1.md`에 기록
+- [ ] S01 결과(분류, 시도 횟수, 처리 시간, 비용, 숨은 테스트 결과)를 `results/phase1_first_run.md`에 기록
 
-Day 1 완료 기준은 S01 한 건이 실제 LLM으로 접수부터 결과까지 완주하고, 그 결과가 기록되는 것이다.
+1-1 완료 기준은 S01 한 건이 실제 LLM으로 접수부터 결과까지 완주하고, 그 결과가 기록되는 것이다.
