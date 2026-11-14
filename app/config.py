@@ -17,6 +17,8 @@ class Settings(BaseSettings):
     queue_stream: str = "incidents"
     queue_group: str = "ai-workers"
     queue_dlq_stream: str = "incidents:dlq"
+    queue_claim_idle_ms: int = 15 * 60 * 1000   # 처리 중 워커가 죽었다고 보고 메시지를 회수하기까지 기다리는 시간
+    checkpoint_enabled: bool = True              # 끄면 회수한 메시지를 처음부터 다시 처리(1단계 동작, 재개 실험의 비교 조건)
 
     # --- 영구 저장소 (PostgreSQL: 장애, LLM 호출, 수정안, 지식 문서와 벡터) ---
     database_url: str = "postgresql://aiops:aiops@localhost:5432/aiops"

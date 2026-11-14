@@ -58,3 +58,5 @@ ts	phase	decision	why	evidence	result
 2026-11-14T08:12Z	f03	키워드 순위는 pg_trgm word_similarity로 결정(측정으로 고르지 않음)	질의 10개로 함수를 고르면 평가 집합에 맞추는 것이 됨	app/rag/retriever.py	-
 2026-11-14T08:14Z	f03	앱에서 Qdrant 제거, 기준선 측정용으로만 compose eval 프로필에 남김	2단계 목표 구조로 수렴, 기준선은 다시 잴 수 있어야 함	scripts/eval_retrieval.py	-
 2026-11-14T08:15Z	f03	검색 비교 결과: Qdrant 벡터 8/10, pgvector 벡터 8/10, 하이브리드 9/10	plan.md 8장 전후 비교 항목	results/phase2_retrieval.md	TAX_RATE 9위→2위, 표본 10개라 일반화하지 않음
+2026-11-14T08:25Z	f03	체크포인터 스위치를 OPT_*가 아닌 checkpoint_enabled로 둠	OPT_*는 /api/v1/config에서 A/B 조건으로 대조되는데 체크포인터는 비용 최적화가 아님	app/config.py	1단계 B 조건 설정 그대로 유효
+2026-11-14T08:26Z	f03	강제 종료 주입을 LangGraph 내부 대신 SandboxTestRunner.run에서 BaseException으로	라이브러리 내부 구조에 기대는 테스트는 업그레이드에 깨짐, BaseException은 except Exception(DLQ)을 지나쳐 kill -9와 같은 pending 상태를 만듦	tests/test_resume.py	-

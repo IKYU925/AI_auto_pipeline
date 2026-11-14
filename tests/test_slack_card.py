@@ -13,6 +13,7 @@ class RecordingClient:
 
     def chat_postMessage(self, **kwargs):
         self.sent.append(kwargs)
+        return {"ok": True, "ts": f"1.{len(self.sent)}"}
 
 
 def _texts(blocks):

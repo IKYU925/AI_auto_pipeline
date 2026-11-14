@@ -5,7 +5,8 @@ from psycopg.rows import dict_row
 from psycopg_pool import ConnectionPool
 
 ROOT = Path(__file__).resolve().parents[1]
-TABLES = ("llm_calls", "actions", "approvals", "fixes", "documents", "incidents")
+# checkpoint_*는 langgraph-checkpoint-postgres가 만든다(checkpoint_migrations는 버전 기록이라 비우지 않는다)
+TABLES = ("llm_calls", "actions", "approvals", "fixes", "documents", "incidents", "checkpoints", "checkpoint_blobs", "checkpoint_writes")
 
 
 def sqlalchemy_url(url: str) -> str:
@@ -24,6 +25,14 @@ def migrate(url: str) -> None:
     cfg.set_main_option("script_location", str(ROOT / "migrations"))
     cfg.attributes["database_url"] = url
     command.upgrade(cfg, "head")
+    with make_pool(url) as pool:
+        checkpointer(pool).setup()
+
+
+def checkpointer(pool: ConnectionPool):
+    from langgraph.checkpoint.postgres import PostgresSaver
+
+    return PostgresSaver(pool)
 
 
 def ensure_database(url: str) -> None:
@@ -40,3 +49,9 @@ def ensure_database(url: str) -> None:
 def truncate_all(pool: ConnectionPool) -> None:
     with pool.connection() as conn:
         conn.execute(f"TRUNCATE {', '.join(TABLES)} RESTART IDENTITY")
+
+
+if __name__ == "__main__":
+    from app.config import get_settings
+
+    migrate(get_settings().database_url)

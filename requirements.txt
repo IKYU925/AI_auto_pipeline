@@ -4,6 +4,7 @@ pydantic-settings>=2.4
 redis>=5.0
 psycopg[binary,pool]>=3.2
 alembic>=1.13
+langgraph-checkpoint-postgres>=3.0
 sqlalchemy>=2.0
 fastembed>=0.4
 langgraph>=1.0
