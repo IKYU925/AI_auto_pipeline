@@ -16,6 +16,8 @@ data:
   QUEUE_CLAIM_IDLE_MS: "30000"
   LOKI_URL: http://loki.monitoring.svc:3100
   ALERT_SLACK_CHANNEL: C0CJKRZD0AU
+  # 고객사별 회신 채널(#tenant-a-ops, #tenant-b-ops). 없는 고객사와 공통(common) 장애는 ALERT_SLACK_CHANNEL
+  TENANT_SLACK_CHANNELS: '{"tenant-a": "C0CHUTH0XB4", "tenant-b": "C0CJPEKF2HW"}'
 ---
 apiVersion: apps/v1
 kind: Deployment
