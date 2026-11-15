@@ -1,0 +1,14 @@
+id: S16
+title: 앱 워커 노드(k3s-w1) 장애
+type: infra
+difficulty: hard
+expected:
+  category: infra
+  needs_code_fix: false
+  outcome: no_code_fix
+alert:
+  message: "KubeNodeNotReady: k3s-w1 노드가 1분 넘게 NotReady"
+  severity: critical
+cluster:
+  alert: KubeNodeNotReady
+  node_halt: {vm: k3s-w1, for_sec: 180, during: S02}

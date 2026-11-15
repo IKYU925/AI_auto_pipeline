@@ -1,0 +1,15 @@
+id: S14
+title: 잘못된 설정값으로 shopapi가 기동 실패를 반복
+type: config
+difficulty: easy
+expected:
+  category: config
+  needs_code_fix: false
+  outcome: no_code_fix
+alert:
+  message: "KubePodCrashLooping: shop/shopapi 컨테이너가 반복해서 재시작됨. 마지막 로그 ValueError: could not convert string to float: '3s' (PG_TIMEOUT_SEC)"
+  severity: warning
+# shopapi는 PG_API_KEY 값 자체를 검사하지 않으므로, 기동 때 숫자로 읽는 설정값의 형식을 깨서 기동 실패를 만든다
+cluster:
+  alert: KubePodCrashLooping
+  env: {PG_TIMEOUT_SEC: "3s"}

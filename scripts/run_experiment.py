@@ -22,7 +22,7 @@ import time
 import traceback
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -102,6 +102,50 @@ TRIGGERS = {
 
 
 @dataclass(frozen=True)
+class Traffic:
+    """장애가 알림 조건(지속 시간, 비율)을 채우도록 반복해서 보내는 요청."""
+
+    method: str
+    path: str
+    json: dict | list | None = None
+    every_sec: float = 1.0
+    for_sec: float = 60.0
+    repeat_items: int = 1  # json["items"]를 이 수만큼 반복해 큰 요청을 만든다(S15)
+
+    def body(self):
+        if self.repeat_items == 1:
+            return self.json
+        return {**self.json, "items": self.json["items"] * self.repeat_items}
+
+
+@dataclass(frozen=True)
+class NodeHalt:
+    vm: str
+    for_sec: float
+    during: str | None = None  # 노드를 멈추기 전에 처리를 걸어 둘 코드 버그 시나리오(재개 확인)
+
+
+@dataclass(frozen=True)
+class Cluster:
+    """클러스터에서 장애를 만드는 방법(scripts/run_cluster.py). 비어 있으면 버그 이미지를 배포하고 requests를 보낸다."""
+
+    alert: str = "ShopapiException"
+    env: dict[str, str | None] = field(default_factory=dict)
+    memory_limit: str | None = None
+    traffic: Traffic | None = None
+    node_halt: NodeHalt | None = None
+
+    @classmethod
+    def parse(cls, raw: dict) -> "Cluster":
+        raw = dict(raw)
+        if "traffic" in raw:
+            raw["traffic"] = Traffic(**raw["traffic"])
+        if "node_halt" in raw:
+            raw["node_halt"] = NodeHalt(**raw["node_halt"])
+        return cls(**raw)
+
+
+@dataclass(frozen=True)
 class Scenario:
     id: str
     title: str
@@ -110,6 +154,7 @@ class Scenario:
     expected: Expected
     trigger: Trigger
     hidden_test: Path | None
+    cluster: Cluster = Cluster()
 
 
 def load_scenario(scenario_id: str) -> Scenario:
@@ -125,6 +170,7 @@ def load_scenario(scenario_id: str) -> Scenario:
         expected=Expected(**raw["expected"]),
         trigger=TRIGGERS[kinds[0]](raw[kinds[0]]),
         hidden_test=SCENARIOS / raw["hidden_test"] if "hidden_test" in raw else None,
+        cluster=Cluster.parse(raw.get("cluster", {})),
     )
 
 
@@ -386,14 +432,14 @@ def summarize(s: Scenario, run: Run, incidents_created: int | None = None) -> di
     }
 
 
-def append_csv(path: Path, row: dict) -> None:
+def append_csv(path: Path, row: dict, columns: list[str] = COLUMNS) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     new = not path.exists()
     with path.open("a", newline="", encoding="utf-8") as f:
-        w = csv.DictWriter(f, fieldnames=COLUMNS)
+        w = csv.DictWriter(f, fieldnames=columns)
         if new:
             w.writeheader()
-        w.writerow({k: row.get(k) for k in COLUMNS})
+        w.writerow({k: row.get(k) for k in columns})
 
 
 def run_all(scenarios: list[Scenario], b: Backend, condition: str, repeat: int, out: Path | None,

@@ -8,3 +8,6 @@ expected:
   outcome: no_code_fix
 startup:
   unset_env: [PG_API_KEY]
+cluster:
+  alert: KubePodCrashLooping
+  env: {PG_API_KEY: null}

@@ -15,11 +15,11 @@ class IncidentStore:
         with self.pool.connection() as conn:
             conn.execute(
                 """INSERT INTO incidents (id, fingerprint, source, service, severity, message, stacktrace, status,
-                                        alertname, alert_fingerprint)
-                   VALUES (%s, %s, %s, %s, %s, %s, %s, 'queued', %s, %s)""",
+                                        alertname, alert_fingerprint, occurred_at)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s, 'queued', %s, %s, %s)""",
                 (incident_id, fingerprint, incident.get("source", "api"), incident["service"], incident.get("severity"),
                  incident["message"], incident.get("stacktrace"), incident.get("alertname"),
-                 incident.get("alert_fingerprint")),
+                 incident.get("alert_fingerprint"), incident.get("occurred_at")),
             )
 
     def set_status(self, incident_id: str, status: str, *, attempts: int | None = None, report: str | None = None,

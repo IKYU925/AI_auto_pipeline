@@ -64,3 +64,12 @@ def test_json_handler_is_attached_once(app):
     create_app(SETTINGS)
     handlers = [h for h in logging.getLogger("shopapi").handlers if isinstance(h.formatter, JsonFormatter)]
     assert len(handlers) == 1
+
+
+def test_latency_histogram_can_express_slow_payments(app):
+    """ShopapiSlowPayment는 handler별 p95 > 5초다. 1초가 끝인 버킷이면 p95가 1초를 넘지 못해 알림이 뜰 수 없다."""
+    client = TestClient(app)
+    client.get("/products")
+    buckets = {line.split('le="')[1].split('"')[0] for line in client.get("/metrics").text.splitlines()
+               if line.startswith("http_request_duration_seconds_bucket") and 'handler="/products"' in line}
+    assert {"5.0", "10.0"} <= buckets, buckets
