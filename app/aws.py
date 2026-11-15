@@ -36,7 +36,7 @@ class AlarmEvent:
             detail = event["detail"]
             name = detail["alarmName"]
             state = detail["state"]
-            # 고객사 이름(tenant-a)에 하이픈이 있어서 오른쪽부터 나눈다
+            # 고객사 이름(tenant-a)에 하이픈이 있어서 오른쪽부터 나눈다. 서비스와 경보 종류에는 하이픈을 쓰지 않는다(결정 0013)
             tenant, service, alertname = name.rsplit("-", 2)
             at = datetime.fromisoformat(state.get("timestamp") or event["time"])
             return cls(name, tenant, service, alertname, state["value"], state.get("reason", ""), at)

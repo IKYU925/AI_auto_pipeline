@@ -25,7 +25,7 @@
 
 - 설정(값은 infra_template의 terraform output): `AIOPS_SQS_QUEUE_URL`, `AIOPS_LOG_GROUP`, `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`. 큐 URL이 비면 소비자를 띄우지 않는다. 키는 `.env`나 k8s Secret에만 둔다.
 - 메시지 본문은 EventBridge 이벤트 JSON 그대로다(SNS 봉투 없음). 예시는 `tests/fixtures/cloudwatch_alarm_*.json`.
-- 경보 이름은 `<tenant>-<service>-<alertname>`이고 `rsplit("-", 2)`로 나눈다.
+- 경보 이름은 `<tenant>-<service>-<alertname>`이고 `rsplit("-", 2)`로 나눈다. 하이픈은 고객사 이름에만 쓸 수 있다. 서비스 이름이나 경보 종류에 하이픈이 들어가면(`tenant-a-shop-api-ErrorLogs`) 고객사가 `tenant-a-shop`으로 잘못 읽히고, 이름만으로는 이를 알아챌 수 없다.
 - 상태별 처리
   - `ALARM`: 같은 경보의 열린 장애가 있으면 넘어가고, 없으면 접수한다.
   - `OK`: 열린 장애의 `alert_resolved_at`을 남긴다. 접수한 적 없는 경보면 아무것도 하지 않는다.

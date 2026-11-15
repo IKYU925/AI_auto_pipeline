@@ -19,11 +19,14 @@ fi
 image="$REGISTRY/aiops:$tag"
 if [ -n "${ECR_REPOSITORY_URL:-}" ]; then
   image="$ECR_REPOSITORY_URL:$tag"
+  ecr_host="${ECR_REPOSITORY_URL%%/*}"
+  # 셸의 기본 리전과 상관없이 ECR 주소(<계정>.dkr.ecr.<리전>.amazonaws.com)의 리전을 쓴다
+  ecr_region="${ecr_host#*.dkr.ecr.}"; ecr_region="${ecr_region%%.*}"
   # 태그가 IMMUTABLE이라 같은 태그는 다시 올릴 수 없다. 이미 있으면 그 이미지를 쓴다
-  if aws ecr describe-images --repository-name "${ECR_REPOSITORY_URL#*/}" --image-ids imageTag="$tag" >/dev/null 2>&1; then
+  if aws ecr describe-images --region "$ecr_region" --repository-name "${ECR_REPOSITORY_URL#*/}" --image-ids imageTag="$tag" >/dev/null 2>&1; then
     echo "$image"; exit 0
   fi
-  aws ecr get-login-password | docker login --username AWS --password-stdin "${ECR_REPOSITORY_URL%%/*}" >&2
+  aws ecr get-login-password --region "$ecr_region" | docker login --username AWS --password-stdin "$ecr_host" >&2
 fi
 
 docker build --platform linux/arm64 -t "$image" "$ROOT" >&2

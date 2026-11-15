@@ -27,7 +27,7 @@ plan.md 10장은 4단계 Terraform을 이 저장소의 `deploy/aws/`에 두려�
 
 ## 영향
 
-- 계약: 경보 이름 `<tenant>-<service>-<alertname>`, 메시지 본문은 EventBridge 이벤트 JSON(SNS 봉투 없음), 태그 키 `Project=ai-incident`(대문자 P).
+- 계약: 경보 이름 `<tenant>-<service>-<alertname>`(하이픈은 고객사 이름에만), 메시지 본문은 EventBridge 이벤트 JSON(SNS 봉투 없음), 태그 키 `Project=ai-incident`(대문자 P).
 - shopapi 실행 방식(`deploy/k8s/shopapi/shopapi.yaml`의 명령, 포트 8100, `PG_API_KEY`)을 바꾸면 infra_template의 `lab.sh deploy`도 같이 바꿔야 한다.
 - 이 저장소에 Terraform, CloudFormation, 리소스를 만드는 boto3 호출을 넣지 않는다.
 
