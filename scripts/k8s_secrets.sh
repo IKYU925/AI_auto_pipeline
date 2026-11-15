@@ -5,7 +5,7 @@
 #   POSTGRES_PASSWORD, DATABASE_URL      처음에는 무작위로 만들고, 이후에는 클러스터에 있는 값을 유지한다
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-INFRA_DIR="${INFRA_DIR:-$ROOT/..}"
+INFRA_DIR="${INFRA_DIR:-$ROOT/../infra_local_set}"  # 같은 폴더 아래의 형제 저장소
 NS=aiops
 
 env_value() { grep -E "^$1=" "$ROOT/.env" | tail -1 | cut -d= -f2-; }

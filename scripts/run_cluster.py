@@ -47,12 +47,14 @@ from scripts.run_experiment import (
     reset_caches,
 )
 
-INFRA = Path(os.environ.get("INFRA_DIR", ROOT.parent))
+# infra_local_set은 이 저장소와 같은 폴더(~/Project) 아래의 형제 저장소다
+INFRA = Path(os.environ.get("INFRA_DIR", ROOT.parent / "infra_local_set"))
 os.environ.setdefault("KUBECONFIG", str(INFRA / "kubeconfig"))
 OVERLAY = ROOT / "deploy/k8s/overlays/local"
-SHOP_URL = os.environ.get("SHOP_URL", "http://shop.192.168.56.10.nip.io")
-ALERTMANAGER = os.environ.get("ALERTMANAGER_URL", "http://192.168.56.10:30093")
-PROMETHEUS = os.environ.get("PROMETHEUS_URL", "http://192.168.56.10:30090")
+CLUSTER_HOST = os.environ.get("CLUSTER_HOST", "192.168.56.10")
+SHOP_URL = os.environ.get("SHOP_URL", f"http://shop.{CLUSTER_HOST}.nip.io")
+ALERTMANAGER = os.environ.get("ALERTMANAGER_URL", f"http://{CLUSTER_HOST}:30093")
+PROMETHEUS = os.environ.get("PROMETHEUS_URL", f"http://{CLUSTER_HOST}:30090")
 TENANTS = ("tenant-a", "tenant-b")
 ROLLOUTS = [("shop", "shopapi"), *((t, "shopapi") for t in TENANTS), ("aiops", "api"), ("aiops", "worker")]
 COLUMNS = [
@@ -486,7 +488,7 @@ def run_tenants(s: Scenario, timeout_sec: float) -> list[dict]:
     try:
         deploy_bug(s.id)
         for t in TENANTS:
-            with httpx.Client(base_url=f"http://{t}.192.168.56.10.nip.io", timeout=30) as shop:
+            with httpx.Client(base_url=f"http://{t}.{CLUSTER_HOST}.nip.io", timeout=30) as shop:
                 fault_at = now()
                 send_requests(s.trigger.items, shop)
             waited.append((t, fault_at, wait_incident(s.cluster.alert, fault_at, timeout_sec, tenant=t)))
