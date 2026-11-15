@@ -146,6 +146,15 @@ class Cluster:
 
 
 @dataclass(frozen=True)
+class Aws:
+    """4단계 EC2에서 장애를 만드는 방법. 인프라는 infra_template의 terraform/envs/aiops-lab이 만든다(plan.md 10-3)."""
+
+    alarm: str                                # 경보 이름의 마지막 부분(<tenant>-<service>-<alarm>)
+    tenant: str = "tenant-a"
+    fill_disk_to_percent: float | None = None  # 루트 디스크를 df로 재서 이 비율까지 fallocate로 채운다(이미지 크기 포함)
+
+
+@dataclass(frozen=True)
 class Scenario:
     id: str
     title: str
@@ -155,6 +164,7 @@ class Scenario:
     trigger: Trigger
     hidden_test: Path | None
     cluster: Cluster = Cluster()
+    aws: Aws | None = None
 
 
 def load_scenario(scenario_id: str) -> Scenario:
@@ -171,6 +181,7 @@ def load_scenario(scenario_id: str) -> Scenario:
         trigger=TRIGGERS[kinds[0]](raw[kinds[0]]),
         hidden_test=SCENARIOS / raw["hidden_test"] if "hidden_test" in raw else None,
         cluster=Cluster.parse(raw.get("cluster", {})),
+        aws=Aws(**raw["aws"]) if "aws" in raw else None,
     )
 
 

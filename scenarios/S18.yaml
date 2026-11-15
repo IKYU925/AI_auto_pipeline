@@ -1,0 +1,16 @@
+id: S18
+title: EC2 shopapi의 빈 주문 평균 단가 0으로 나누기(S01 버그를 AWS 경로로)
+type: code_bug
+difficulty: easy
+expected:
+  category: code_bug
+  needs_code_fix: true
+  root_cause_file: shopapi/orders.py
+  outcome: resolved
+requests:
+  - method: POST
+    path: /orders/summary
+    json: {items: []}
+hidden_test: hidden_tests/test_s01.py
+aws:
+  alarm: ErrorLogs
