@@ -1,6 +1,6 @@
 # F06. 승인 후 조치
 
-상태: 구현 중(3-10a 코드, 단위 테스트, 클러스터 배포와 Job 경로 확인 완료. S17 실제 실행은 infra 볼륨과 Slack 앱 토큰 대기)
+상태: 구현 중(3-10a, 3-10b 코드, 단위 테스트, 클러스터에서 Job 경로와 롤백 확인 완료. S17, S20 실제 실행은 infra 볼륨과 Slack 앱 토큰 대기)
 관련: plan.md 9-8, 3-10, 결정 [0003](../decisions/0003-approved-remediation.md), [0014](../decisions/0014-eks-replaces-ec2.md)
 
 ## 문제
@@ -12,7 +12,8 @@
 - 목표: 회신 카드의 승인 버튼 한 번으로 허용 목록 조치가 실행되고, 승인자와 결과가 장애 기록에 남는다.
 - 목표: 조치 이름과 대상은 알림과 허용 목록에서만 정한다. LLM 출력은 실행 경로에 들어가지 않는다.
 - 목표: 공개 주소 없이 버튼 클릭을 받는다(Socket Mode). 로컬 K3s와 EKS가 같은 방식을 쓴다.
-- 비목표(3-10a): rollout restart와 롤백. 3-10b에서 같은 틀에 더한다.
+- 목표(3-10b): 배포 직후 장애에는 직전 리비전 롤백을 빠른 완화로 제안한다. 자동 수정안과 함께 나온다.
+- 비목표: rollout restart. 이 조치로 풀리는 시나리오가 생기면 더한다.
 - 비목표: 승인 없는 자동 조치, 스케일 조정, AWS 리소스 조치.
 
 ## 사용 시나리오
@@ -23,12 +24,15 @@
 4. 정리 플레이북이 끝나면 같은 스레드에 결과와 Ansible 로그 끝부분이 올라온다.
 5. 사용률이 내려가 알림이 해소되면 장애 기록에 해소 시각이 남는다.
 
+롤백(S20): 버그가 든 이미지를 배포한 직후 예외 알림이 오면, 카드에 자동 수정안과 함께 `승인 후 실행: rollout-undo @ shop/shopapi (rev 62 -> 61)` 버튼이 나온다. 승인하면 직전 리비전으로 되돌리고, 오류가 멈춰 알림이 해소된다. 수정안은 그 뒤 사람이 검토해 배포한다.
+
 ## 요구사항
 
 - 데이터 형태
   - `ALERT_KINDS[알림].action`: 조치 이름. 지금은 `AppdataDiskFull -> cleanup-appdata`뿐이다.
-  - `ACTIONS[조치]`: 플레이북 파일과 허용 대상(노드 이름 -> SSH 주소).
-  - 장애 결과(`incidents.result.proposed_action`): `{action, target}`. 워커가 그래프 결과(`no_code_fix`)와 위 두 표로만 만든다.
+  - `ACTIONS[조치]`: 실행 방식별 타입이다. `Playbook`은 플레이북 파일과 허용 대상(노드 이름 -> SSH 주소), `RolloutUndo`는 허용 namespace와 배포 후 시간 창(30분).
+  - `IncidentIn.deploy`: 알림 접수 때 읽은 배포 상태(`DeployState`: namespace, Deployment, 현재와 직전 리비전의 번호, 이미지, 시각).
+  - 장애 결과(`incidents.result.proposed_action`): `{action, target, from_revision, to_revision}`. 워커가 그래프 결과, 알림 종류 표, 허용 목록, 접수 때의 배포 상태로만 만든다.
   - `actions` 테이블: 승인자, 승인 시각, 상태(running, succeeded, failed), 로그. `UNIQUE (incident_id, playbook)`.
 - 승인 처리(`app/approvals.py`)
   - 버튼 값은 장애 ID뿐이다. 조치는 장애 기록에서 다시 읽고 허용 목록으로 한 번 더 확인한다.
@@ -47,7 +51,11 @@
 - [x] Job은 알림 라벨이 아니라 허용 목록의 주소를 쓰고, 이미 있는 Job이면 그 결과를 기다린다(테스트)
 - [x] 클러스터에서 승인 처리 서비스 계정으로 Job을 만들어 k3s-w1에 SSH와 sudo로 Ansible을 실행했다(`ansible -m ping -b`가 pong)
 - [x] `AppdataDiskFull`의 PromQL이 노드 이름(`nodename`)을 붙인다(루트 파일 시스템으로 확인)
+- [x] 배포 직후(30분 안) 장애에만, 허용 namespace에서, 직전 리비전이 있을 때만 롤백을 제안한다(테스트)
+- [x] 롤백은 직전 ReplicaSet 템플릿에서 `pod-template-hash`를 빼고 되돌리며, 제안 뒤 배포가 바뀌었으면 실행하지 않는다(테스트, 클러스터의 tenant-b에서 rev 5 -> 4 롤백과 두 번째 실행 거절 확인)
+- [x] api는 대상 namespace의 배포 읽기만, approvals는 Deployment patch만 가진다. kube-system에는 둘 다 권한이 없다(`kubectl auth can-i`)
 - [ ] S17 실행: 알림부터 승인 요청까지, 승인부터 해소까지 시간, 조치 기록. 사람 개입은 승인 1번
+- [ ] S20 실행: 배포 직후 예외 알림이 승인 후 롤백으로 해소
 
 ## 설계 메모
 
@@ -58,6 +66,9 @@
 - **Job은 자동화와 같은 이미지다.** 승인 처리 Pod가 자기 이미지를 API로 읽어 쓴다. 이미지를 하나 더 빌드하고 태그를 맞출 필요가 없다.
 - **승인 처리가 Job 도중 재시작되면** `actions`가 `running`으로 남는다. 다시 눌러도 실행하지 않으므로, 이 경우는 사람이 Job 결과를 보고 기록을 고친다. 3-10a에서는 자동 복구를 만들지 않았다.
 
+- **배포 시각은 롤아웃 조건의 갱신 시각이다.** 같은 템플릿을 다시 배포하면 예전 ReplicaSet을 다시 쓰므로 생성 시각이 배포 시각이 아니다. 그래서 Deployment의 `Progressing` 조건 갱신 시각을 쓴다. 스케일 조정도 이 시각을 바꿔서 롤백 제안이 더 자주 나올 수 있다. 제안일 뿐이고 실행은 사람의 승인이 필요해서 받아들인다.
+- **롤백 대상 리비전을 제안에 고정한다.** 승인 사이에 배포가 바뀌면 "직전 리비전"이 달라진다. 사람이 본 것과 다른 것을 실행하지 않는다.
+
 ## 열린 질문
 
 - S17 실행 전에 infra_local_set 변경 두 가지가 필요하다. k3s-w1의 1GB 루프 볼륨(`/srv/appdata`)과 `AppdataDiskFull` 라우팅이다.
@@ -66,3 +77,4 @@
 ## 변경 이력
 
 - 2026-11-15 작성. 3-10을 a(승인 틀과 S17)와 b(rollout restart, 롤백)로 나눴다.
+- 2026-11-15 3-10b. 롤백만 넣고 rollout restart는 뺐다. 지금 시나리오 중 restart로 풀리는 장애가 없다.
