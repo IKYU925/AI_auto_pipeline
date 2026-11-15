@@ -34,7 +34,8 @@ def main() -> int:
         deployed = res.status_code == 200 and res.json()["dashboard"]["panels"] == local["panels"]
         print(f"== {local['title']} ({path.name}) Grafana 반영: {'같음' if deployed else '다름 또는 없음'}")
         failed += not deployed
-        for panel in local["panels"]:
+        panels = [q for p in local["panels"] for q in (p.get("panels", []) if p["type"] == "row" else [p])]
+        for panel in panels:
             for target in panel["targets"]:
                 body = {"queries": [{**target, "intervalMs": 60000, "maxDataPoints": 500}], "from": args.start, "to": "now"}
                 result = grafana.post("/api/ds/query", json=body).json().get("results", {}).get(target["refId"], {})
