@@ -1,6 +1,6 @@
 # F06. 승인 후 조치
 
-상태: 구현 중(3-10a, 3-10b 코드, 단위 테스트, 클러스터에서 Job 경로와 롤백 확인 완료. S17, S20 실제 실행은 infra 볼륨과 Slack 앱 토큰 대기)
+상태: 완료
 관련: plan.md 9-8, 3-10, 결정 [0003](../decisions/0003-approved-remediation.md), [0014](../decisions/0014-eks-replaces-ec2.md)
 
 ## 문제
@@ -54,8 +54,8 @@
 - [x] 배포 직후(30분 안) 장애에만, 허용 namespace에서, 직전 리비전이 있을 때만 롤백을 제안한다(테스트)
 - [x] 롤백은 직전 ReplicaSet 템플릿에서 `pod-template-hash`를 빼고 되돌리며, 제안 뒤 배포가 바뀌었으면 실행하지 않는다(테스트, 클러스터의 tenant-b에서 rev 5 -> 4 롤백과 두 번째 실행 거절 확인)
 - [x] api는 대상 namespace의 배포 읽기만, approvals는 Deployment patch만 가진다. kube-system에는 둘 다 권한이 없다(`kubectl auth can-i`)
-- [ ] S17 실행: 알림부터 승인 요청까지, 승인부터 해소까지 시간, 조치 기록. 사람 개입은 승인 1번
-- [ ] S20 실행: 배포 직후 예외 알림이 승인 후 롤백으로 해소
+- [x] S17 실행: 알림부터 승인 요청까지 52.9초, 승인부터 해소까지 28.9초, 조치 기록 남음. 사람 개입은 승인 1번([phase3_summary.md](../../results/phase3_summary.md)의 3-10 절)
+- [x] S20 실행: 배포 직후 예외 알림이 승인 후 롤백(rev 65 -> 64)으로 해소. 승인부터 해소까지 119.3초, 롤백 자체는 6.4초
 
 ## 설계 메모
 
@@ -71,10 +71,11 @@
 
 ## 열린 질문
 
-- S17 실행 전에 infra_local_set 변경 두 가지가 필요하다. k3s-w1의 1GB 루프 볼륨(`/srv/appdata`)과 `AppdataDiskFull` 라우팅이다.
-- Slack 앱에서 Socket Mode와 Interactivity를 켜고 app-level 토큰(`connections:write`)을 만들어야 한다.
+- 승인 처리가 Job 도중 재시작되면 `actions`가 `running`으로 남는다. 자동 복구는 아직 없다.
+- 4단계에서 롤백을 ArgoCD 롤백으로 바꿀 때, 배포 상태는 ArgoCD 배포 이력에서 같은 모양(`DeployState`)으로 채운다.
 
 ## 변경 이력
 
 - 2026-11-15 작성. 3-10을 a(승인 틀과 S17)와 b(rollout restart, 롤백)로 나눴다.
 - 2026-11-15 3-10b. 롤백만 넣고 rollout restart는 뺐다. 지금 시나리오 중 restart로 풀리는 장애가 없다.
+- 2026-11-15 S17, S20 실행 완료. S20은 요청 한 번이면 알림이 저절로 해소되어 지속 트래픽을 더해 다시 실행했다. 비용 합계 $0.177.
