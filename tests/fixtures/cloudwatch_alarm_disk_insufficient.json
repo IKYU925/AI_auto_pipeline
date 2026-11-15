@@ -1,0 +1,46 @@
+{
+  "version": "0",
+  "id": "e1b2c3d4-0000-4000-8000-000000000019",
+  "detail-type": "CloudWatch Alarm State Change",
+  "source": "aws.cloudwatch",
+  "account": "123456789012",
+  "time": "2026-11-15T11:03:00Z",
+  "region": "ap-northeast-2",
+  "resources": [
+    "arn:aws:cloudwatch:ap-northeast-2:123456789012:alarm:tenant-a-shopapi-DiskUsageHigh"
+  ],
+  "detail": {
+    "alarmName": "tenant-a-shopapi-DiskUsageHigh",
+    "state": {
+      "value": "INSUFFICIENT_DATA",
+      "reason": "Unchecked: Initial alarm creation",
+      "timestamp": "2026-11-15T11:03:00.000+0000"
+    },
+    "previousState": {
+      "value": "INSUFFICIENT_DATA",
+      "reason": "",
+      "timestamp": "2026-11-15T11:03:00.000+0000"
+    },
+    "configuration": {
+      "metrics": [
+        {
+          "id": "m1",
+          "metricStat": {
+            "metric": {
+              "namespace": "CWAgent",
+              "name": "disk_used_percent",
+              "dimensions": {
+                "InstanceId": "i-0123456789abcdef0",
+                "path": "/",
+                "fstype": "xfs"
+              }
+            },
+            "period": 60,
+            "stat": "Average"
+          },
+          "returnData": true
+        }
+      ]
+    }
+  }
+}

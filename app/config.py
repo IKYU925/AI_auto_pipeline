@@ -1,7 +1,7 @@
 """환경변수 기반 설정. .env 파일 또는 컨테이너 환경변수로 주입한다."""
 from functools import lru_cache
 
-from pydantic import Field
+from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -70,6 +70,17 @@ class Settings(BaseSettings):
 
     # --- Alertmanager 입구(3단계) ---
     loki_url: str = ""                           # 비우면 스택트레이스 조회를 하지 않는다
+
+    # --- AWS 입구(4단계). 값은 infra_template terraform/envs/aiops-lab의 output ---
+    aiops_sqs_queue_url: str = ""                # 비우면 SQS 소비자를 띄우지 않는다(1~3단계)
+    aiops_log_group: str = ""                    # 비우면 CloudWatch Logs 스택트레이스 조회를 하지 않는다
+    aws_region: str = "ap-northeast-2"
+    # 자동화 전용 IAM 사용자 키. boto3는 .env를 읽지 않아서 여기서 받아 넘긴다. 커밋하지 않는다
+    aws_access_key_id: str = ""
+    aws_secret_access_key: SecretStr = SecretStr("")
+
+    def channel_for(self, tenant: str) -> str:
+        return self.tenant_slack_channels.get(tenant, self.alert_slack_channel)
 
 
 @lru_cache

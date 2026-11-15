@@ -78,6 +78,27 @@ class Container:
 
         return LokiClient(self.settings.loki_url) if self.settings.loki_url else None
 
+    def _aws(self, service: str):
+        import boto3
+
+        s = self.settings
+        keys = {"aws_access_key_id": s.aws_access_key_id,
+                "aws_secret_access_key": s.aws_secret_access_key.get_secret_value()} if s.aws_access_key_id else {}
+        return boto3.client(service, region_name=s.aws_region, **keys)
+
+    @cached_property
+    def cloudwatch_logs(self):
+        from app.aws import CloudWatchLogs
+
+        return CloudWatchLogs(self._aws("logs"), self.settings.aiops_log_group) if self.settings.aiops_log_group else None
+
+    @cached_property
+    def sqs_intake(self):
+        from app.aws import SqsIntake
+
+        url = self.settings.aiops_sqs_queue_url
+        return SqsIntake(self, self._aws("sqs"), url) if url else None
+
     @cached_property
     def notifier(self) -> SlackNotifier:
         return SlackNotifier(self.settings.slack_bot_token)

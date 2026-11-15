@@ -2,6 +2,7 @@
 import hmac
 import logging
 import uuid
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Request, Response, status
@@ -35,8 +36,19 @@ def accept(c: Container, body: IncidentIn) -> IncidentAccepted:
 
 
 def create_app(container: Container | None = None) -> FastAPI:
-    app = FastAPI(title="AI Incident Automation", version="0.1.0")
-    app.state.container = container or Container()
+    c = container or Container()
+
+    @asynccontextmanager
+    async def lifespan(_app: FastAPI):
+        intake = c.sqs_intake
+        if intake:
+            intake.start()
+        yield
+        if intake:
+            intake.stop.set()
+
+    app = FastAPI(title="AI Incident Automation", version="0.1.0", lifespan=lifespan)
+    app.state.container = c
 
     def get_container(request: Request) -> Container:
         return request.app.state.container
@@ -88,8 +100,7 @@ def create_app(container: Container | None = None) -> FastAPI:
             if alert.kind.needs_pod_logs and c.loki and alert.labels.get("pod"):
                 logs = c.loki.pod_tail(alert.labels.get("namespace", "shop"), alert.labels["pod"],
                                        alert.starts_at, datetime.now(timezone.utc))
-            accepted.append(accept(c, alert.to_incident(c.settings.tenant_slack_channels.get(alert.tenant, c.settings.alert_slack_channel),
-                                                      stacktrace, logs)).incident_id)
+            accepted.append(accept(c, alert.to_incident(c.settings.channel_for(alert.tenant), stacktrace, logs)).incident_id)
         return {"accepted": accepted, "already_open": already_open, "resolved": resolved}
 
     @app.get("/api/v1/incidents/{incident_id}", dependencies=[Depends(verify_token)])

@@ -1,0 +1,43 @@
+{
+  "version": "0",
+  "id": "c4c1c1c9-6542-e61b-6ef0-8c4d36933a92",
+  "detail-type": "CloudWatch Alarm State Change",
+  "source": "aws.cloudwatch",
+  "account": "123456789012",
+  "time": "2026-11-15T10:20:30Z",
+  "region": "ap-northeast-2",
+  "resources": [
+    "arn:aws:cloudwatch:ap-northeast-2:123456789012:alarm:tenant-a-shopapi-ErrorLogs"
+  ],
+  "detail": {
+    "alarmName": "tenant-a-shopapi-ErrorLogs",
+    "state": {
+      "value": "OK",
+      "reason": "Threshold Crossed: no datapoints were received for 1 period and 1 missing datapoint was treated as [NonBreaching].",
+      "timestamp": "2026-11-15T10:20:30.000+0000"
+    },
+    "previousState": {
+      "value": "ALARM",
+      "reason": "Threshold Crossed: 1 out of the last 1 datapoints [3.0 (15/11/26 10:00:00)] was greater than or equal to the threshold (1.0) (minimum 1 datapoint for OK -> ALARM transition).",
+      "timestamp": "2026-11-15T10:01:30.123+0000"
+    },
+    "configuration": {
+      "description": "shopapi ERROR log lines",
+      "metrics": [
+        {
+          "id": "m1",
+          "metricStat": {
+            "metric": {
+              "namespace": "AiIncident",
+              "name": "ShopapiErrorLogs",
+              "dimensions": {}
+            },
+            "period": 60,
+            "stat": "Sum"
+          },
+          "returnData": true
+        }
+      ]
+    }
+  }
+}
