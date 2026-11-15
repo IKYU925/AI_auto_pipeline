@@ -26,6 +26,7 @@ class Document:
     doc_id: str
     text: str
     service: str = "common"
+    tenant: str = "common"
     category: str = "general"
     doc_type: str = "runbook"
     updated_at: datetime | None = None
@@ -36,7 +37,7 @@ class Document:
         if ts.tzinfo is None:
             ts = ts.replace(tzinfo=timezone.utc)
         # 1단계 매니페스트처럼 초 단위로 비교한다
-        return {"service": self.service, "category": self.category, "doc_type": self.doc_type,
+        return {"service": self.service, "tenant": self.tenant, "category": self.category, "doc_type": self.doc_type,
                 "updated_at": ts.replace(microsecond=0)}
 
 
@@ -77,7 +78,7 @@ class IncrementalIngestor:
                 meta = doc.metadata()
                 chunk_map = {_sha(c): c for c in chunk_text(doc.text)}  # 같은 문서 안 중복 청크 제거
                 rows = conn.execute(
-                    "SELECT chunk_hash, service, category, doc_type, updated_at, embed_model FROM documents WHERE doc_id = %s",
+                    "SELECT chunk_hash, service, tenant, category, doc_type, updated_at, embed_model FROM documents WHERE doc_id = %s",
                     (doc.doc_id,),
                 ).fetchall()
                 current = {r["chunk_hash"] for r in rows if r["embed_model"] == model}
@@ -95,7 +96,7 @@ class IncrementalIngestor:
                     conn.execute("DELETE FROM documents WHERE doc_id = %s AND chunk_hash = ANY(%s)", (doc.doc_id, list(to_delete)))
                 if to_keep:
                     conn.execute(
-                        """UPDATE documents SET service = %(service)s, category = %(category)s, doc_type = %(doc_type)s,
+                        """UPDATE documents SET service = %(service)s, tenant = %(tenant)s, category = %(category)s, doc_type = %(doc_type)s,
                              updated_at = %(updated_at)s WHERE doc_id = %(doc_id)s""",
                         {**meta, "doc_id": doc.doc_id},
                     )
@@ -103,10 +104,10 @@ class IncrementalIngestor:
                     vectors = self.embedder.embed([chunk_map[h] for h in to_embed])
                     with conn.cursor() as cur:
                         cur.executemany(
-                            """INSERT INTO documents (doc_id, chunk_hash, content, service, category, doc_type, updated_at,
+                            """INSERT INTO documents (doc_id, chunk_hash, content, service, tenant, category, doc_type, updated_at,
                                  embed_model, embedding)
-                               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s::vector)""",
-                            [(doc.doc_id, h, chunk_map[h], meta["service"], meta["category"], meta["doc_type"],
+                               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s::vector)""",
+                            [(doc.doc_id, h, chunk_map[h], meta["service"], meta["tenant"], meta["category"], meta["doc_type"],
                               meta["updated_at"], model, to_pgvector(v)) for h, v in zip(to_embed, vectors)],
                         )
                 # 이 모델로 다시 만든 청크는 삭제 수에서 뺀다(행은 지웠다가 새로 넣었다)

@@ -65,6 +65,7 @@ class Nodes:
         query = " ".join([cls["summary"], *cls.get("keywords", []), normalize(inc["message"].splitlines()[0][:200])])
         flt = SearchFilter(
             service=inc["service"],
+            tenant=inc.get("tenant", "common"),
             categories=[cls["category"], "general"],
             since_days=self.s.retrieval_lookback_days,
         )

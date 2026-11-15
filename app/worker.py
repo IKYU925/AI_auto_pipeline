@@ -80,6 +80,7 @@ def process_message(c: Container, msg_id: str, payload: dict) -> dict:
         cost=final.get("cost", {}),
         patch_path=final.get("patch_path", ""),
         classification=final.get("classification", {}),
+        context_doc_ids=[d["doc_id"] for d in final.get("context_docs", [])],
         patch=final.get("fix", {}).get("patch", ""),
         reused_fix=bool(final.get("reused_fix")),
         test_selection=final.get("test_selection", {}),

@@ -24,13 +24,14 @@ CANDIDATES = 20  # 순위마다 RRF에 넣는 후보 수
 @dataclass
 class SearchFilter:
     service: str | None = None
+    tenant: str = "common"  # 고객사 문서와 공통(common) 문서만 찾는다. 다른 고객사 문서는 보지 않는다
     categories: list[str] | None = None
     doc_types: list[str] | None = None
     since_days: int | None = None
     include_common: bool = True  # 서비스 공통 문서(service=common)도 포함
 
     def to_sql(self) -> tuple[str, dict]:
-        where, params = ["true"], {}
+        where, params = ["tenant = ANY(%(tenants)s)"], {"tenants": sorted({self.tenant, "common"})}
         if self.service:
             where.append("service = ANY(%(services)s)")
             params["services"] = [self.service, "common"] if self.include_common else [self.service]
@@ -110,7 +111,7 @@ class Retriever:
         if not hits and (flt.categories or flt.since_days):
             # 필터가 너무 좁아서 0건이면 서비스 조건만 남기고 한 번 더 찾는다
             self.stats["relaxed"] += 1
-            hits = self._search(query, SearchFilter(service=flt.service), top_k)
+            hits = self._search(query, SearchFilter(service=flt.service, tenant=flt.tenant), top_k)
 
         self.redis.set(key, json.dumps([asdict(h) for h in hits]), ex=self.cache_ttl)
         return hits

@@ -84,3 +84,18 @@ def test_embedding_model_change_reembeds(container):
         conn.execute("UPDATE documents SET embed_model = 'old-model'")
     report = container.ingestor.ingest([_doc(BODY)])
     assert (report.embedded_chunks, report.reused_chunks, report.deleted_chunks) == (3, 0, 0)
+
+
+def test_search_sees_own_tenant_and_common_docs_but_never_another_tenant(container):
+    container.ingestor.ingest([
+        _doc("결제 지연이면 고객사 A 담당자에게 전화한다.", doc_id="a.md", tenant="tenant-a"),
+        _doc("결제 지연이면 고객사 B 티켓 시스템에 올린다.", doc_id="b.md", tenant="tenant-b"),
+        _doc("결제 지연이면 PG 상태 페이지를 확인한다.", doc_id="common.md"),
+    ])
+
+    def found(tenant: str) -> set[str]:
+        return {h.doc_id for h in container.retriever.search("결제 지연", SearchFilter(service="checkout", tenant=tenant), top_k=5)}
+
+    assert found("tenant-a") == {"a.md", "common.md"}
+    assert found("tenant-b") == {"b.md", "common.md"}
+    assert found("common") == {"common.md"}, "shop과 노드 장애는 고객사 문서를 보지 않는다"
