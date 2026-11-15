@@ -59,7 +59,7 @@ class Settings(BaseSettings):
     # --- 비용 최적화 끄기(실험 조건 B). 기본은 모두 켬 ---
     opt_llm_cache: bool = True                   # 분류, 원인 분석 응답 캐시
     opt_model_routing: bool = True               # 끄면 모든 작업을 고성능 모델로
-    opt_early_exit: bool = True                  # 끄면 비코드 장애도 원인 분석까지 실행
+    opt_early_exit: bool = True                  # 끄면 설정·인프라 장애도 원인 분석까지 실행
     opt_test_selection: bool = True              # 끄면 매번 전체 테스트
     opt_fix_reuse: bool = True                   # 끄면 검증된 수정안을 다시 쓰지 않음
 

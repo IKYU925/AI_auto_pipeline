@@ -15,12 +15,196 @@
   "editable": true,
   "panels": [
     {
+      "id": 101,
+      "title": "가용성",
+      "type": "stat",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "refId": "A",
+          "expr": "100 * (1 - (sum(increase(http_requests_total{namespace=\"shop\", status=\"5xx\"}[$__range])) or vector(0)) / sum(increase(http_requests_total{namespace=\"shop\"}[$__range])))",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 2
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none"
+      },
+      "description": "SLI. 기간 안 요청 중 5xx가 아닌 비율"
+    },
+    {
+      "id": 102,
+      "title": "0.5초 안 응답",
+      "type": "stat",
+      "gridPos": {
+        "x": 6,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "refId": "A",
+          "expr": "100 * sum(increase(http_request_duration_seconds_bucket{namespace=\"shop\", le=\"0.5\"}[$__range])) / sum(increase(http_request_duration_seconds_count{namespace=\"shop\"}[$__range]))",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none"
+      },
+      "description": "SLI. 기간 안 요청 중 0.5초 안에 끝난 비율. 기준은 히스토그램 버킷 경계에서만 고를 수 있다"
+    },
+    {
+      "id": 103,
+      "title": "발생 중 알림",
+      "type": "stat",
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "refId": "A",
+          "expr": "count(ALERTS{alertstate=\"firing\", namespace=~\"shop|aiops\"}) or vector(0)",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none"
+      },
+      "description": "지금 firing인 shop, aiops 알림 수"
+    },
+    {
+      "id": 104,
+      "title": "Pod 재시작(기간)",
+      "type": "stat",
+      "gridPos": {
+        "x": 18,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "refId": "A",
+          "expr": "sum(increase(kube_pod_container_status_restarts_total{namespace=\"shop\"}[$__range])) or vector(0)",
+          "range": true,
+          "instant": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none"
+      },
+      "description": "기간 안 shop Pod 재시작 횟수"
+    },
+    {
       "id": 1,
       "title": "요청 수",
       "type": "timeseries",
       "gridPos": {
         "x": 0,
-        "y": 0,
+        "y": 4,
         "w": 12,
         "h": 8
       },
@@ -55,7 +239,7 @@
       "type": "timeseries",
       "gridPos": {
         "x": 12,
-        "y": 0,
+        "y": 4,
         "w": 6,
         "h": 8
       },
@@ -92,7 +276,7 @@
       "type": "timeseries",
       "gridPos": {
         "x": 18,
-        "y": 0,
+        "y": 4,
         "w": 6,
         "h": 8
       },
@@ -127,7 +311,7 @@
       "type": "timeseries",
       "gridPos": {
         "x": 0,
-        "y": 8,
+        "y": 12,
         "w": 8,
         "h": 8
       },
@@ -160,7 +344,7 @@
       "type": "timeseries",
       "gridPos": {
         "x": 8,
-        "y": 8,
+        "y": 12,
         "w": 8,
         "h": 8
       },
@@ -192,7 +376,7 @@
       "type": "timeseries",
       "gridPos": {
         "x": 16,
-        "y": 8,
+        "y": 12,
         "w": 8,
         "h": 8
       },
@@ -233,7 +417,7 @@
       "type": "logs",
       "gridPos": {
         "x": 0,
-        "y": 16,
+        "y": 20,
         "w": 24,
         "h": 10
       },

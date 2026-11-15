@@ -14,6 +14,7 @@ class IncidentIn(BaseModel):
     severity: str = "unknown"
     message: str = Field(description="알림 본문 또는 에러 메시지")
     stacktrace: str | None = None
+    logs: str | None = Field(None, description="Pod 알림(CrashLoop, OOMKilled)의 대상 Pod 마지막 로그")
     occurred_at: datetime | None = None
     alertname: str | None = None          # Alertmanager로 들어온 장애만
     alert_fingerprint: str | None = None  # 해소(resolved) 알림을 같은 장애에 잇는 키

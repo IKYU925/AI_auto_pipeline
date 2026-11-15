@@ -11,18 +11,24 @@ def clip(text: str | None, limit: int) -> str:
 
 
 CLASSIFY_SYSTEM = """너는 장애 알림을 분류하는 SRE 보조 도구다.
-알림 내용만 보고 장애 유형을 분류하고, 애플리케이션 코드 수정이 필요한지 판단한다.
-- code_bug: 예외, 로직 오류처럼 코드 수정이 필요한 경우
-- config, infra, dependency, data: 설정, 인프라, 외부 의존성, 데이터 문제
-확신이 낮으면 confidence를 낮게 준다. keywords에는 런북 검색에 쓸 단어를 3~6개 넣는다."""
+알림 내용과 함께 온 로그를 보고 장애 유형을 분류하고, 애플리케이션 코드 수정이 필요한지 판단한다.
+- code_bug: 요청 처리 중 예외, 로직 오류. 애플리케이션 코드를 고쳐야 한다.
+- config: 빠지거나 형식이 틀린 환경변수, Secret, 설정값. 기동 중 설정을 읽다 난 예외도 여기다. 배포 설정을 고치면 된다.
+- infra: 노드 장애, 메모리나 디스크 같은 자원 부족(OOMKilled 포함), 네트워크, 외부 연동(결제 대행사 등)의 지연과 타임아웃.
+- dependency: 라이브러리, 패키지 버전 문제.
+- data: 잘못 들어간 데이터.
+로그가 없으면 알림 이름과 문구로 판단한다. 근거가 부족할 때만 unknown을 쓰고, 확신이 낮으면 confidence를 낮게 준다.
+keywords에는 런북 검색에 쓸 단어를 3~6개 넣는다."""
 
 
-def classify_user(service: str, message: str, stacktrace: str | None) -> str:
+def classify_user(service: str, message: str, stacktrace: str | None, logs: str | None = None) -> str:
     return f"""[서비스] {service}
 [알림]
 {clip(message, 1500)}
 [스택트레이스 마지막 부분]
-{clip(stacktrace, 1500)[-1500:]}"""
+{clip(stacktrace, 1500)[-1500:]}
+[대상 Pod 마지막 로그]
+{(logs or "")[-2000:]}"""
 
 
 ROOT_CAUSE_SYSTEM = """너는 시니어 백엔드 엔지니어다. 장애 정보, 관련 코드, 사내 문서(런북, 포스트모템)를 근거로

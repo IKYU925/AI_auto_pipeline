@@ -57,8 +57,11 @@ def test_firing_alerts_become_incidents_and_resolved_marks_the_incident(containe
     payloads = {p["incident_id"]: p["incident"] for _, p in container.queue.consume("t", count=10, block_ms=10)}
     assert payloads[res["accepted"][0]]["stacktrace"] == TRACE, "가장 최근 ERROR 로그의 exc_info"
     assert payloads[crash_id]["service"] == "shopapi", "kube-state-metrics 라벨 대신 container"
-    assert payloads[crash_id]["stacktrace"] is None and len(queries) == 1, "코드 버그 계열만 Loki 조회"
-    assert queries[0] == '{namespace="shop", service="shopapi"} | json | level="ERROR"'
+    assert payloads[crash_id]["stacktrace"] is None, "스택트레이스는 코드 버그 계열만"
+    assert payloads[crash_id]["logs"].endswith(json.dumps({"level": "ERROR", "message": "unhandled", "exc_info": TRACE}) + "\n"), \
+        "Pod 알림은 그 Pod의 마지막 로그를 시간순으로"
+    assert payloads[res["accepted"][0]]["logs"] is None
+    assert queries == ['{namespace="shop", service="shopapi"} | json | level="ERROR"', '{namespace="shop", pod="shopapi-7d9"}']
     assert exc["status"] == "queued"
 
     res = client.post("/api/v1/alerts/alertmanager", json=webhook(alert("KubePodCrashLooping", "resolved", fp="fp-crash")))
@@ -67,6 +70,25 @@ def test_firing_alerts_become_incidents_and_resolved_marks_the_incident(containe
         row = conn.execute("SELECT alertname, occurred_at, alert_resolved_at FROM incidents WHERE id = %s", (crash_id,)).fetchone()
     assert row["alertname"] == "KubePodCrashLooping" and row["alert_resolved_at"].isoformat().startswith("2026-11-14T10:20")
     assert row["occurred_at"].isoformat().startswith("2026-11-14T10:00"), "알림 시작 시각이 감지 시간 측정의 기준"
+
+
+def test_crash_loops_with_different_last_log_lines_are_separate_incidents(container):
+    tails = iter([["Traceback (most recent call last):", "KeyError: 'PG_URL'"],
+                  ["Traceback (most recent call last):", "ValueError: could not convert string to float: '3s'"]])
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        lines = next(tails)
+        values = [[str(1794650000000000000 - i), line] for i, line in enumerate(reversed(lines))]
+        return httpx.Response(200, json={"data": {"result": [{"stream": {}, "values": values}]}})
+
+    container.__dict__["loki"] = LokiClient("http://loki", transport=httpx.MockTransport(handle))
+    client = TestClient(create_app(container), headers=BEARER)
+    crash = dict(pod="shopapi-7d9", container="shopapi")
+    first = client.post("/api/v1/alerts/alertmanager", json=webhook(alert("KubePodCrashLooping", fp="fp-a", **crash))).json()
+    second = client.post("/api/v1/alerts/alertmanager", json=webhook(alert("KubePodCrashLooping", fp="fp-b", **crash))).json()
+
+    assert first["accepted"] and second["accepted"] and first["accepted"] != second["accepted"], \
+        "알림 문구가 같아도 원인(마지막 로그 줄)이 다르면 다른 장애"
 
 
 def test_repeated_firing_alert_does_not_open_a_second_incident(container):

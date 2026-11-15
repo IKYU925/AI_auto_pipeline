@@ -7,6 +7,11 @@
 2. 시나리오의 cluster 블록대로 장애를 넣는다(버그 이미지, 환경변수, 메모리 limit, 반복 요청, 노드 정지)
 3. 기다리는 알림으로 접수된 장애가 끝나고 회신될 때까지 기다린다
 4. 클러스터를 매니페스트 상태로 되돌리고(kubectl apply -k) 결과를 한 줄 남긴다
+
+3-8 실험은 시나리오 위에 옵션으로 얹는다(plan.md 9-9).
+  --burst 50 S13                  실패 요청 50회가 장애 몇 건이 되는지(반복 알림 합치기)
+  --kill-worker-after root_cause S02  그 단계가 끝나면 처리 중인 워커 Pod를 강제 삭제
+  --halt-after classify S16       걸어 둔 장애의 그 단계가 끝나면 노드 전원 차단
 """
 import argparse
 import json
@@ -51,8 +56,23 @@ COLUMNS = [
     "scenario", "type", "alert", "incident_id", "fault_at", "occurred_at", "received_at", "finished_at", "reported_at",
     "detect_sec", "deliver_sec", "process_sec", "total_sec", "outcome", "expected_outcome", "outcome_correct",
     "category", "expected_category", "category_correct", "attempts", "usd", "llm_calls", "heavy_calls",
-    "incidents_created", "other_incidents", "procedure_usd", "note",
+    "incidents_created", "other_incidents", "procedure_usd", "note", "experiment",
 ]
+
+
+@dataclass(frozen=True)
+class Experiment:
+    burst: int | None = None
+    kill_worker_after: str | None = None
+    halt_after: str | None = None
+    tag: str = ""
+
+    @property
+    def label(self) -> str:
+        parts = [self.tag, f"burst{self.burst}" if self.burst else "",
+                 f"kill_worker@{self.kill_worker_after}" if self.kill_worker_after else "",
+                 f"halt@{self.halt_after}" if self.halt_after else ""]
+        return "+".join(p for p in parts if p)
 
 
 def sh(*cmd: str, cwd: Path | None = None, stdin: str | None = None) -> str:
@@ -92,10 +112,32 @@ def restore() -> None:
         kubectl("-n", ns, "rollout", "status", f"deploy/{deploy}", "--timeout=300s")
 
 
-def firing_automation_alerts() -> list[str]:
+def automation_alerts(inhibited: bool = False) -> list[dict]:
     alerts = httpx.get(f"{ALERTMANAGER}/api/v2/alerts", params={"active": "true", "silenced": "false",
-                                                                   "inhibited": "false"}, timeout=10).json()
-    return [a["labels"]["alertname"] for a in alerts if any(r["name"] == "ai-automation" for r in a["receivers"])]
+                                                                   "inhibited": str(inhibited).lower()}, timeout=10).json()
+    return [a for a in alerts if any(r["name"] == "ai-automation" for r in a["receivers"])]
+
+
+def firing_automation_alerts() -> list[str]:
+    return [a["labels"]["alertname"] for a in automation_alerts()]
+
+
+def watch_alerts(seen: dict[str, str], stop: threading.Event) -> None:
+    """반복 알림 합치기: 실행 동안 자동화로 가는 알림을 지문별로 모은다. 억제된 알림은 웹훅으로 가지 않는다."""
+    while not stop.is_set():
+        try:
+            for a in automation_alerts(inhibited=True):
+                state = "억제" if a["status"]["inhibitedBy"] else "전송"
+                seen[a["fingerprint"]] = f"{a['labels']['alertname']}({state})"
+        except httpx.HTTPError:
+            pass
+        stop.wait(5)
+
+
+def webhook_sends() -> float:
+    r = httpx.get(f"{PROMETHEUS}/api/v1/query", params={"query": 'sum(alertmanager_notifications_total{integration="webhook"})'},
+                  timeout=10).json()["data"]["result"]
+    return float(r[0]["value"][1]) if r else 0.0
 
 
 def check_clock(max_skew_sec: float = 5) -> None:
@@ -242,15 +284,52 @@ def wait_status(incident_id: str, statuses: set[str], timeout_sec: float) -> dic
     raise TimeoutError(f"{incident_id}가 {sorted(statuses)} 상태가 되지 않았다")
 
 
-def resume_note(incident_id: str, timeout_sec: float) -> str:
-    """노드 장애 전에 처리 중이던 장애가 이어서 끝났는지. 같은 단계 호출이 2번 이상이면 그 단계를 다시 했다."""
+def wait_llm_call(incident_id: str, task: str, timeout_sec: float) -> None:
+    deadline = time.monotonic() + timeout_sec
+    while not psql(f"SELECT 1 FROM llm_calls WHERE incident_id = '{incident_id}' AND task = '{task}'"):
+        if time.monotonic() > deadline:
+            raise TimeoutError(f"{incident_id}의 {task} 호출이 {timeout_sec:.0f}초 안에 없다")
+        time.sleep(0.5)
+
+
+def kill_holding_worker() -> str:
+    """처리 중인 메시지를 가진 워커 Pod를 강제로 지운다. 소비자 이름은 '<Pod 이름>-<pid>'다(app/worker.py)."""
+    out = kubectl("-n", "aiops", "exec", "redis-0", "--", "redis-cli", "XPENDING", "incidents", "ai-workers", "-", "+", "10")
+    lines = out.splitlines()
+    consumers = {lines[i + 1] for i in range(0, len(lines) - 3, 4)}
+    if len(consumers) != 1:
+        raise RuntimeError(f"처리 중인 워커를 하나로 정하지 못했다: {out!r}")
+    pod = consumers.pop().rsplit("-", 1)[0]
+    kubectl("-n", "aiops", "delete", "pod", pod, "--force", "--grace-period=0")
+    print(f"  워커 {pod} 강제 삭제", file=sys.stderr)
+    return pod
+
+
+def slack_messages(since: datetime) -> int:
+    """회신 채널에 올라온 메시지 수. 회신 카드와 패치 메시지가 같은 장애에 두 번 가면 중복 회신이다."""
+    code = ("import os,httpx;r=httpx.get('https://slack.com/api/conversations.history',"
+            "headers={'Authorization':'Bearer '+os.environ['SLACK_BOT_TOKEN']},"
+            f"params={{'channel':os.environ['ALERT_SLACK_CHANNEL'],'oldest':'{since.timestamp()}','limit':100}}).json();"
+            "print(len(r['messages']))")
+    return int(kubectl("-n", "aiops", "exec", "deploy/api", "-c", "api", "--", "python", "-c", code))
+
+
+def resume_note(incident_id: str, interrupted_at: datetime, timeout_sec: float) -> str:
+    """중단된 장애가 이어서 끝났는지. 같은 단계 호출이 2번 이상이면 그 단계를 다시 했다."""
     try:
         row = wait_status(incident_id, FINAL_STATUSES, timeout_sec)
     except TimeoutError:
         return f"재개 대상 {incident_id}: {timeout_sec:.0f}초 안에 끝나지 않음"
-    calls = psql(f"SELECT task, count(*) AS n FROM llm_calls WHERE incident_id = '{incident_id}' GROUP BY task ORDER BY task")
+    calls = psql(f"""SELECT task, count(*) AS n, min(created_at) FILTER (WHERE created_at > '{interrupted_at.isoformat()}') AS after
+                     FROM llm_calls WHERE incident_id = '{incident_id}' GROUP BY task ORDER BY min(created_at)""")
     per_task = ",".join(f"{c['task']}x{c['n']}" for c in calls)
-    return f"재개 대상 {incident_id}: {row['status']}, 회신 {'있음' if row['report_ts'] else '없음'}, 호출 {per_task}"
+    first_after = min((ts(c["after"]) for c in calls if c["after"]), default=None)
+    info = psql(f"SELECT created_at, finished_at, result->'resumed_from' AS resumed_from FROM incidents WHERE id = '{incident_id}'")[0]
+    time.sleep(10)  # 두 번째 회신이 있다면 첫 회신 직후에 온다
+    expected = 2 if row["status"] == "resolved" else 1
+    return (f"재개 대상 {incident_id}: {row['status']}, 재개 단계 {info['resumed_from']}, 호출 {per_task}, "
+            f"중단 뒤 첫 호출까지 {seconds(interrupted_at, first_after)}초, 중단 뒤 완료까지 {seconds(interrupted_at, ts(info['finished_at']))}초, "
+            f"Slack 메시지 {slack_messages(ts(info['created_at']))}개(중복 없으면 {expected}개)")
 
 
 def wait_alert_resolved(incident_id: str, timeout_sec: float = 600) -> None:
@@ -298,7 +377,7 @@ def summarize(s: Scenario, fault_at: datetime, w: Waited, created: int) -> dict:
     }
 
 
-def run_scenario(s: Scenario, shop: httpx.Client, timeout_sec: float) -> dict:
+def run_scenario(s: Scenario, shop: httpx.Client, timeout_sec: float, exp: Experiment = Experiment()) -> dict:
     base = load_scenario(s.trigger.base) if isinstance(s.trigger, Recurrence | Duplicate) else s
     code_bug = isinstance(base.trigger, Requests)
     check_clock()
@@ -306,20 +385,31 @@ def run_scenario(s: Scenario, shop: httpx.Client, timeout_sec: float) -> dict:
     clear_caches()
     stop = threading.Event()
     started = now()
+    alerts_seen: dict[str, str] = {}
+    if exp.burst:
+        threading.Thread(target=watch_alerts, args=(alerts_seen, stop), daemon=True).start()
+        sends_before = webhook_sends()
     try:
         if code_bug:
             deploy_bug(base.id)
         fault_at = now()
         if code_bug:
-            times = s.trigger.times if isinstance(s.trigger, Duplicate) else 1
+            times = exp.burst or (s.trigger.times if isinstance(s.trigger, Duplicate) else 1)
             for _ in range(times):
                 send_requests(base.trigger.items, shop)
+            requests_sec = seconds(fault_at, now())
         else:
             inject_cluster_fault(s)
         if s.cluster.traffic:
             threading.Thread(target=run_traffic, args=(s.cluster.traffic, shop, stop), daemon=True).start()
         if s.cluster.node_halt:
-            return run_node_halt(s, shop, started, timeout_sec)
+            return run_node_halt(s, shop, started, timeout_sec, exp)
+        note = ""
+        if exp.kill_worker_after:
+            incident_id = wait_incident_created(base.cluster.alert, fault_at, timeout_sec)
+            wait_llm_call(incident_id, exp.kill_worker_after, timeout_sec)
+            kill_holding_worker()
+            note = resume_note(incident_id, now(), timeout_sec)
         w = wait_incident(base.cluster.alert, fault_at, timeout_sec)
         if isinstance(s.trigger, Recurrence):
             print(f"  base {base.id} 완료({w.incident['status']}), 알림 해소 뒤 재발", file=sys.stderr)
@@ -331,13 +421,18 @@ def run_scenario(s: Scenario, shop: httpx.Client, timeout_sec: float) -> dict:
             send_requests(base.trigger.items, shop)
             w = wait_incident(base.cluster.alert, fault_at, timeout_sec, skip={w.incident["id"]})
         created = 1 + sum(o["alertname"] == base.cluster.alert for o in w.others)
-        return {**summarize(s, fault_at, w, created), "procedure_usd": procedure_usd(started)}
+        if exp.burst:
+            wait_alert_resolved(w.incident["id"])
+            note = (f"실패 요청 {times}회({requests_sec}초), 자동화로 간 알림 {len(alerts_seen)}개"
+                    f"({', '.join(sorted(alerts_seen.values()))}), 웹훅 전송 {webhook_sends() - sends_before:.0f}회, 장애 {created}건")
+        return {**summarize(s, fault_at, w, created), "procedure_usd": procedure_usd(started), "note": note,
+                "experiment": exp.label}
     finally:
         stop.set()
         restore()
 
 
-def run_node_halt(s: Scenario, shop: httpx.Client, started: datetime, timeout_sec: float) -> dict:
+def run_node_halt(s: Scenario, shop: httpx.Client, started: datetime, timeout_sec: float, exp: Experiment) -> dict:
     h = s.cluster.node_halt
     during_id = None
     if h.during:
@@ -346,17 +441,20 @@ def run_node_halt(s: Scenario, shop: httpx.Client, started: datetime, timeout_se
         send_requests(during.trigger.items, shop)
         during_id = wait_incident_created(during.cluster.alert, started, timeout_sec)
         wait_status(during_id, {"running"}, timeout_sec)
+        if exp.halt_after:
+            wait_llm_call(during_id, exp.halt_after, timeout_sec)
         print(f"  {during.id} 장애 {during_id} 처리 중, 노드 정지", file=sys.stderr)
     fault_at = now()
     halt_node(h.vm, h.for_sec)
-    note = resume_note(during_id, timeout_sec) if during_id else ""
+    note = resume_note(during_id, fault_at, timeout_sec) if during_id else ""
     try:
         w = wait_incident(s.cluster.alert, fault_at, timeout_sec, skip={during_id} if during_id else frozenset())
     except TimeoutError:
         return {"scenario": s.id, "type": s.type, "alert": s.cluster.alert, "fault_at": fault_at.isoformat(),
                 "outcome": "not_delivered", "expected_outcome": s.expected.outcome, "outcome_correct": False,
-                "procedure_usd": procedure_usd(started), "note": f"{s.cluster.alert} 알림이 자동화에 전달되지 않음. {note}"}
-    return {**summarize(s, fault_at, w, 1), "procedure_usd": procedure_usd(started), "note": note}
+                "procedure_usd": procedure_usd(started), "note": f"{s.cluster.alert} 알림이 자동화에 전달되지 않음. {note}",
+                "experiment": exp.label}
+    return {**summarize(s, fault_at, w, 1), "procedure_usd": procedure_usd(started), "note": note, "experiment": exp.label}
 
 
 def wait_incident_created(alert: str, since: datetime, timeout_sec: float) -> str:
@@ -376,7 +474,12 @@ def main() -> None:
     ap.add_argument("--out", type=Path)
     ap.add_argument("--timeout", type=float, default=900)
     ap.add_argument("--max-usd", type=float, required=True, help="누적 LLM 비용이 이 금액에 닿으면 남은 시나리오를 멈춘다")
+    ap.add_argument("--burst", type=int, help="중복 시나리오(S13)의 실패 요청 수")
+    ap.add_argument("--kill-worker-after", metavar="TASK", help="이 단계 LLM 호출이 끝나면 처리 중인 워커 Pod를 강제 삭제")
+    ap.add_argument("--halt-after", metavar="TASK", help="노드 장애(S16) 전에 걸어 둔 장애의 이 단계가 끝나면 전원 차단")
+    ap.add_argument("--tag", default="", help="CSV experiment 열에 남길 이름(예: 3-8 분류 개선 뒤 재실행)")
     args = ap.parse_args()
+    exp = Experiment(args.burst, args.kill_worker_after, args.halt_after, args.tag)
 
     spent = 0.0
     with httpx.Client(base_url=SHOP_URL, timeout=30) as shop:
@@ -385,7 +488,7 @@ def main() -> None:
                 print(f"누적 비용 ${spent:.3f}가 상한 ${args.max_usd}에 닿아 {sid}부터 멈춘다", file=sys.stderr)
                 break
             print(f"== {sid}", file=sys.stderr)
-            row = run_scenario(load_scenario(sid), shop, args.timeout)
+            row = run_scenario(load_scenario(sid), shop, args.timeout, exp)
             spent += row["procedure_usd"]
             print(json.dumps(row, ensure_ascii=False, default=str))
             if args.out:

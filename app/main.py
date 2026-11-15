@@ -17,7 +17,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 
 
 def accept(c: Container, body: IncidentIn) -> IncidentAccepted:
-    fp = fingerprint(body.service, body.message, body.stacktrace)
+    fp = fingerprint(body.service, body.message, body.stacktrace, body.logs)
     incident_id = uuid.uuid4().hex[:12]
 
     # 같은 에러가 알림 폭주로 여러 번 들어와도 LLM 파이프라인은 한 번만 돈다
@@ -84,7 +84,11 @@ def create_app(container: Container | None = None) -> FastAPI:
             if alert.kind.needs_stacktrace and c.loki:
                 stacktrace = c.loki.latest_exception(alert.labels.get("namespace", "shop"), alert.target,
                                                      alert.starts_at, datetime.now(timezone.utc))
-            accepted.append(accept(c, alert.to_incident(c.settings.alert_slack_channel, stacktrace)).incident_id)
+            logs = None
+            if alert.kind.needs_pod_logs and c.loki and alert.labels.get("pod"):
+                logs = c.loki.pod_tail(alert.labels.get("namespace", "shop"), alert.labels["pod"],
+                                       alert.starts_at, datetime.now(timezone.utc))
+            accepted.append(accept(c, alert.to_incident(c.settings.alert_slack_channel, stacktrace, logs)).incident_id)
         return {"accepted": accepted, "already_open": already_open, "resolved": resolved}
 
     @app.get("/api/v1/incidents/{incident_id}", dependencies=[Depends(verify_token)])

@@ -6,11 +6,16 @@ import logging
 import os
 import signal
 import socket
+import threading
 import time
+from collections.abc import Iterator
+from contextlib import contextmanager
 
 from redis.exceptions import ConnectionError as RedisConnectionError
+from redis.exceptions import RedisError
 
 from app.container import Container
+from app.core.queue import IncidentQueue
 from app.graph.workflow import recursion_limit
 from app.notify.card import build_card, patch_message
 
@@ -30,6 +35,28 @@ def run_graph(c: Container, payload: dict) -> tuple[dict, list[str]]:
     initial = {"incident_id": payload["incident_id"], "incident": payload["incident"],
                "fingerprint": payload["fingerprint"], "attempts": 0, "history": []}
     return c.graph.invoke(initial, config), []
+
+
+@contextmanager
+def holding(queue: IncidentQueue, consumer: str, msg_id: str, claim_idle_ms: int) -> Iterator[None]:
+    """처리가 회수 기준보다 길어져도 다른 워커가 같은 메시지를 가져가지 않게 붙잡아 둔다.
+    없으면 두 워커가 같은 장애를 이어 처리하고 둘 다 회신한다(3-8, S16 재개에서 확인)."""
+    stop = threading.Event()
+
+    def beat() -> None:
+        while not stop.wait(claim_idle_ms / 3000):
+            try:
+                queue.keep_claimed(consumer, msg_id)
+            except RedisError as e:
+                log.warning("메시지 %s 붙잡기 실패: %s", msg_id, e)
+
+    t = threading.Thread(target=beat, daemon=True)
+    t.start()
+    try:
+        yield
+    finally:
+        stop.set()
+        t.join()
 
 
 def process_message(c: Container, msg_id: str, payload: dict) -> dict:
@@ -74,6 +101,7 @@ def run_forever() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
     c = Container()
     consumer = f"{socket.gethostname()}-{os.getpid()}"
+    idle_ms = c.settings.queue_claim_idle_ms
     running = True
 
     def stop(*_):
@@ -87,10 +115,12 @@ def run_forever() -> None:
     while running:
         try:
             c.queue.ensure_group()
-            for msg_id, payload in c.queue.reclaim_stale(consumer, c.settings.queue_claim_idle_ms):
-                process_message(c, msg_id, payload)
+            for msg_id, payload in c.queue.reclaim_stale(consumer, idle_ms):
+                with holding(c.queue, consumer, msg_id, idle_ms):
+                    process_message(c, msg_id, payload)
             for msg_id, payload in c.queue.consume(consumer, count=1, block_ms=5000):
-                process_message(c, msg_id, payload)
+                with holding(c.queue, consumer, msg_id, idle_ms):
+                    process_message(c, msg_id, payload)
         except RedisConnectionError:
             # Redis 재시작 중이면 잠시 기다렸다가 다시 붙는다. 처리 중이던 메시지는 pending으로 남아 재처리된다
             log.warning("redis(%s) 연결 실패, 3초 후 재시도", c.settings.redis_url)

@@ -435,6 +435,12 @@ def summarize(s: Scenario, run: Run, incidents_created: int | None = None) -> di
 def append_csv(path: Path, row: dict, columns: list[str] = COLUMNS) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     new = not path.exists()
+    if not new:
+        with path.open(encoding="utf-8") as f:
+            header = next(csv.reader(f), [])
+        # 열이 늘었는데 옛 헤더 파일에 이어 쓰면 값이 엉뚱한 열에 들어간다(3-7 phase3.csv의 note 열)
+        if header != columns:
+            raise ValueError(f"{path}의 헤더가 지금 열과 다르다. 빠진 열: {[c for c in columns if c not in header]}")
     with path.open("a", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=columns)
         if new:

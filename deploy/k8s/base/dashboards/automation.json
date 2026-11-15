@@ -14,8 +14,8 @@
   "editable": true,
   "panels": [
     {
-      "id": 1,
-      "title": "장애 수",
+      "id": 101,
+      "title": "웹훅 전달",
       "type": "stat",
       "gridPos": {
         "x": 0,
@@ -24,24 +24,26 @@
         "h": 4
       },
       "datasource": {
-        "type": "grafana-postgresql-datasource",
-        "uid": "aiops-postgres"
+        "type": "prometheus",
+        "uid": "prometheus"
       },
       "targets": [
         {
           "datasource": {
-            "type": "grafana-postgresql-datasource",
-            "uid": "aiops-postgres"
+            "type": "prometheus",
+            "uid": "prometheus"
           },
           "refId": "A",
-          "rawQuery": true,
-          "editorMode": "code",
-          "format": "table",
-          "rawSql": "SELECT count(*) AS \"장애\" FROM incidents WHERE $__timeFilter(created_at)"
+          "expr": "100 * (1 - (sum(increase(alertmanager_notifications_failed_total{integration=\"webhook\"}[$__range])) or vector(0)) / sum(increase(alertmanager_notifications_total{integration=\"webhook\"}[$__range])))",
+          "range": true,
+          "instant": false
         }
       ],
       "fieldConfig": {
-        "defaults": {},
+        "defaults": {
+          "unit": "percent",
+          "decimals": 0
+        },
         "overrides": []
       },
       "options": {
@@ -55,11 +57,11 @@
         "colorMode": "none",
         "graphMode": "none"
       },
-      "description": "기간 안에 접수된 장애(중복으로 묶인 요청 제외)"
+      "description": "SLI. Alertmanager가 자동화로 보낸 웹훅 중 성공한 비율(커버리지의 근사값, docs/sli.md)"
     },
     {
-      "id": 2,
-      "title": "자동 수정 성공률",
+      "id": 102,
+      "title": "3분 안 회신(코드 버그)",
       "type": "stat",
       "gridPos": {
         "x": 4,
@@ -81,7 +83,7 @@
           "rawQuery": true,
           "editorMode": "code",
           "format": "table",
-          "rawSql": "SELECT 100.0 * count(*) FILTER (WHERE status = 'resolved') / NULLIF(count(*), 0) AS \"성공률\" FROM incidents WHERE needs_code_fix AND finished_at IS NOT NULL AND $__timeFilter(created_at)"
+          "rawSql": "SELECT 100.0 * count(*) FILTER (WHERE extract(epoch FROM to_timestamp(report_ts::numeric) - coalesce(occurred_at, created_at)) <= 180) / NULLIF(count(*), 0) AS \"비율\" FROM incidents WHERE needs_code_fix AND source = 'alertmanager' AND report_ts IS NOT NULL AND $__timeFilter(created_at)"
         }
       ],
       "fieldConfig": {
@@ -102,14 +104,155 @@
         "colorMode": "none",
         "graphMode": "none"
       },
-      "description": "코드 수정이 필요하다고 분류된 장애 중 검증을 통과한 수정안으로 끝난 비율"
+      "description": "SLI. 코드 버그(코드 수정이 필요하다고 분류된 장애) 중 알림 시작부터 3분 안에 Slack 회신한 비율. 3분은 임시 기준(docs/sli.md)"
     },
     {
-      "id": 3,
-      "title": "장애당 LLM 비용",
+      "id": 103,
+      "title": "6분 안 회신(설정·인프라)",
       "type": "stat",
       "gridPos": {
         "x": 8,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "aiops-postgres"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "aiops-postgres"
+          },
+          "refId": "A",
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT 100.0 * count(*) FILTER (WHERE extract(epoch FROM to_timestamp(report_ts::numeric) - coalesce(occurred_at, created_at)) <= 360) / NULLIF(count(*), 0) AS \"비율\" FROM incidents WHERE NOT needs_code_fix AND source = 'alertmanager' AND report_ts IS NOT NULL AND $__timeFilter(created_at)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none"
+      },
+      "description": "SLI. 설정·인프라 장애(코드 수정이 필요 없다고 분류된 장애) 중 알림 시작부터 6분 안에 Slack 회신한 비율. 6분은 임시 기준(docs/sli.md)"
+    },
+    {
+      "id": 104,
+      "title": "처리 성공",
+      "type": "stat",
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "aiops-postgres"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "aiops-postgres"
+          },
+          "refId": "A",
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT 100.0 * count(*) FILTER (WHERE status IN ('resolved', 'escalated', 'no_code_fix') AND report_ts IS NOT NULL) / NULLIF(count(*), 0) AS \"비율\" FROM incidents WHERE created_at < now() - interval '15 minutes' AND $__timeFilter(created_at)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none"
+      },
+      "description": "SLI. 접수 후 15분 지난 장애 중 끝까지 처리돼 회신한 비율. failed, budget_exceeded, 회신 없음은 실패"
+    },
+    {
+      "id": 105,
+      "title": "회신 시간 중앙값",
+      "type": "stat",
+      "gridPos": {
+        "x": 16,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "aiops-postgres"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "aiops-postgres"
+          },
+          "refId": "A",
+          "rawQuery": true,
+          "editorMode": "code",
+          "format": "table",
+          "rawSql": "SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY extract(epoch FROM to_timestamp(report_ts::numeric) - coalesce(occurred_at, created_at))) FILTER (WHERE needs_code_fix) AS \"코드 버그\", percentile_cont(0.5) WITHIN GROUP (ORDER BY extract(epoch FROM to_timestamp(report_ts::numeric) - coalesce(occurred_at, created_at))) FILTER (WHERE NOT needs_code_fix) AS \"설정·인프라\" FROM incidents WHERE source = 'alertmanager' AND report_ts IS NOT NULL AND $__timeFilter(created_at)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none"
+      },
+      "description": "알림 시작부터 Slack 회신까지 경로별 중앙값"
+    },
+    {
+      "id": 106,
+      "title": "장애당 LLM 비용(가드레일)",
+      "type": "stat",
+      "gridPos": {
+        "x": 20,
         "y": 0,
         "w": 4,
         "h": 4
@@ -148,17 +291,18 @@
         },
         "colorMode": "none",
         "graphMode": "none"
-      }
+      },
+      "description": "SLI 아님. 장애당 평균 LLM 비용(운영 제약)"
     },
     {
-      "id": 4,
-      "title": "LLM 비용 합계",
-      "type": "stat",
+      "id": 107,
+      "title": "장애별 시간 분해(최근 15건)",
+      "type": "barchart",
       "gridPos": {
-        "x": 12,
-        "y": 0,
-        "w": 4,
-        "h": 4
+        "x": 0,
+        "y": 4,
+        "w": 12,
+        "h": 9
       },
       "datasource": {
         "type": "grafana-postgresql-datasource",
@@ -174,122 +318,50 @@
           "rawQuery": true,
           "editorMode": "code",
           "format": "table",
-          "rawSql": "SELECT coalesce(sum(usd), 0) AS \"비용\" FROM llm_calls WHERE $__timeFilter(created_at)"
+          "rawSql": "SELECT * FROM (SELECT to_char(created_at AT TIME ZONE 'Asia/Seoul', 'MM-DD HH24:MI') || ' ' || alertname AS \"장애\", extract(epoch FROM created_at - occurred_at) AS \"전달\", extract(epoch FROM finished_at - created_at) AS \"처리\", extract(epoch FROM to_timestamp(report_ts::numeric) - finished_at) AS \"회신\", created_at FROM incidents WHERE source = 'alertmanager' AND report_ts IS NOT NULL AND occurred_at IS NOT NULL AND $__timeFilter(created_at) ORDER BY created_at DESC LIMIT 15) t ORDER BY created_at"
         }
       ],
       "fieldConfig": {
         "defaults": {
-          "unit": "currencyUSD",
-          "decimals": 2
+          "unit": "s"
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "created_at"
+            },
+            "properties": [
+              {
+                "id": "custom.hideFrom",
+                "value": {
+                  "viz": true,
+                  "legend": true,
+                  "tooltip": true
+                }
+              }
+            ]
+          }
+        ]
       },
       "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "colorMode": "none",
-        "graphMode": "none"
-      }
-    },
-    {
-      "id": 5,
-      "title": "큐 대기",
-      "type": "stat",
-      "gridPos": {
-        "x": 16,
-        "y": 0,
-        "w": 4,
-        "h": 4
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "refId": "A",
-          "expr": "aiops_queue_waiting",
-          "legendFormat": "",
-          "range": true,
-          "instant": false
+        "stacking": "normal",
+        "xField": "장애",
+        "orientation": "horizontal",
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
         }
-      ],
-      "fieldConfig": {
-        "defaults": {},
-        "overrides": []
       },
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "colorMode": "none",
-        "graphMode": "none"
-      },
-      "description": "접수됐지만 워커가 아직 가져가지 않은 장애"
-    },
-    {
-      "id": 6,
-      "title": "DLQ",
-      "type": "stat",
-      "gridPos": {
-        "x": 20,
-        "y": 0,
-        "w": 4,
-        "h": 4
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "refId": "A",
-          "expr": "aiops_queue_dead_letters",
-          "legendFormat": "",
-          "range": true,
-          "instant": false
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {},
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "colorMode": "none",
-        "graphMode": "none"
-      },
-      "description": "처리에 실패해 DLQ로 간 누적 장애"
+      "description": "알림 시작부터 수신(전달), 수신부터 완료(처리), 완료부터 Slack 회신까지. 장애 발생부터 알림까지(감지)는 실험에서만 잴 수 있다"
     },
     {
       "id": 7,
       "title": "일별 장애 수와 결과",
       "type": "barchart",
       "gridPos": {
-        "x": 0,
+        "x": 12,
         "y": 4,
         "w": 12,
         "h": 9
@@ -326,187 +398,12 @@
       }
     },
     {
-      "id": 8,
-      "title": "모델별 호출 비율",
-      "type": "piechart",
-      "gridPos": {
-        "x": 12,
-        "y": 4,
-        "w": 6,
-        "h": 9
-      },
-      "datasource": {
-        "type": "grafana-postgresql-datasource",
-        "uid": "aiops-postgres"
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "grafana-postgresql-datasource",
-            "uid": "aiops-postgres"
-          },
-          "refId": "A",
-          "rawQuery": true,
-          "editorMode": "code",
-          "format": "table",
-          "rawSql": "SELECT model AS \"모델\", count(*) AS \"호출\" FROM llm_calls WHERE $__timeFilter(created_at) GROUP BY 1 ORDER BY 2 DESC"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {},
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": {
-          "calcs": [],
-          "fields": "",
-          "values": true
-        },
-        "pieType": "donut",
-        "legend": {
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true,
-          "values": [
-            "percent"
-          ]
-        }
-      }
-    },
-    {
-      "id": 9,
-      "title": "단계별 LLM 비용",
-      "type": "piechart",
-      "gridPos": {
-        "x": 18,
-        "y": 4,
-        "w": 6,
-        "h": 9
-      },
-      "datasource": {
-        "type": "grafana-postgresql-datasource",
-        "uid": "aiops-postgres"
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "grafana-postgresql-datasource",
-            "uid": "aiops-postgres"
-          },
-          "refId": "A",
-          "rawQuery": true,
-          "editorMode": "code",
-          "format": "table",
-          "rawSql": "SELECT task AS \"단계\", sum(usd) AS \"비용\" FROM llm_calls WHERE $__timeFilter(created_at) GROUP BY 1 ORDER BY 2 DESC"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "currencyUSD"
-        },
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": {
-          "calcs": [],
-          "fields": "",
-          "values": true
-        },
-        "pieType": "donut",
-        "legend": {
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true,
-          "values": [
-            "value"
-          ]
-        }
-      }
-    },
-    {
-      "id": 10,
-      "title": "큐 길이",
-      "type": "timeseries",
-      "gridPos": {
-        "x": 0,
-        "y": 13,
-        "w": 12,
-        "h": 8
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "refId": "A",
-          "expr": "aiops_queue_waiting",
-          "legendFormat": "대기",
-          "range": true,
-          "instant": false
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "refId": "B",
-          "expr": "aiops_queue_in_progress",
-          "legendFormat": "처리 중",
-          "range": true,
-          "instant": false
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {},
-        "overrides": []
-      },
-      "options": {}
-    },
-    {
-      "id": 11,
-      "title": "접수 요청",
-      "type": "timeseries",
-      "gridPos": {
-        "x": 12,
-        "y": 13,
-        "w": 12,
-        "h": 8
-      },
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "refId": "A",
-          "expr": "sum by (source, deduplicated) (increase(aiops_incidents_received_total[$__rate_interval]))",
-          "legendFormat": "{{source}} 중복={{deduplicated}}",
-          "range": true,
-          "instant": false
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {},
-        "overrides": []
-      },
-      "options": {}
-    },
-    {
       "id": 12,
       "title": "최근 장애",
       "type": "table",
       "gridPos": {
         "x": 0,
-        "y": 21,
+        "y": 13,
         "w": 24,
         "h": 10
       },
@@ -532,6 +429,420 @@
         "overrides": []
       },
       "options": {}
+    },
+    {
+      "id": 200,
+      "title": "원인 분석(SLI가 나빠졌을 때)",
+      "type": "row",
+      "collapsed": true,
+      "gridPos": {
+        "x": 0,
+        "y": 23,
+        "w": 24,
+        "h": 1
+      },
+      "panels": [
+        {
+          "id": 1,
+          "title": "장애 수",
+          "type": "stat",
+          "gridPos": {
+            "x": 0,
+            "y": 24,
+            "w": 4,
+            "h": 4
+          },
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "aiops-postgres"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "grafana-postgresql-datasource",
+                "uid": "aiops-postgres"
+              },
+              "refId": "A",
+              "rawQuery": true,
+              "editorMode": "code",
+              "format": "table",
+              "rawSql": "SELECT count(*) AS \"장애\" FROM incidents WHERE $__timeFilter(created_at)"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {},
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "colorMode": "none",
+            "graphMode": "none"
+          },
+          "description": "기간 안에 접수된 장애(중복으로 묶인 요청 제외)"
+        },
+        {
+          "id": 2,
+          "title": "자동 수정 성공률",
+          "type": "stat",
+          "gridPos": {
+            "x": 4,
+            "y": 24,
+            "w": 4,
+            "h": 4
+          },
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "aiops-postgres"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "grafana-postgresql-datasource",
+                "uid": "aiops-postgres"
+              },
+              "refId": "A",
+              "rawQuery": true,
+              "editorMode": "code",
+              "format": "table",
+              "rawSql": "SELECT 100.0 * count(*) FILTER (WHERE status = 'resolved') / NULLIF(count(*), 0) AS \"성공률\" FROM incidents WHERE needs_code_fix AND finished_at IS NOT NULL AND $__timeFilter(created_at)"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "decimals": 0
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "colorMode": "none",
+            "graphMode": "none"
+          },
+          "description": "코드 수정이 필요하다고 분류된 장애 중 검증을 통과한 수정안으로 끝난 비율"
+        },
+        {
+          "id": 4,
+          "title": "LLM 비용 합계",
+          "type": "stat",
+          "gridPos": {
+            "x": 8,
+            "y": 24,
+            "w": 4,
+            "h": 4
+          },
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "aiops-postgres"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "grafana-postgresql-datasource",
+                "uid": "aiops-postgres"
+              },
+              "refId": "A",
+              "rawQuery": true,
+              "editorMode": "code",
+              "format": "table",
+              "rawSql": "SELECT coalesce(sum(usd), 0) AS \"비용\" FROM llm_calls WHERE $__timeFilter(created_at)"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "currencyUSD",
+              "decimals": 2
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "colorMode": "none",
+            "graphMode": "none"
+          }
+        },
+        {
+          "id": 5,
+          "title": "큐 대기",
+          "type": "stat",
+          "gridPos": {
+            "x": 12,
+            "y": 24,
+            "w": 4,
+            "h": 4
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "refId": "A",
+              "expr": "aiops_queue_waiting",
+              "legendFormat": "",
+              "range": true,
+              "instant": false
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {},
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "colorMode": "none",
+            "graphMode": "none"
+          },
+          "description": "접수됐지만 워커가 아직 가져가지 않은 장애"
+        },
+        {
+          "id": 6,
+          "title": "DLQ",
+          "type": "stat",
+          "gridPos": {
+            "x": 16,
+            "y": 24,
+            "w": 4,
+            "h": 4
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "refId": "A",
+              "expr": "aiops_queue_dead_letters",
+              "legendFormat": "",
+              "range": true,
+              "instant": false
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {},
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "colorMode": "none",
+            "graphMode": "none"
+          },
+          "description": "처리에 실패해 DLQ로 간 누적 장애"
+        },
+        {
+          "id": 8,
+          "title": "모델별 호출 비율",
+          "type": "piechart",
+          "gridPos": {
+            "x": 0,
+            "y": 28,
+            "w": 6,
+            "h": 9
+          },
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "aiops-postgres"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "grafana-postgresql-datasource",
+                "uid": "aiops-postgres"
+              },
+              "refId": "A",
+              "rawQuery": true,
+              "editorMode": "code",
+              "format": "table",
+              "rawSql": "SELECT model AS \"모델\", count(*) AS \"호출\" FROM llm_calls WHERE $__timeFilter(created_at) GROUP BY 1 ORDER BY 2 DESC"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {},
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [],
+              "fields": "",
+              "values": true
+            },
+            "pieType": "donut",
+            "legend": {
+              "displayMode": "table",
+              "placement": "bottom",
+              "showLegend": true,
+              "values": [
+                "percent"
+              ]
+            }
+          }
+        },
+        {
+          "id": 9,
+          "title": "단계별 LLM 비용",
+          "type": "piechart",
+          "gridPos": {
+            "x": 6,
+            "y": 28,
+            "w": 6,
+            "h": 9
+          },
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "aiops-postgres"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "grafana-postgresql-datasource",
+                "uid": "aiops-postgres"
+              },
+              "refId": "A",
+              "rawQuery": true,
+              "editorMode": "code",
+              "format": "table",
+              "rawSql": "SELECT task AS \"단계\", sum(usd) AS \"비용\" FROM llm_calls WHERE $__timeFilter(created_at) GROUP BY 1 ORDER BY 2 DESC"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "currencyUSD"
+            },
+            "overrides": []
+          },
+          "options": {
+            "reduceOptions": {
+              "calcs": [],
+              "fields": "",
+              "values": true
+            },
+            "pieType": "donut",
+            "legend": {
+              "displayMode": "table",
+              "placement": "bottom",
+              "showLegend": true,
+              "values": [
+                "value"
+              ]
+            }
+          }
+        },
+        {
+          "id": 10,
+          "title": "큐 길이",
+          "type": "timeseries",
+          "gridPos": {
+            "x": 12,
+            "y": 28,
+            "w": 12,
+            "h": 8
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "refId": "A",
+              "expr": "aiops_queue_waiting",
+              "legendFormat": "대기",
+              "range": true,
+              "instant": false
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "refId": "B",
+              "expr": "aiops_queue_in_progress",
+              "legendFormat": "처리 중",
+              "range": true,
+              "instant": false
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {},
+            "overrides": []
+          },
+          "options": {}
+        },
+        {
+          "id": 11,
+          "title": "접수 요청",
+          "type": "timeseries",
+          "gridPos": {
+            "x": 0,
+            "y": 37,
+            "w": 12,
+            "h": 8
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "refId": "A",
+              "expr": "sum by (source, deduplicated) (increase(aiops_incidents_received_total[$__rate_interval]))",
+              "legendFormat": "{{source}} 중복={{deduplicated}}",
+              "range": true,
+              "instant": false
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {},
+            "overrides": []
+          },
+          "options": {}
+        }
+      ]
     }
   ]
 }

@@ -7,7 +7,7 @@
 1. 런북 검색을 확인하려고 api 컨테이너 안에서 임베딩 모델을 올리는 프로세스를 하나 더 실행했다. api 프로세스는 직전의 지식 문서 수집으로 이미 모델을 올린 상태였다. 그래서 컨테이너가 메모리 limit(768Mi)을 넘어 OOMKilled로 재시작됐다.
 2. Prometheus의 `PodOOMKilled` 규칙(3-4에서 추가)이 firing이 됐다. Alertmanager는 지금 라우팅(aiops namespace 전체)에 따라 `ai-automation`으로 보냈다.
 3. 자동화가 장애로 접수했다. `source=alertmanager`, `alertname=PodOOMKilled`이고, 대상 서비스는 `container` 라벨에서 꺼낸 `api`다.
-4. 워커가 분류(Haiku 5.5) 1회 뒤 비코드 장애로 판단해 런북 안내로 끝냈다. 접수부터 완료까지 5초, $0.000286이었다.
+4. 워커가 분류(Haiku 5.5) 1회 뒤 설정·인프라 장애로 판단해 런북 안내로 끝냈다. 접수부터 완료까지 5초, $0.000286이었다.
 5. #aiops-report에 카드가 올라갔다(`report_ts` 기록).
 
 ## 찾은 문제와 수정
