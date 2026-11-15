@@ -412,6 +412,8 @@ def run_scenario(s: Scenario, shop: httpx.Client, timeout_sec: float, exp: Exper
             threading.Thread(target=run_traffic, args=(s.cluster.traffic, shop, stop), daemon=True).start()
         if s.cluster.node_halt:
             return run_node_halt(s, shop, started, timeout_sec, exp)
+        if s.cluster.disk_fill:
+            return run_disk_fill(s, started, timeout_sec, exp)
         note = ""
         if exp.kill_worker_after:
             incident_id = wait_incident_created(base.cluster.alert, fault_at, timeout_sec)
@@ -428,6 +430,8 @@ def run_scenario(s: Scenario, shop: httpx.Client, timeout_sec: float, exp: Exper
             fault_at = now()
             send_requests(base.trigger.items, shop)
             w = wait_incident(base.cluster.alert, fault_at, timeout_sec, skip={w.incident["id"]})
+        if s.cluster.approve:
+            note = approved_action_note(w.incident)
         created = 1 + sum(o["alertname"] == base.cluster.alert for o in w.others)
         if exp.burst:
             wait_alert_resolved(w.incident["id"])
@@ -463,6 +467,44 @@ def run_node_halt(s: Scenario, shop: httpx.Client, started: datetime, timeout_se
                 "procedure_usd": procedure_usd(started), "note": f"{s.cluster.alert} 알림이 자동화에 전달되지 않음. {note}",
                 "experiment": exp.label}
     return {**summarize(s, fault_at, w, 1), "procedure_usd": procedure_usd(started), "note": note, "experiment": exp.label}
+
+
+def approved_action_note(incident: dict, approve_timeout_sec: float = 900) -> str:
+    """카드의 승인 버튼을 사람이 누르고 조치가 끝나 알림이 해소될 때까지 기다리고 구간별 시간을 적는다(plan.md 9-9)."""
+    proposal = psql(f"SELECT result->'proposed_action' AS p FROM incidents WHERE id = '{incident['id']}'")[0]["p"]
+    if not proposal:
+        return "승인 요청(조치 제안)이 없는 카드"
+    print(f"  {incident['id']} 카드에 승인 버튼({proposal['action']} @ {proposal['target']}). "
+          f"Slack에서 승인하세요({approve_timeout_sec:.0f}초 대기)", file=sys.stderr)
+    deadline = time.monotonic() + approve_timeout_sec
+    while not (rows := psql(f"""SELECT approver, approved_at, status, finished_at FROM actions
+                                WHERE incident_id = '{incident['id']}' AND finished_at IS NOT NULL""")):
+        if time.monotonic() > deadline:
+            raise TimeoutError("승인되지 않았거나 조치가 끝나지 않았다")
+        time.sleep(5)
+    action = rows[0]
+    wait_alert_resolved(incident["id"])
+    resolved = ts(psql(f"SELECT alert_resolved_at FROM incidents WHERE id = '{incident['id']}'")[0]["alert_resolved_at"])
+    reported = datetime.fromtimestamp(float(incident["report_ts"]), timezone.utc)
+    approved = ts(action["approved_at"])
+    after = (f"승인부터 알림 해소까지 {seconds(approved, resolved)}초" if resolved >= approved
+             else f"알림이 승인 {seconds(resolved, approved)}초 전에 해소됨(조치 효과 아님)")
+    return (f"조치 {proposal['action']} @ {proposal['target']}: 알림부터 승인 요청까지 {seconds(ts(incident['occurred_at']), reported)}초, "
+            f"승인 대기 {seconds(reported, approved)}초, 승인부터 조치 끝까지 {seconds(approved, ts(action['finished_at']))}초, "
+            f"{after}, 조치 {action['status']}, 승인자 {action['approver']}")
+
+
+def run_disk_fill(s: Scenario, started: datetime, timeout_sec: float, exp: Experiment) -> dict:
+    d = s.cluster.disk_fill
+    fill = f"sudo mkdir -p {Path(d.path).parent} && sudo fallocate -l {d.size} {d.path} && df -h {Path(d.path).parent}"
+    fault_at = now()
+    try:
+        sh("vagrant", "ssh", d.vm, "-c", fill, cwd=INFRA)
+        w = wait_incident(s.cluster.alert, fault_at, timeout_sec)
+        return {**summarize(s, fault_at, w, 1), "procedure_usd": procedure_usd(started),
+                "note": approved_action_note(w.incident), "experiment": exp.label}
+    finally:
+        sh("vagrant", "ssh", d.vm, "-c", f"sudo rm -f {d.path}", cwd=INFRA)
 
 
 def wait_incident_created(alert: str, since: datetime, timeout_sec: float) -> str:

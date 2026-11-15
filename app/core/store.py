@@ -78,6 +78,24 @@ class IncidentStore:
         with self.pool.connection() as conn:
             conn.execute("UPDATE incidents SET report_ts = %s WHERE id = %s", (ts, incident_id))
 
+    def start_action(self, incident_id: str, action: str, target: str, approver: str) -> bool:
+        """처음 승인이면 True. 같은 장애의 같은 조치는 한 번만 실행한다(두 사람이 동시에 눌러도)."""
+        with self.pool.connection() as conn:
+            row = conn.execute(
+                """INSERT INTO actions (incident_id, playbook, target, approver, approved_at, status)
+                   VALUES (%s, %s, %s, %s, now(), 'running')
+                   ON CONFLICT (incident_id, playbook) DO NOTHING RETURNING id""",
+                (incident_id, action, target, approver),
+            ).fetchone()
+        return row is not None
+
+    def finish_action(self, incident_id: str, action: str, status: str, log: str) -> None:
+        with self.pool.connection() as conn:
+            conn.execute(
+                "UPDATE actions SET status = %s, log = %s, finished_at = now() WHERE incident_id = %s AND playbook = %s",
+                (status, log, incident_id, action),
+            )
+
     def claim_fingerprint(self, fp: str, incident_id: str, ttl_sec: int) -> str | None:
         """처음 보는 지문이면 None, 이미 처리 중인 지문이면 기존 incident_id를 돌려준다."""
         key = f"dedupe:{fp}"

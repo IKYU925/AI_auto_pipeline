@@ -1,0 +1,27 @@
+# 허용 목록 조치 cleanup-appdata(plan.md 9-8). 실험용 볼륨(/srv/appdata)의 tmp 아래 파일만 지운다.
+# 대상 노드는 승인 처리가 app/actions.py의 허용 목록에서 정해 -i로 넘긴다
+- name: cleanup-appdata
+  hosts: all
+  become: true
+  gather_facts: false
+  tasks:
+    - name: 지울 임시 파일 찾기
+      ansible.builtin.find:
+        paths: /srv/appdata/tmp
+        file_type: file
+      register: tmp_files
+
+    - name: 임시 파일 삭제
+      ansible.builtin.file:
+        path: "{{ item.path }}"
+        state: absent
+      loop: "{{ tmp_files.files }}"
+      loop_control: {label: "{{ item.path }}"}
+
+    - name: 정리 후 사용률
+      ansible.builtin.command: df -h /srv/appdata
+      register: df
+      changed_when: false
+
+    - name: 사용률 출력
+      ansible.builtin.debug: {var: df.stdout_lines}

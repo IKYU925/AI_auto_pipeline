@@ -1,0 +1,18 @@
+id: S20
+title: 배포 직후 장애와 승인 후 롤백(S01 버그를 배포)
+type: code_bug
+difficulty: easy
+expected:
+  category: code_bug
+  needs_code_fix: true
+  root_cause_file: shopapi/orders.py
+  outcome: resolved
+requests:
+  - method: POST
+    path: /orders/summary
+    json: {items: []}
+hidden_test: hidden_tests/test_s01.py
+cluster:
+  approve: true
+  # 요청 한 번이면 오류 로그 알림이 1분 뒤 저절로 해소되어 롤백 효과를 잴 수 없다. 롤백 전까지 오류가 이어지게 한다
+  traffic: {method: POST, path: /orders/summary, json: {items: []}, every_sec: 2, for_sec: 1500}

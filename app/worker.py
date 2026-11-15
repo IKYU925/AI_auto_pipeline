@@ -14,6 +14,9 @@ from contextlib import contextmanager
 from redis.exceptions import ConnectionError as RedisConnectionError
 from redis.exceptions import RedisError
 
+from dataclasses import asdict
+
+from app.actions import propose
 from app.container import Container
 from app.core.queue import IncidentQueue
 from app.graph.workflow import recursion_limit
@@ -72,6 +75,8 @@ def process_message(c: Container, msg_id: str, payload: dict) -> dict:
         c.notifier.post(incident["channel"], f"자동 분석 중 오류가 발생했습니다: {e}", incident.get("thread_ts"))
         return {"outcome": "failed", "error": str(e)}
 
+    proposal = propose(incident, final["outcome"])
+    final = {**final, "proposed_action": asdict(proposal) if proposal else None}
     c.store.set_status(
         incident_id,
         final["outcome"],
@@ -86,6 +91,7 @@ def process_message(c: Container, msg_id: str, payload: dict) -> dict:
         test_selection=final.get("test_selection", {}),
         test_result={k: v for k, v in final.get("test_result", {}).items() if k != "failure_log"},
         resumed_from=resumed_from,
+        proposed_action=final["proposed_action"],
     )
     # 재개한 처리에서 회신이 두 번 가지 않게 한다. 회신과 report_ts 저장 사이에 죽으면 두 번 갈 수 있다(plan.md 8장)
     if c.store.report_ts(incident_id) is None:

@@ -10,6 +10,7 @@ from prometheus_client import CONTENT_TYPE_LATEST
 from app.container import Container
 from app.alerts import Alert
 from app.core.fingerprint import fingerprint
+from app.deploys import read_state
 from app.rag.ingest import Document
 from app.schemas import IncidentAccepted, IncidentIn, KnowledgeIngestIn
 
@@ -88,8 +89,12 @@ def create_app(container: Container | None = None) -> FastAPI:
             if alert.kind.needs_pod_logs and c.loki and alert.labels.get("pod"):
                 logs = c.loki.pod_tail(alert.labels.get("namespace", "shop"), alert.labels["pod"],
                                        alert.starts_at, datetime.now(timezone.utc))
-            accepted.append(accept(c, alert.to_incident(c.settings.tenant_slack_channels.get(alert.tenant, c.settings.alert_slack_channel),
-                                                      stacktrace, logs)).incident_id)
+            deploy = None
+            if alert.kind.rollback and c.kube and alert.labels.get("namespace"):
+                state = read_state(c.kube, alert.labels["namespace"], alert.target)
+                deploy = state.to_dict() if state else None
+            channel = c.settings.tenant_slack_channels.get(alert.tenant, c.settings.alert_slack_channel)
+            accepted.append(accept(c, alert.to_incident(channel, stacktrace, logs, deploy)).incident_id)
         return {"accepted": accepted, "already_open": already_open, "resolved": resolved}
 
     @app.get("/api/v1/incidents/{incident_id}", dependencies=[Depends(verify_token)])
