@@ -65,10 +65,11 @@ class Experiment:
     burst: int | None = None
     kill_worker_after: str | None = None
     halt_after: str | None = None
+    tag: str = ""
 
     @property
     def label(self) -> str:
-        parts = [f"burst{self.burst}" if self.burst else "",
+        parts = [self.tag, f"burst{self.burst}" if self.burst else "",
                  f"kill_worker@{self.kill_worker_after}" if self.kill_worker_after else "",
                  f"halt@{self.halt_after}" if self.halt_after else ""]
         return "+".join(p for p in parts if p)
@@ -476,8 +477,9 @@ def main() -> None:
     ap.add_argument("--burst", type=int, help="중복 시나리오(S13)의 실패 요청 수")
     ap.add_argument("--kill-worker-after", metavar="TASK", help="이 단계 LLM 호출이 끝나면 처리 중인 워커 Pod를 강제 삭제")
     ap.add_argument("--halt-after", metavar="TASK", help="노드 장애(S16) 전에 걸어 둔 장애의 이 단계가 끝나면 전원 차단")
+    ap.add_argument("--tag", default="", help="CSV experiment 열에 남길 이름(예: 3-8 분류 개선 뒤 재실행)")
     args = ap.parse_args()
-    exp = Experiment(args.burst, args.kill_worker_after, args.halt_after)
+    exp = Experiment(args.burst, args.kill_worker_after, args.halt_after, args.tag)
 
     spent = 0.0
     with httpx.Client(base_url=SHOP_URL, timeout=30) as shop:
