@@ -64,7 +64,7 @@
 | 3-9 | 3단계 | 고객사 namespace 2개(tenant-a, tenant-b), 고객사 라벨과 Alertmanager 라우팅, 고객사별 Slack 채널과 런북 필터(9-7) | 같은 버그를 두 고객사에 주입하면 각 고객사 채널로 1건씩 회신 |
 | 3-10 | 3단계 | 승인 조치 Job과 허용 목록 플레이북, Slack 승인 버튼, 조치 기록, S17 노드 디스크 부족(9-8) | S17 알림이 승인 후 플레이북 실행, 알림 해소까지 사람 개입은 승인 1번 |
 | 3-11 | 3단계 | 정리(README, 아키텍처 그림 갱신, velog 3편, 영상) | 3단계 결과 공개 가능 |
-| 4-1 | 4단계 | Terraform으로 EC2 1대, CloudWatch Agent 설정, 경보, EventBridge 규칙, SQS 생성. SQS 어댑터, S18, S19 실행 | 경보 1건이 사람 개입 없이 Slack 회신까지 완주 |
+| 4-1 | 4단계 | infra_template의 `terraform/envs/aiops-lab`으로 EC2 1대, CloudWatch Agent 설정, 경보, EventBridge 규칙, SQS 생성. 이 저장소에서는 SQS 어댑터, S18, S19 실행 | 경보 1건이 사람 개입 없이 Slack 회신까지 완주 |
 | 4-2 | 4단계 | 정리(README, 환경별 비교 표, velog 4편), `terraform destroy` 후 남은 리소스 확인 | 4단계 결과 공개 가능, 과금 리소스 0개 |
 
 작업이 밀리면 측정, Slack 연동, 영상 순으로 우선순위를 둔다. 측정 결과가 없으면 나머지는 의미가 없다. 3단계가 밀리면 대시보드는 shopapi 하나로 줄이고, S16(노드 장애)은 뒤로 미루고, K3s 위에서 감지부터 회신까지 완주하는 것을 우선한다. 3단계 추가 작업이 밀리면 승인 조치를 먼저 하고 고객사 분리는 라우팅만 남긴다. 4단계가 밀리면 S19를 빼고 S18 한 건으로 경로 완주만 확인한다.
@@ -98,7 +98,6 @@ AI_auto_pipeline/
 │   └── k8s/                    # CrashLoopBackOff, OOMKilled, NodeNotReady 런북(3단계)
 ├── deploy/k8s/                 # kustomize base, overlays/local(3단계)
 ├── deploy/ansible/             # 승인 조치용 허용 목록 플레이북(3단계)
-├── deploy/aws/                 # Terraform: EC2, CloudWatch Agent 설정, 경보, EventBridge, SQS(4단계)
 ├── scripts/
 │   ├── inject.sh               # 버그 주입, 원복
 │   ├── build_push.sh           # 이미지 빌드와 레지스트리 등록(3단계)
@@ -439,7 +438,7 @@ SQS를 두는 이유는 두 가지다. 자동화가 SQS를 가져가는 방식�
 1. SQS 메시지에서 EventBridge 이벤트(`CloudWatch Alarm State Change`)를 꺼내 경보 이름, 새 상태, 지표와 차원을 읽는다.
 2. `ALARM`은 장애로 접수하고, `OK`는 같은 경보의 `alert_resolved_at`을 남긴다(Alertmanager의 `resolved`와 같은 처리).
 3. 로그 기반 경보(ERROR 로그 지표 필터)면 경보 시각 5분 전부터 CloudWatch Logs Insights로 해당 로그 그룹의 최근 스택트레이스를 조회한다.
-4. 서비스와 고객사는 경보 이름 규칙(`<tenant>-<service>-<alertname>`)에서 정한다.
+4. 서비스와 고객사는 경보 이름 규칙(`<tenant>-<service>-<alertname>`)에서 정한다. 고객사 이름(`tenant-a`)에 하이픈이 있으므로 오른쪽부터 두 번 나눈다(`rsplit("-", 2)`).
 5. 기존 `IncidentIn`으로 바꿔 같은 중복 제거와 큐 적재 경로를 탄다. 처리를 마친 SQS 메시지만 지워서, 자동화가 중간에 죽어도 메시지가 다시 보인다.
 
 어댑터 테스트는 실제 EventBridge 이벤트 JSON을 저장해 두고 로컬에서 돌린다. AWS가 없어도 어댑터를 검증할 수 있다.
@@ -453,7 +452,9 @@ SQS를 두는 이유는 두 가지다. 자동화가 SQS를 가져가는 방식�
 
 #### 10-4. 비용과 정리
 
-- 리소스는 Terraform 하나로 만들고 지운다. 모든 리소스에 `project=ai-incident` 태그를 붙이고, `terraform destroy` 후 태그로 남은 리소스를 조회해 0개인지 확인한다.
+- AWS 리소스 정의는 이 저장소에 두지 않는다. infra_template의 `terraform/envs/aiops-lab` 하나로 만들고 지우며, 이 저장소는 그 출력값(SQS 큐 URL, 로그 그룹, 리전)을 환경 변수로만 받는다.
+- 모든 리소스에 `Project=ai-incident` 태그를 붙인다(키는 대문자 P. infra_template 전체와 Ansible 동적 인벤토리가 같은 키를 쓴다). `terraform destroy` 후 infra_template의 `lab.sh leftovers`로 남은 리소스가 0개인지 확인한다.
+- shopapi 이미지는 `linux/arm64`로 빌드하므로 EC2도 arm64(t4g)를 쓴다.
 - EC2는 퍼블릭 서브넷의 작은 인스턴스 1대로 두고 인바운드를 열지 않는다. 접속은 SSM Session Manager로 한다. NAT 게이트웨이와 로드밸런서는 만들지 않는다.
 - 실행 전에 AWS 요금 계산기로 비용을 계산하고 AWS Budgets 알림을 건다.
 

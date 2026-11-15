@@ -16,6 +16,7 @@
 | [0010](0010-single-run-ab.md) | 1단계 A/B 본 실험은 조건마다 1회만 실행한다 | 채택 |
 | [0011](0011-keep-expected-labels.md) | 결과를 본 뒤 시나리오 기대값을 고치지 않는다 | 채택 |
 | [0012](0012-postgres-scope.md) | LLM 응답 캐시는 Redis에 남기고 장애 결과는 jsonb 칼럼에 둔다 | 채택 |
+| [0013](0013-aws-infra-in-infra-template.md) | 4단계 AWS 리소스는 infra_template 저장소에서 만들고 지운다 | 채택 |
 
 양식은 다음과 같다.
 
