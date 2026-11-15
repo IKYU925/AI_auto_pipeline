@@ -36,7 +36,7 @@ EC2 경로로는 Pod 장애, 배포 이력, 롤백처럼 MSP가 쿠버네티스 
 - 0001과 0002는 이 기록으로 대체된다.
 - plan.md 1장 목표, 2장 일정(4-1~4-5), 10장, 11장 리스크, 12장 결과 표를 EKS 기준으로 바꿨다. 일정은 설계 문서(infra_template `docs/plans/aiops-eks-design.md`) 6장의 P0~P6을 따르고, 이 저장소 몫은 P2~P6이다.
 - 시나리오: EC2 시나리오(PR #42)는 만들지 않는다. S20, S21, S22(선택)를 더한다.
-- 승인 조치: EKS 관리형 노드에는 SSH가 없어서 노드 대상 Ansible 조치([0003](0003-approved-remediation.md))를 EKS에서 쓸 수 없다. EKS의 허용 목록은 `argocd-rollback`(직전 정상 리비전)과 `rollout-restart`다. 조치 이름과 대상은 장애 기록에서만 가져오고 LLM 출력은 쓰지 않는다. 0003과 S17을 로컬 전용으로 남길지는 3-10 시작 전에 정한다.
+- 승인 조치: EKS 관리형 노드에는 SSH가 없어서 노드 대상 Ansible 조치([0003](0003-approved-remediation.md))를 EKS에서 쓸 수 없다. EKS의 허용 목록은 `argocd-rollback`(직전 정상 리비전)과 `rollout-restart`다. 조치 이름과 대상은 장애 기록에서만 가져오고 LLM 출력은 쓰지 않는다. 0003의 노드 Ansible 조치와 S17은 로컬 K3s 전용으로 남긴다. 승인 버튼 클릭은 Slack Socket Mode로 받아 공개 주소 없이 로컬과 EKS가 같은 방식을 쓴다.
 - `scripts/build_push.sh`의 ECR 푸시 옵션은 EKS에서도 쓰므로 PR #42에서 옮겨 왔다.
 - SQS 입구 코드는 PR #42의 브랜치(`feature/4-0-sqs-intake`) 이력에 남아 있다.
 
