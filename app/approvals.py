@@ -3,22 +3,20 @@
 실행: python -m app.approvals
 Socket Mode라서 공개 주소가 필요 없다. 자동화가 Slack에 먼저 연결해 버튼 클릭을 받는다.
 """
+import copy
 import logging
-import os
 import threading
 import time
 from dataclasses import dataclass
-from pathlib import Path
 
-import httpx
-
-from app.actions import ACTIONS, Proposal
+from app.actions import ACTIONS, Playbook, Proposal, allowed
+from app.deploys import REVISION
+from app.kube import Kube
 from app.notify.card import APPROVE_ACTION_ID
 
 log = logging.getLogger("approvals")
-NAMESPACE = "aiops"
-SA_DIR = Path("/var/run/secrets/kubernetes.io/serviceaccount")
 JOB_TIMEOUT_SEC = 300
+ROLLOUT_TIMEOUT_SEC = 180
 
 
 @dataclass(frozen=True)
@@ -35,41 +33,12 @@ def decide(c, incident_id: str, approver: str) -> Decision:
     if incident is None:
         return Decision("unknown")
     raw = incident.get("proposed_action")
-    if not raw or raw["action"] not in ACTIONS or raw["target"] not in ACTIONS[raw["action"]].hosts:
+    proposal = Proposal(**raw) if raw else None
+    if not proposal or not allowed(proposal):
         return Decision("no_proposal")
-    proposal = Proposal(raw["action"], raw["target"])
     if not c.store.start_action(incident_id, proposal.action, proposal.target, approver):
         return Decision("already", proposal)
     return Decision("started", proposal)
-
-
-class Kube:
-    """클러스터 안에서 서비스 계정 토큰으로 API를 부른다. 권한은 aiops의 Job 생성과 Pod 로그 읽기뿐이다."""
-
-    def __init__(self, http: httpx.Client | None = None):
-        self.http = http or httpx.Client(
-            base_url="https://kubernetes.default.svc", verify=str(SA_DIR / "ca.crt"), timeout=10,
-            headers={"Authorization": f"Bearer {(SA_DIR / 'token').read_text()}"},
-        )
-
-    def own_image(self) -> str:
-        pod = self.http.get(f"/api/v1/namespaces/{NAMESPACE}/pods/{os.environ['HOSTNAME']}").raise_for_status().json()
-        return pod["spec"]["containers"][0]["image"]
-
-    def create_job(self, job: dict) -> None:
-        resp = self.http.post(f"/apis/batch/v1/namespaces/{NAMESPACE}/jobs", json=job)
-        if resp.status_code != 409:  # 이미 있으면 그 Job의 결과를 기다린다(승인 처리 중 재시작)
-            resp.raise_for_status()
-
-    def job_status(self, name: str) -> dict:
-        return self.http.get(f"/apis/batch/v1/namespaces/{NAMESPACE}/jobs/{name}").raise_for_status().json().get("status", {})
-
-    def job_logs(self, name: str) -> str:
-        pods = self.http.get(f"/api/v1/namespaces/{NAMESPACE}/pods", params={"labelSelector": f"job-name={name}"})
-        items = pods.raise_for_status().json()["items"]
-        if not items:
-            return ""
-        return self.http.get(f"/api/v1/namespaces/{NAMESPACE}/pods/{items[0]['metadata']['name']}/log").text
 
 
 def job_spec(name: str, image: str, incident_id: str, p: Proposal) -> dict:
@@ -112,6 +81,48 @@ class JobRunner:
         return False, f"Job {name}이 {JOB_TIMEOUT_SEC}초 안에 끝나지 않았다"
 
 
+class RolloutRunner:
+    """kubectl rollout undo와 같다. 직전 ReplicaSet의 Pod 템플릿으로 Deployment를 되돌린다."""
+
+    def __init__(self, kube: Kube, poll_sec: float = 3):
+        self.kube = kube
+        self.poll_sec = poll_sec
+
+    def run(self, incident_id: str, p: Proposal) -> tuple[bool, str]:
+        ns, name = p.target.split("/")
+        dep = self.kube.deployment(ns, name)
+        current = int(dep["metadata"]["annotations"][REVISION])
+        if current != p.from_revision:
+            return False, f"제안 뒤 배포가 바뀌었다(제안 rev {p.from_revision}, 지금 rev {current}). 롤백하지 않았다"
+        target = next((rs for rs in self.kube.replicasets(ns, dep)
+                       if rs["metadata"].get("annotations", {}).get(REVISION) == str(p.to_revision)), None)
+        if target is None:
+            return False, f"rev {p.to_revision}의 ReplicaSet이 없다(revisionHistoryLimit로 지워졌을 수 있다)"
+        template = copy.deepcopy(target["spec"]["template"])
+        template["metadata"].get("labels", {}).pop("pod-template-hash", None)
+        self.kube.replace_template(ns, name, template)
+        deadline = time.monotonic() + ROLLOUT_TIMEOUT_SEC
+        while time.monotonic() < deadline:
+            d = self.kube.deployment(ns, name)
+            st, want = d.get("status", {}), d["spec"]["replicas"]
+            if (st.get("observedGeneration", 0) >= d["metadata"]["generation"]
+                    and st.get("updatedReplicas") == want and st.get("availableReplicas") == want):
+                image = template["spec"]["containers"][0]["image"]
+                return True, f"{p.target} rev {current} -> rev {d['metadata']['annotations'][REVISION]}(rev {p.to_revision}의 템플릿), 이미지 {image}"
+            time.sleep(self.poll_sec)
+        return False, f"{p.target} 롤백이 {ROLLOUT_TIMEOUT_SEC}초 안에 끝나지 않았다"
+
+
+class Executor:
+    def __init__(self, jobs: JobRunner, rollouts: RolloutRunner):
+        self.jobs = jobs
+        self.rollouts = rollouts
+
+    def run(self, incident_id: str, p: Proposal) -> tuple[bool, str]:
+        runner = self.jobs if isinstance(ACTIONS[p.action], Playbook) else self.rollouts
+        return runner.run(incident_id, p)
+
+
 REPLIES = {
     "already": "이미 승인되어 실행했거나 실행 중인 조치입니다.",
     "no_proposal": "이 장애에는 실행할 수 있는 조치가 없습니다.",
@@ -120,7 +131,7 @@ REPLIES = {
 }
 
 
-def handle_click(c, runner: JobRunner, incident_id: str, approver: str, channel: str, ts: str, blocks: list[dict]) -> str:
+def handle_click(c, runner: Executor, incident_id: str, approver: str, channel: str, ts: str, blocks: list[dict]) -> str:
     decision = decide(c, incident_id, approver)
     if decision.status != "started":
         c.notifier.post(channel, f"<@{approver}> {REPLIES[decision.status]}", ts)
@@ -128,7 +139,7 @@ def handle_click(c, runner: JobRunner, incident_id: str, approver: str, channel:
     p = decision.proposal
     # 버튼을 지워 같은 카드에서 다시 누르지 않게 한다. 다시 눌러도 start_action이 막는다
     kept = [b for b in blocks if b.get("block_id") != "approve"]
-    note = {"type": "context", "elements": [{"type": "mrkdwn", "text": f"<@{approver}> 승인 · `{p.action}` @ {p.target} 실행 중"}]}
+    note = {"type": "context", "elements": [{"type": "mrkdwn", "text": f"<@{approver}> 승인 · `{p.label}` 실행 중"}]}
     c.notifier.update(channel, ts, f"{p.action} 실행 중", kept + [note])
     try:
         ok, logs = runner.run(incident_id, p)
@@ -137,7 +148,7 @@ def handle_click(c, runner: JobRunner, incident_id: str, approver: str, channel:
         ok, logs = False, repr(e)
     c.store.finish_action(incident_id, p.action, "succeeded" if ok else "failed", logs[-8000:])
     result = "완료" if ok else "실패"
-    c.notifier.post(channel, f"`{p.action}` @ {p.target} {result}\n```\n{logs[-1500:] or '-'}\n```", ts)
+    c.notifier.post(channel, f"`{p.label}` {result}\n```\n{logs[-1500:] or '-'}\n```", ts)
     return "succeeded" if ok else "failed"
 
 
@@ -148,7 +159,7 @@ def serve(c) -> None:
     from slack_sdk.socket_mode.response import SocketModeResponse
 
     kube = Kube()
-    runner = JobRunner(kube, kube.own_image())
+    runner = Executor(JobRunner(kube, kube.own_image()), RolloutRunner(kube))
 
     def on_request(client: SocketModeClient, req: SocketModeRequest) -> None:
         # 3초 안에 확인 응답을 보내야 Slack이 다시 보내지 않는다. 조치는 따로 실행한다

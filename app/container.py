@@ -79,6 +79,12 @@ class Container:
         return LokiClient(self.settings.loki_url) if self.settings.loki_url else None
 
     @cached_property
+    def kube(self):
+        from app.kube import Kube, in_cluster
+
+        return Kube() if in_cluster() else None
+
+    @cached_property
     def notifier(self) -> SlackNotifier:
         return SlackNotifier(self.settings.slack_bot_token)
 

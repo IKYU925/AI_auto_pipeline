@@ -1,6 +1,8 @@
 """워커의 최종 상태로 Slack 회신 카드(Block Kit)를 만든다. 보내는 일은 SlackNotifier가 한다."""
 from dataclasses import dataclass
 
+from app.actions import Proposal
+
 # Block Kit 한도: 섹션 텍스트 3,000자, 헤더 150자
 SECTION_MAX = 2900
 HEADER_MAX = 150
@@ -84,7 +86,7 @@ APPROVE_ACTION_ID = "approve_action"
 
 def approve_button(incident_id: str, proposal: dict) -> dict:
     """버튼 값은 장애 ID뿐이다. 실행할 조치와 대상은 승인 처리가 장애 기록에서 다시 읽는다."""
-    label = f"{proposal['action']} @ {proposal['target']}"
+    label = Proposal(**proposal).label
     return {"type": "actions", "block_id": "approve", "elements": [{
         "type": "button", "action_id": APPROVE_ACTION_ID, "style": "primary", "value": incident_id,
         "text": {"type": "plain_text", "text": _clip(f"승인 후 실행: {label}", 75)},

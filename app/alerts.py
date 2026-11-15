@@ -12,14 +12,15 @@ class AlertKind:
     needs_stacktrace: bool = False
     needs_pod_logs: bool = False
     action: str | None = None     # 승인 후 조치(app/actions.py의 허용 목록 이름)
+    rollback: bool = False        # 배포 직후에 났으면 직전 리비전으로 롤백을 제안한다(3-10b)
 
 
 # 3-4에서 실제 알림 라벨을 본 뒤 고칠 곳은 이 표 하나다(plan.md 9-3, 9-4)
 ALERT_KINDS: dict[str, AlertKind] = {
-    "ShopapiException": AlertKind(("service",), needs_stacktrace=True),
-    "ShopapiHighErrorRate": AlertKind(("service",), needs_stacktrace=True),
+    "ShopapiException": AlertKind(("service",), needs_stacktrace=True, rollback=True),
+    "ShopapiHighErrorRate": AlertKind(("service",), needs_stacktrace=True, rollback=True),
     "ShopapiSlowPayment": AlertKind(("service",)),
-    "KubePodCrashLooping": AlertKind(("container", "pod"), needs_pod_logs=True),
+    "KubePodCrashLooping": AlertKind(("container", "pod"), needs_pod_logs=True, rollback=True),
     "PodOOMKilled": AlertKind(("container", "pod"), needs_pod_logs=True),
     "KubeNodeNotReady": AlertKind(("node",)),
     "AppdataDiskFull": AlertKind(("nodename",), action="cleanup-appdata"),
@@ -63,10 +64,10 @@ class Alert:
     def target(self) -> str:
         return next((self.labels[k] for k in self.kind.target_labels if self.labels.get(k)), "unknown")
 
-    def to_incident(self, channel: str, stacktrace: str | None, logs: str | None = None) -> IncidentIn:
+    def to_incident(self, channel: str, stacktrace: str | None, logs: str | None = None, deploy: dict | None = None) -> IncidentIn:
         summary = self.annotations.get("summary") or self.annotations.get("description") or self.name
         return IncidentIn(
             source="alertmanager", channel=channel, service=self.target, severity=self.labels.get("severity", "unknown"),
             message=f"[{self.name}] {summary}", stacktrace=stacktrace, logs=logs, tenant=self.tenant, occurred_at=self.starts_at,
-            alertname=self.name, alert_fingerprint=self.fingerprint,
+            alertname=self.name, alert_fingerprint=self.fingerprint, deploy=deploy,
         )

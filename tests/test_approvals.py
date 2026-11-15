@@ -4,7 +4,8 @@ import httpx
 import pytest
 
 from app.actions import Proposal, propose
-from app.approvals import JobRunner, Kube, handle_click, job_spec
+from app.approvals import JobRunner, handle_click, job_spec
+from app.kube import Kube
 from app.notify.card import APPROVE_ACTION_ID, build_card
 
 DISK = {"alertname": "AppdataDiskFull", "service": "k3s-w1", "message": "[AppdataDiskFull] 볼륨 90% 초과", "channel": "C1"}
