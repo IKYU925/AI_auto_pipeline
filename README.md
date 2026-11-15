@@ -173,7 +173,7 @@ Slack 실연동은 Slack 앱(봇 토큰, Incoming Webhook, Signing Secret, Event
 ### 4. 실제 서비스 저장소에 붙이기
 
 - `docker-compose.yml`의 `./targets/shopapi:/repo:ro`를 대상 서비스 저장소로 바꾼다. 운영에서는 워커가 배포된 커밋을 clone해서 쓰는 방식이 맞다.
-- `knowledge/` 아래에 런북, 포스트모템을 front matter(`service`, `category`, `doc_type`, `updated_at`)와 함께 넣고 `scripts.ingest_knowledge`를 주기적으로(문서 저장소 push 시 CI 등) 실행한다. 바뀐 청크만 임베딩되므로 자주 돌려도 비용이 거의 들지 않는다.
+- `knowledge/` 아래에 런북, 포스트모템을 front matter(`service`, `tenant`, `category`, `doc_type`, `updated_at`. `tenant`를 빼면 모든 고객사가 보는 공통 문서)와 함께 넣고 `scripts.ingest_knowledge`를 주기적으로(문서 저장소 push 시 CI 등) 실행한다. 바뀐 청크만 임베딩되므로 자주 돌려도 비용이 거의 들지 않는다.
 
 ## 폴더 구조
 
