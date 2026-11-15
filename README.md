@@ -1,6 +1,8 @@
 # AI 장애 대응 자동화
 
-Slack 장애 알림을 받아 원인을 분석하고, 수정 코드를 만들고, 관련 회귀 테스트만 골라 검증한 뒤 결과를 Slack 스레드에 회신하는 파이프라인이다. 테스트가 실패하면 실패 로그를 붙여 수정안을 다시 만들고 다시 검증한다. 전 구간에 비용 최적화(캐시, 모델 분리, 범위 축소)를 적용했다.
+장애 알림을 받아 원인을 분석하고, 수정 코드를 만들고, 관련 회귀 테스트만 골라 검증한 뒤 결과를 Slack에 회신하는 파이프라인이다. 테스트가 실패하면 실패 로그를 붙여 수정안을 다시 만들고 다시 검증한다. 전 구간에 비용 최적화(캐시, 모델 분리, 범위 축소)를 적용했다.
+
+1, 2단계는 Slack 알림(n8n)으로 장애를 받았다. 3단계는 로컬 K3s 클러스터에서 Prometheus, Loki, Alertmanager가 감지한 장애를 사람 개입 없이 받는다. 고객사(namespace)별로 회신 채널과 런북 검색 범위를 나누고, 정해진 조치(노드 정리, 배포 롤백)는 Slack 승인 버튼 한 번으로 실행한다.
 
 ## 전체 흐름
 
@@ -46,6 +48,39 @@ flowchart LR
 | 9. 영향 범위 | `app/analysis/impact.py` | import 그래프를 역방향으로 따라가 영향받는 모듈과 위험도를 계산한다 |
 | 10. 테스트 선별, 실행 | `app/analysis/test_selector.py`, `app/testing/runner.py` | 관련 테스트만 골라 원본과 분리된 복사본에서 실행하고, 실패하면 LLM에 다시 보낸다 |
 
+### 3단계 클러스터 구성
+
+```mermaid
+flowchart LR
+    subgraph K3s[로컬 K3s 3노드]
+        subgraph NS[shop, tenant-a, tenant-b]
+            SA[shopapi]
+        end
+        SA -->|메트릭| P[Prometheus]
+        SA -->|JSON 로그| AL[Alloy] --> L[Loki]
+        NE[node-exporter] --> P
+        P -->|PrometheusRule| AM[Alertmanager]
+        L -->|ruler| AM
+        AM -->|웹훅| API[api<br/>배포 상태 기록]
+        API --> Q[(Redis Streams)] --> W[worker x2<br/>LangGraph, 체크포인터]
+        W --> PG[(PostgreSQL)]
+        APR[approvals<br/>Socket Mode]
+        APR -->|Job| AN[허용 목록 플레이북]
+        APR -->|롤백| SA
+    end
+    W -->|고객사 채널 카드| SL[Slack]
+    SL -->|승인 버튼| APR
+    AN -->|SSH| N1[k3s-w1 실험용 볼륨]
+```
+
+| 구성 | 구현 위치 | 하는 일 |
+| --- | --- | --- |
+| 알림 규칙 | `deploy/k8s/base/alert-rules.yaml` | 코드 예외(Loki), 5xx 비율, 결제 지연, OOMKilled, 실험용 볼륨 디스크. 차트 기본 규칙(CrashLoop, NodeNotReady)과 함께 쓴다 |
+| Alertmanager 어댑터 | `app/alerts.py`, `app/main.py` | 알림 종류 표 하나로 대상, 스택트레이스 조회(Loki), Pod 마지막 로그, 조치 이름을 정한다 |
+| 고객사 | `app/tenants.py` | namespace `tenant-*`이면 그 고객사. 지문, 회신 채널, 런북 검색 범위가 고객사를 넘지 않는다 |
+| 승인 후 조치 | `app/actions.py`, `app/approvals.py`, `deploy/ansible/` | 허용 목록 조치만 카드에 버튼으로 붙인다. 승인되면 노드 플레이북 Job이나 Deployment 롤백을 실행하고 `actions`에 기록한다 |
+| 배포 상태 | `app/deploys.py` | 알림 접수 때 현재와 직전 리비전, 배포 시각을 남긴다. 배포 직후 장애면 롤백을 제안한다 |
+
 ## 1단계 결과
 
 직접 만든 대상 서비스(shopapi)에 버그 13종을 주입하고 실제 LLM(분류 Claude Haiku 5.5, 분석과 수정 Claude Opus 5.5)으로 처리했다. 수정은 LLM이 볼 수 없는 숨은 테스트로 판정했다. 상세와 원본 CSV는 [results/phase1_summary.md](results/phase1_summary.md), 실험 설계는 [docs/plan.md](docs/plan.md) 7장이다.
@@ -72,6 +107,24 @@ flowchart LR
 - 검색: 에러 코드 질의 10개의 상위 3개 적중이 Qdrant 벡터 8/10, pgvector 벡터 8/10, pgvector + pg_trgm(RRF) 9/10이다. 저장소만 바꾼 효과는 없고, 키워드 순위가 식별자 질의(`TAX_RATE` 9위 → 2위)를 보완했다([results/phase2_retrieval.md](results/phase2_retrieval.md)).
 - 1단계와 같은 시나리오 13개 재실행: 재발 시 LLM 호출 0회, 런북 안내, 중복 알림 처리는 그대로 동작했다. 비용은 $0.903에서 $1.118로 늘었는데, 두 시나리오가 두 번째 시도에서 고쳐졌고 Opus 출력이 19% 길어진 탓이다(실행 1회라 판단 보류, [results/phase2_summary.md](results/phase2_summary.md)).
 - 워커 강제 종료: 수정안 생성 뒤 `docker kill`로 죽이면 체크포인터가 고성능 호출 1회(장애 1건 비용의 절반쯤, 추정)를 아낀다. 원인 분석 직후 종료는 1단계의 응답 캐시가 이미 덮어서 차이가 없다. 회신은 모든 실행에서 한 번이었다([results/phase2_kill.md](results/phase2_kill.md)).
+
+## 3단계 결과
+
+로컬 K3s(Vagrant 3노드)에 자동화, shopapi 세 벌(공통 shop, 고객사 tenant-a, tenant-b), 관측 도구를 올리고 장애를 실제로 넣었다. 감지부터 회신까지 사람이 개입하지 않았고, 조치는 승인 한 번이었다. 상세는 [results/phase3_summary.md](results/phase3_summary.md), 계획은 [docs/plan.md](docs/plan.md) 9장이다.
+
+| 지표 | 값 | 비고 |
+| --- | --- | --- |
+| 장애 발생부터 Slack 회신까지 중앙값 | 코드 버그 120초, 설정·인프라 장애 264초 | 대부분 감지와 전달(알림 규칙의 `for`, 평가 주기, group_wait). 처리는 코드 버그 27초, 설정·인프라 2.2초 |
+| 설정·인프라 알림의 런북 안내 | 5/5, 분류 4/4 | CrashLoop, OOMKilled 알림에 Pod 마지막 로그를 붙인 뒤. 고성능 모델 호출 0회 |
+| 반복 알림 합치기 | 실패 요청 50회가 알림 1개, 장애 1건 | |
+| 워커 Pod 강제 삭제 중 재개 | 43초 뒤 다른 워커가 이어 처리, 추가 LLM 호출 0, 중복 회신 0 | 체크포인터와 처리 중 메시지 붙잡기(heartbeat) |
+| 고객사 분리 | 같은 버그를 두 고객사에 넣으면 각 채널로 1건씩, 회신 혼선 0, 다른 고객사 문서 0 | |
+| 승인 후 조치(노드 디스크, S17) | 알림부터 승인 요청까지 53초, 승인부터 해소까지 29초 | 허용 목록 플레이북, 조치 기록 남음 |
+| 승인 후 롤백(배포 직후 장애, S20) | 승인부터 롤백 끝까지 6초, 알림 해소까지 119초 | 해소 대기는 대부분 알림 규칙의 창과 평가 주기(추정) |
+
+- 3단계 실험 전체 비용은 약 $1.2다(3-7 $0.60, 3-8 $0.27, 3-9 $0.18, 3-10 $0.18).
+- SLI는 [docs/sli.md](docs/sli.md)에 정의했다. 웹훅 전달 100%, 3분 안 회신(코드 버그) 83%(놓친 2건은 노드 장애 중), 처리 결과 정확도 94%다. SLO 목표는 4단계에서 정한다.
+- 시그니처가 어긋난 버그(S08)는 클러스터에서도 거짓 통과로 끝났다(1단계와 같음). 자동 수정은 사람 승인 전까지 배포하지 않는다.
 
 ## 비용 최적화 포인트
 
@@ -170,7 +223,21 @@ python -m scripts.run_experiment S01 S10 --condition A --repeat 3 --out results/
 
 Slack 실연동은 Slack 앱(봇 토큰, Incoming Webhook, Signing Secret, Event Subscriptions)과 ngrok이 필요하다. 설정 절차는 [docs/features/F08-slack.md](docs/features/F08-slack.md)에 있고, `python -m scripts.setup_n8n`이 n8n 설정을, `python -m scripts.slack_e2e S01`이 알림부터 스레드 회신까지 확인을 한다.
 
-### 4. 실제 서비스 저장소에 붙이기
+### 4. 로컬 K3s에서 실행(3단계)
+
+클러스터는 형제 저장소 infra_local_set(`../infra_local_set`, `./up.sh`)이 만든다. 이 저장소는 이미지와 매니페스트, 실험 실행기를 맡는다.
+
+```bash
+export KUBECONFIG=../infra_local_set/kubeconfig
+scripts/build_push.sh                          # 이미지를 로컬 레지스트리에 올리고 overlay 태그를 바꾼다
+scripts/k8s_secrets.sh                         # .env와 infra_local_set의 토큰으로 Secret을 만든다
+kubectl apply -k deploy/k8s/overlays/local
+caffeinate -i .venv/bin/python -m scripts.run_cluster S01 S14 --max-usd 0.5 --out results/phase3.csv
+```
+
+`run_cluster`는 장애를 실제로 넣고(버그 이미지 배포, 설정 변경, 노드 정지, 디스크 채우기) 알림이 자동화를 거쳐 Slack에 회신될 때까지 구간별 시간을 잰다. 맥이 잠들면 VM이 멈추므로 `caffeinate`로 실행하고, 노드 시계가 5초 넘게 어긋나면 시작하지 않는다. 승인이 필요한 시나리오(S17, S20)는 카드의 버튼을 사람이 누를 때까지 기다린다.
+
+### 5. 실제 서비스 저장소에 붙이기
 
 - `docker-compose.yml`의 `./targets/shopapi:/repo:ro`를 대상 서비스 저장소로 바꾼다. 운영에서는 워커가 배포된 커밋을 clone해서 쓰는 방식이 맞다.
 - `knowledge/` 아래에 런북, 포스트모템을 front matter(`service`, `tenant`, `category`, `doc_type`, `updated_at`. `tenant`를 빼면 모든 고객사가 보는 공통 문서)와 함께 넣고 `scripts.ingest_knowledge`를 주기적으로(문서 저장소 push 시 CI 등) 실행한다. 바뀐 청크만 임베딩되므로 자주 돌려도 비용이 거의 들지 않는다.
@@ -178,10 +245,15 @@ Slack 실연동은 Slack 앱(봇 토큰, Incoming Webhook, Signing Secret, Event
 ## 폴더 구조
 
 ```
-AI_automation/
+AI_auto_pipeline/
 ├── app/
-│   ├── main.py              # FastAPI (접수, 상태 조회, 지식 문서 수집)
+│   ├── main.py              # FastAPI (접수, Alertmanager 웹훅, 상태 조회, 지식 문서 수집)
 │   ├── worker.py            # 큐 소비 워커
+│   ├── alerts.py            # Alertmanager 알림 종류 표와 변환
+│   ├── tenants.py           # 고객사 판별
+│   ├── actions.py           # 승인 후 조치 허용 목록과 제안
+│   ├── approvals.py         # Slack 승인 버튼 처리(Socket Mode), 조치 Job과 롤백 실행
+│   ├── deploys.py, kube.py  # 배포 상태 조회, Kubernetes API
 │   ├── container.py         # 의존성 조립
 │   ├── config.py            # 환경변수 설정
 │   ├── core/                # 에러 지문, Redis Streams 큐, 상태 저장소
@@ -190,7 +262,9 @@ AI_automation/
 │   ├── analysis/            # 코드 컨텍스트, Diff 분석, 영향 범위, 테스트 선별
 │   ├── testing/runner.py    # 샌드박스 패치 적용 + pytest 실행
 │   ├── graph/               # LangGraph 상태, 노드, 워크플로
-│   └── notify/slack.py      # 결과 회신
+│   └── notify/              # Slack 회신 카드와 승인 버튼
+├── deploy/k8s/               # kustomize base, shopapi, 고객사, overlays/local(3단계)
+├── deploy/ansible/          # 승인 후 조치 허용 목록 플레이북
 ├── n8n/incident_workflow.json
 ├── knowledge/               # RAG 원천 문서 예시
 ├── sample_repo/             # 오프라인 데모용 대상 저장소(버그 포함)
@@ -207,4 +281,5 @@ AI_automation/
 - 수정안은 자동으로 머지하지 않는다. 검증된 패치를 `artifacts/<incident_id>.patch`로 저장하고 Slack에 올려 사람이 승인하도록 했다. PR 자동 생성은 이 지점에 붙이면 된다.
 - 테스트 실행은 임시 디렉터리 복사본에서 하지만, 이것만으로는 LLM이 만든 코드를 격리했다고 볼 수 없다. 운영에서는 테스트를 네트워크가 차단된 별도 컨테이너(`docker run --network none`)나 Job에서 실행해야 한다.
 - Diff, 영향도 분석은 Python 저장소 기준이다. 다른 언어는 `ImportGraph`를 해당 언어의 의존성 분석 도구로 바꿔야 한다.
+- 승인 버튼은 Slack Socket Mode로 받는다(3-10). Socket Mode를 켜면 Slack 이벤트(Events API)가 HTTP 주소가 아니라 소켓으로 와서, 1단계의 Slack 알림 -> n8n 경로가 이벤트를 받지 못한다(1단계에서 확인한 Slack 동작). 3단계의 Alertmanager 경로는 Slack 이벤트를 쓰지 않아 영향이 없다. n8n 경로를 다시 쓰려면 그동안 Socket Mode를 끈다.
 - `.env.example`의 모델 단가는 예시 값이다. 실제 요금표에 맞춰 `MODEL_PRICES`를 고쳐야 비용 추적과 예산 상한이 맞게 동작한다.

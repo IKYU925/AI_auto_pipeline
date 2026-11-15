@@ -63,7 +63,7 @@
 | 3-8 | 3단계 | 반복 알림 합치기, 설정·인프라 알림 분류, Pod 종료 중 재개 실험, 결과 분석 | phase3.csv, 요약 완성 |
 | 3-9 | 3단계 | 고객사 namespace 2개(tenant-a, tenant-b), 고객사 라벨과 Alertmanager 라우팅, 고객사별 Slack 채널과 런북 필터(9-7) | 같은 버그를 두 고객사에 주입하면 각 고객사 채널로 1건씩 회신 |
 | 3-10 | 3단계 | (a) 승인 조치 Job과 허용 목록 플레이북, Slack 승인 버튼(Socket Mode), 조치 기록, S17 노드 디스크 부족(9-8). (b) 배포 상태 기록과 승인 후 롤백, S20 | (a) S17 알림이 승인 후 플레이북 실행, 알림 해소까지 사람 개입은 승인 1번. (b) S20 알림이 승인 후 롤백으로 해소 |
-| 3-11 | 3단계 | 정리(README, 아키텍처 그림 갱신, velog 3편, 영상) | 3단계 결과 공개 가능 |
+| 3-11 | 3단계 | 정리(README, 아키텍처 그림 갱신, velog 3편 재료(docs/retro/phase3.md), 영상) | 3단계 결과 공개 가능 |
 | 4-1 | 4단계 | GitOps 골격. ArgoCD app-of-apps, sync wave, `deploy/k8s/overlays/eks`(설계 P2) | 빈 클러스터에서 Git만으로 모든 앱 Healthy |
 | 4-2 | 4단계 | 기존 경로 재현. S01과 S14를 EKS에서 감지부터 Slack 회신까지(P3) | 로컬 3단계와 같은 결과, 감지 시간과 처리 시간 측정값 |
 | 4-3 | 4단계 | 분석 컨텍스트 추가. ArgoCD 배포 이력, K8s 이벤트(P4) | S20, S21에서 분석 결과가 직전 배포를 원인 후보로 지목 |
@@ -423,7 +423,7 @@ LLM 성능은 1, 2단계에서 측정했으므로 여기서는 감지와 연결 
 
 ### 10. 4단계 AWS EKS 적용
 
-4단계는 3단계에서 확인한 자동화를 EKS 클러스터 하나에 그대로 올려 결과를 측정한다. 로컬 K3s는 계속 기능 개발과 1차 확인을 맡고, EKS에는 로컬에서 확인된 것만 올린다. 설계 문서는 infra_template의 `docs/plans/aiops-eks-design.md`(2026-11-15 기준 `plan/aiops-eks` 브랜치)이고, 결정 기록은 [0014](decisions/0014-eks-replaces-ec2.md)다.
+4단계는 3단계에서 확인한 자동화를 EKS 클러스터 하나에 그대로 올려 결과를 측정한다. 로컬 K3s는 계속 기능 개발과 1차 확인을 맡고, EKS에는 로컬에서 확인된 것만 올린다. 설계 문서는 infra_template의 [`docs/plans/aiops-eks-design.md`](https://github.com/IKYU925/infra_template/blob/main/docs/plans/aiops-eks-design.md)이고, 결정 기록은 [0014](decisions/0014-eks-replaces-ec2.md)다.
 
 #### 10-1. 구조
 
