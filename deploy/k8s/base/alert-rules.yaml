@@ -12,8 +12,8 @@ spec:
         # 로그를 남기지 않는 5xx용. 코드 버그는 ShopapiException(Loki)도 함께 뜨므로 Alertmanager에서 이 알림을 억제한다
         - alert: ShopapiHighErrorRate
           expr: |
-            sum by (namespace, service) (rate(http_requests_total{namespace="shop", status="5xx"}[1m]))
-              / sum by (namespace, service) (rate(http_requests_total{namespace="shop"}[1m])) > 0.05
+            sum by (namespace, service) (rate(http_requests_total{namespace=~"shop|tenant-.*", status="5xx"}[1m]))
+              / sum by (namespace, service) (rate(http_requests_total{namespace=~"shop|tenant-.*"}[1m])) > 0.05
           for: 1m
           labels: {severity: critical}
           annotations:
@@ -21,7 +21,7 @@ spec:
         - alert: ShopapiSlowPayment
           expr: |
             histogram_quantile(0.95, sum by (le, namespace, service)
-              (rate(http_request_duration_seconds_bucket{namespace="shop", handler="/payments"}[2m]))) > 5
+              (rate(http_request_duration_seconds_bucket{namespace=~"shop|tenant-.*", handler="/payments"}[2m]))) > 5
           for: 2m
           labels: {severity: warning}
           annotations:
@@ -31,9 +31,9 @@ spec:
         # 차트 기본 규칙에 없다. 최근 5분 안에 재시작했고 마지막 종료 사유가 OOMKilled인 컨테이너
         - alert: PodOOMKilled
           expr: |
-            (increase(kube_pod_container_status_restarts_total{namespace=~"shop|aiops"}[5m]) > 0)
+            (increase(kube_pod_container_status_restarts_total{namespace=~"shop|tenant-.*|aiops"}[5m]) > 0)
               and on (namespace, pod, container)
-            (kube_pod_container_status_last_terminated_reason{namespace=~"shop|aiops", reason="OOMKilled"} == 1)
+            (kube_pod_container_status_last_terminated_reason{namespace=~"shop|tenant-.*|aiops", reason="OOMKilled"} == 1)
           labels: {severity: critical}
           annotations:
             summary: "{{ $labels.namespace }}/{{ $labels.pod }}의 {{ $labels.container }}가 메모리 초과로 종료됨"
@@ -51,7 +51,7 @@ data:
         rules:
           # Alertmanager가 namespace 라벨로 라우팅하므로 sum by에 namespace를 꼭 남긴다(빠지면 null로 버려짐)
           - alert: ShopapiException
-            expr: sum by (namespace, service) (count_over_time({namespace="shop"} | json | level="ERROR" [1m])) > 0
+            expr: sum by (namespace, service) (count_over_time({namespace=~"shop|tenant-.*"} | json | level="ERROR" [1m])) > 0
             labels:
               severity: critical
             annotations:

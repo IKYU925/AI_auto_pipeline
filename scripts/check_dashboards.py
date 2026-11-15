@@ -19,6 +19,22 @@ def frames_rows(result: dict) -> int:
     return sum(len(f["data"]["values"][0]) if f["data"]["values"] else 0 for f in result.get("frames", []))
 
 
+def all_values(dashboard: dict) -> dict[str, str]:
+    """대시보드 변수를 "전체 선택" 값으로 바꾼다. /api/ds/query는 변수를 채워 주지 않는다."""
+    out = {}
+    for v in dashboard.get("templating", {}).get("list", []):
+        # 질의 변수는 그 질의를 하위 질의로 넣고(SQL IN), 고정 목록 변수는 allValue(정규식)를 넣는다
+        out[f"${v['name']}"] = v["query"] if v["type"] == "query" else v["allValue"]
+    return out
+
+
+def fill(target: dict, values: dict[str, str]) -> dict:
+    text = json.dumps(target, ensure_ascii=False)
+    for name, value in values.items():
+        text = text.replace(name, json.dumps(value, ensure_ascii=False)[1:-1])
+    return json.loads(text)
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--url", default=os.environ.get("GRAFANA_URL", "http://192.168.56.10:30030"))
@@ -35,9 +51,11 @@ def main() -> int:
         print(f"== {local['title']} ({path.name}) Grafana 반영: {'같음' if deployed else '다름 또는 없음'}")
         failed += not deployed
         panels = [q for p in local["panels"] for q in (p.get("panels", []) if p["type"] == "row" else [p])]
+        values = all_values(local)
         for panel in panels:
             for target in panel["targets"]:
-                body = {"queries": [{**target, "intervalMs": 60000, "maxDataPoints": 500}], "from": args.start, "to": "now"}
+                body = {"queries": [{**fill(target, values), "intervalMs": 60000, "maxDataPoints": 500}],
+                        "from": args.start, "to": "now"}
                 result = grafana.post("/api/ds/query", json=body).json().get("results", {}).get(target["refId"], {})
                 error = result.get("error") or ("" if "frames" in result else "응답에 결과 없음")
                 rows = frames_rows(result) if not error else 0

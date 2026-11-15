@@ -83,7 +83,7 @@
           "rawQuery": true,
           "editorMode": "code",
           "format": "table",
-          "rawSql": "SELECT 100.0 * count(*) FILTER (WHERE extract(epoch FROM to_timestamp(report_ts::numeric) - coalesce(occurred_at, created_at)) <= 180) / NULLIF(count(*), 0) AS \"비율\" FROM incidents WHERE needs_code_fix AND source = 'alertmanager' AND report_ts IS NOT NULL AND $__timeFilter(created_at)"
+          "rawSql": "SELECT 100.0 * count(*) FILTER (WHERE extract(epoch FROM to_timestamp(report_ts::numeric) - coalesce(occurred_at, created_at)) <= 180) / NULLIF(count(*), 0) AS \"비율\" FROM incidents WHERE needs_code_fix AND source = 'alertmanager' AND report_ts IS NOT NULL AND $__timeFilter(created_at) AND tenant IN ($tenant)"
         }
       ],
       "fieldConfig": {
@@ -130,7 +130,7 @@
           "rawQuery": true,
           "editorMode": "code",
           "format": "table",
-          "rawSql": "SELECT 100.0 * count(*) FILTER (WHERE extract(epoch FROM to_timestamp(report_ts::numeric) - coalesce(occurred_at, created_at)) <= 360) / NULLIF(count(*), 0) AS \"비율\" FROM incidents WHERE NOT needs_code_fix AND source = 'alertmanager' AND report_ts IS NOT NULL AND $__timeFilter(created_at)"
+          "rawSql": "SELECT 100.0 * count(*) FILTER (WHERE extract(epoch FROM to_timestamp(report_ts::numeric) - coalesce(occurred_at, created_at)) <= 360) / NULLIF(count(*), 0) AS \"비율\" FROM incidents WHERE NOT needs_code_fix AND source = 'alertmanager' AND report_ts IS NOT NULL AND $__timeFilter(created_at) AND tenant IN ($tenant)"
         }
       ],
       "fieldConfig": {
@@ -177,7 +177,7 @@
           "rawQuery": true,
           "editorMode": "code",
           "format": "table",
-          "rawSql": "SELECT 100.0 * count(*) FILTER (WHERE status IN ('resolved', 'escalated', 'no_code_fix') AND report_ts IS NOT NULL) / NULLIF(count(*), 0) AS \"비율\" FROM incidents WHERE created_at < now() - interval '15 minutes' AND $__timeFilter(created_at)"
+          "rawSql": "SELECT 100.0 * count(*) FILTER (WHERE status IN ('resolved', 'escalated', 'no_code_fix') AND report_ts IS NOT NULL) / NULLIF(count(*), 0) AS \"비율\" FROM incidents WHERE created_at < now() - interval '15 minutes' AND $__timeFilter(created_at) AND tenant IN ($tenant)"
         }
       ],
       "fieldConfig": {
@@ -224,7 +224,7 @@
           "rawQuery": true,
           "editorMode": "code",
           "format": "table",
-          "rawSql": "SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY extract(epoch FROM to_timestamp(report_ts::numeric) - coalesce(occurred_at, created_at))) FILTER (WHERE needs_code_fix) AS \"코드 버그\", percentile_cont(0.5) WITHIN GROUP (ORDER BY extract(epoch FROM to_timestamp(report_ts::numeric) - coalesce(occurred_at, created_at))) FILTER (WHERE NOT needs_code_fix) AS \"설정·인프라\" FROM incidents WHERE source = 'alertmanager' AND report_ts IS NOT NULL AND $__timeFilter(created_at)"
+          "rawSql": "SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY extract(epoch FROM to_timestamp(report_ts::numeric) - coalesce(occurred_at, created_at))) FILTER (WHERE needs_code_fix) AS \"코드 버그\", percentile_cont(0.5) WITHIN GROUP (ORDER BY extract(epoch FROM to_timestamp(report_ts::numeric) - coalesce(occurred_at, created_at))) FILTER (WHERE NOT needs_code_fix) AS \"설정·인프라\" FROM incidents WHERE source = 'alertmanager' AND report_ts IS NOT NULL AND $__timeFilter(created_at) AND tenant IN ($tenant)"
         }
       ],
       "fieldConfig": {
@@ -271,7 +271,7 @@
           "rawQuery": true,
           "editorMode": "code",
           "format": "table",
-          "rawSql": "SELECT sum(usd) / NULLIF(count(DISTINCT incident_id), 0) AS \"비용\" FROM llm_calls WHERE $__timeFilter(created_at)"
+          "rawSql": "SELECT sum(usd) / NULLIF(count(DISTINCT incident_id), 0) AS \"비용\" FROM llm_calls WHERE $__timeFilter(created_at) AND incident_id IN (SELECT id FROM incidents WHERE tenant IN ($tenant))"
         }
       ],
       "fieldConfig": {
@@ -318,7 +318,7 @@
           "rawQuery": true,
           "editorMode": "code",
           "format": "table",
-          "rawSql": "SELECT * FROM (SELECT to_char(created_at AT TIME ZONE 'Asia/Seoul', 'MM-DD HH24:MI') || ' ' || alertname AS \"장애\", extract(epoch FROM created_at - occurred_at) AS \"전달\", extract(epoch FROM finished_at - created_at) AS \"처리\", extract(epoch FROM to_timestamp(report_ts::numeric) - finished_at) AS \"회신\", created_at FROM incidents WHERE source = 'alertmanager' AND report_ts IS NOT NULL AND occurred_at IS NOT NULL AND $__timeFilter(created_at) ORDER BY created_at DESC LIMIT 15) t ORDER BY created_at"
+          "rawSql": "SELECT * FROM (SELECT to_char(created_at AT TIME ZONE 'Asia/Seoul', 'MM-DD HH24:MI') || ' ' || alertname AS \"장애\", extract(epoch FROM created_at - occurred_at) AS \"전달\", extract(epoch FROM finished_at - created_at) AS \"처리\", extract(epoch FROM to_timestamp(report_ts::numeric) - finished_at) AS \"회신\", created_at FROM incidents WHERE source = 'alertmanager' AND report_ts IS NOT NULL AND occurred_at IS NOT NULL AND $__timeFilter(created_at) AND tenant IN ($tenant) ORDER BY created_at DESC LIMIT 15) t ORDER BY created_at"
         }
       ],
       "fieldConfig": {
@@ -380,7 +380,7 @@
           "rawQuery": true,
           "editorMode": "code",
           "format": "table",
-          "rawSql": "SELECT to_char(date_trunc('day', created_at), 'MM-DD') AS \"날짜\", count(*) FILTER (WHERE status = 'resolved') AS \"자동 수정\", count(*) FILTER (WHERE status = 'no_code_fix') AS \"런북 안내\", count(*) FILTER (WHERE status = 'escalated') AS \"사람 확인\", count(*) FILTER (WHERE status = 'failed') AS \"실패\", count(*) FILTER (WHERE status NOT IN ('resolved', 'no_code_fix', 'escalated', 'failed')) AS \"처리 중\" FROM incidents WHERE $__timeFilter(created_at) GROUP BY 1 ORDER BY 1"
+          "rawSql": "SELECT to_char(date_trunc('day', created_at), 'MM-DD') AS \"날짜\", count(*) FILTER (WHERE status = 'resolved') AS \"자동 수정\", count(*) FILTER (WHERE status = 'no_code_fix') AS \"런북 안내\", count(*) FILTER (WHERE status = 'escalated') AS \"사람 확인\", count(*) FILTER (WHERE status = 'failed') AS \"실패\", count(*) FILTER (WHERE status NOT IN ('resolved', 'no_code_fix', 'escalated', 'failed')) AS \"처리 중\" FROM incidents WHERE $__timeFilter(created_at) AND tenant IN ($tenant) GROUP BY 1 ORDER BY 1"
         }
       ],
       "fieldConfig": {
@@ -421,7 +421,7 @@
           "rawQuery": true,
           "editorMode": "code",
           "format": "table",
-          "rawSql": "SELECT i.created_at AS \"접수\", i.id AS \"장애\", i.source AS \"입구\", coalesce(i.alertname, '') AS \"알림\", i.service AS \"서비스\", coalesce(i.category, '') AS \"분류\", i.status AS \"결과\", i.attempts AS \"시도\", round(extract(epoch FROM i.finished_at - i.created_at)::numeric, 1) AS \"처리(초)\", (SELECT round(sum(usd), 4) FROM llm_calls c WHERE c.incident_id = i.id) AS \"비용($)\" FROM incidents i WHERE $__timeFilter(i.created_at) ORDER BY i.created_at DESC LIMIT 50"
+          "rawSql": "SELECT i.created_at AS \"접수\", i.id AS \"장애\", i.source AS \"입구\", coalesce(i.alertname, '') AS \"알림\", i.tenant AS \"고객사\", i.service AS \"서비스\", coalesce(i.category, '') AS \"분류\", i.status AS \"결과\", i.attempts AS \"시도\", round(extract(epoch FROM i.finished_at - i.created_at)::numeric, 1) AS \"처리(초)\", (SELECT round(sum(usd), 4) FROM llm_calls c WHERE c.incident_id = i.id) AS \"비용($)\" FROM incidents i WHERE $__timeFilter(i.created_at) AND i.tenant IN ($tenant) ORDER BY i.created_at DESC LIMIT 50"
         }
       ],
       "fieldConfig": {
@@ -466,7 +466,7 @@
               "rawQuery": true,
               "editorMode": "code",
               "format": "table",
-              "rawSql": "SELECT count(*) AS \"장애\" FROM incidents WHERE $__timeFilter(created_at)"
+              "rawSql": "SELECT count(*) AS \"장애\" FROM incidents WHERE $__timeFilter(created_at) AND tenant IN ($tenant)"
             }
           ],
           "fieldConfig": {
@@ -510,7 +510,7 @@
               "rawQuery": true,
               "editorMode": "code",
               "format": "table",
-              "rawSql": "SELECT 100.0 * count(*) FILTER (WHERE status = 'resolved') / NULLIF(count(*), 0) AS \"성공률\" FROM incidents WHERE needs_code_fix AND finished_at IS NOT NULL AND $__timeFilter(created_at)"
+              "rawSql": "SELECT 100.0 * count(*) FILTER (WHERE status = 'resolved') / NULLIF(count(*), 0) AS \"성공률\" FROM incidents WHERE needs_code_fix AND finished_at IS NOT NULL AND $__timeFilter(created_at) AND tenant IN ($tenant)"
             }
           ],
           "fieldConfig": {
@@ -557,7 +557,7 @@
               "rawQuery": true,
               "editorMode": "code",
               "format": "table",
-              "rawSql": "SELECT coalesce(sum(usd), 0) AS \"비용\" FROM llm_calls WHERE $__timeFilter(created_at)"
+              "rawSql": "SELECT coalesce(sum(usd), 0) AS \"비용\" FROM llm_calls WHERE $__timeFilter(created_at) AND incident_id IN (SELECT id FROM incidents WHERE tenant IN ($tenant))"
             }
           ],
           "fieldConfig": {
@@ -691,7 +691,7 @@
               "rawQuery": true,
               "editorMode": "code",
               "format": "table",
-              "rawSql": "SELECT model AS \"모델\", count(*) AS \"호출\" FROM llm_calls WHERE $__timeFilter(created_at) GROUP BY 1 ORDER BY 2 DESC"
+              "rawSql": "SELECT model AS \"모델\", count(*) AS \"호출\" FROM llm_calls WHERE $__timeFilter(created_at) AND incident_id IN (SELECT id FROM incidents WHERE tenant IN ($tenant)) GROUP BY 1 ORDER BY 2 DESC"
             }
           ],
           "fieldConfig": {
@@ -739,7 +739,7 @@
               "rawQuery": true,
               "editorMode": "code",
               "format": "table",
-              "rawSql": "SELECT task AS \"단계\", sum(usd) AS \"비용\" FROM llm_calls WHERE $__timeFilter(created_at) GROUP BY 1 ORDER BY 2 DESC"
+              "rawSql": "SELECT task AS \"단계\", sum(usd) AS \"비용\" FROM llm_calls WHERE $__timeFilter(created_at) AND incident_id IN (SELECT id FROM incidents WHERE tenant IN ($tenant)) GROUP BY 1 ORDER BY 2 DESC"
             }
           ],
           "fieldConfig": {
@@ -844,5 +844,33 @@
         }
       ]
     }
-  ]
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "tenant",
+        "label": "고객사",
+        "type": "query",
+        "datasource": {
+          "type": "grafana-postgresql-datasource",
+          "uid": "aiops-postgres"
+        },
+        "query": "SELECT DISTINCT tenant FROM incidents ORDER BY 1",
+        "definition": "SELECT DISTINCT tenant FROM incidents ORDER BY 1",
+        "refresh": 2,
+        "multi": true,
+        "includeAll": true,
+        "current": {
+          "selected": true,
+          "text": [
+            "All"
+          ],
+          "value": [
+            "$__all"
+          ]
+        },
+        "description": "common은 운영 조직 공통(shop, 노드 장애)이다"
+      }
+    ]
+  }
 }

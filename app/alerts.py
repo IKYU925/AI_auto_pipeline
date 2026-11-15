@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from app.schemas import IncidentIn
+from app.tenants import tenant_of
 
 
 @dataclass(frozen=True)
@@ -53,6 +54,10 @@ class Alert:
         return ALERT_KINDS.get(self.name, DEFAULT_KIND)
 
     @property
+    def tenant(self) -> str:
+        return tenant_of(self.labels.get("namespace"))
+
+    @property
     def target(self) -> str:
         return next((self.labels[k] for k in self.kind.target_labels if self.labels.get(k)), "unknown")
 
@@ -60,6 +65,6 @@ class Alert:
         summary = self.annotations.get("summary") or self.annotations.get("description") or self.name
         return IncidentIn(
             source="alertmanager", channel=channel, service=self.target, severity=self.labels.get("severity", "unknown"),
-            message=f"[{self.name}] {summary}", stacktrace=stacktrace, logs=logs, occurred_at=self.starts_at,
+            message=f"[{self.name}] {summary}", stacktrace=stacktrace, logs=logs, tenant=self.tenant, occurred_at=self.starts_at,
             alertname=self.name, alert_fingerprint=self.fingerprint,
         )

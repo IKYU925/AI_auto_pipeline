@@ -115,3 +115,21 @@ def test_both_token_headers_work_and_wrong_token_is_rejected(container):
     assert client.post("/api/v1/alerts/alertmanager", json=body, headers=BEARER).status_code == 202
     assert client.post("/api/v1/alerts/alertmanager", json=body, headers={"X-Automation-Token": "demo-token"}).status_code == 202
     assert client.post("/api/v1/alerts/alertmanager", json=body, headers={"Authorization": "Bearer nope"}).status_code == 401
+
+
+def test_same_alert_in_two_tenants_becomes_two_incidents_each_replying_to_its_own_channel(container):
+    container.settings.tenant_slack_channels = {"tenant-a": "C-A", "tenant-b": "C-B"}
+    container.settings.alert_slack_channel = "C-OPS"
+    client = TestClient(create_app(container), headers=BEARER)
+    res = client.post("/api/v1/alerts/alertmanager", json=webhook(
+        alert("ShopapiSlowPayment", fp="fp-a", namespace="tenant-a", service="shopapi"),
+        alert("ShopapiSlowPayment", fp="fp-b", namespace="tenant-b", service="shopapi"),
+        alert("ShopapiSlowPayment", fp="fp-shop", service="shopapi"),
+    )).json()
+
+    assert len(set(res["accepted"])) == 3, "알림 문구가 같아도 고객사가 다르면 다른 장애(중복 제거가 고객사를 넘지 않음)"
+    payloads = [p["incident"] for _, p in container.queue.consume("t", count=10, block_ms=10)]
+    assert [(p["tenant"], p["channel"]) for p in payloads] == [("tenant-a", "C-A"), ("tenant-b", "C-B"), ("common", "C-OPS")]
+    with container.db.connection() as conn:
+        rows = conn.execute("SELECT tenant FROM incidents ORDER BY created_at").fetchall()
+    assert [r["tenant"] for r in rows] == ["tenant-a", "tenant-b", "common"]

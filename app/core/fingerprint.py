@@ -39,7 +39,9 @@ def _last_line(logs: str | None) -> list[str]:
     return [normalize(lines[-1])] if lines else []
 
 
-def fingerprint(service: str, message: str, stacktrace: str | None = None, logs: str | None = None) -> str:
+def fingerprint(service: str, message: str, stacktrace: str | None = None, logs: str | None = None,
+                tenant: str = "common") -> str:
+    """고객사가 다르면 같은 에러도 다른 지문이다. 중복 제거, 분류 캐시, 수정안 재사용이 고객사를 넘지 않는다."""
     first_line = message.strip().splitlines()[0] if message.strip() else ""
-    basis = "|".join([service.lower(), normalize(first_line), *_stack_frames(stacktrace), *_last_line(logs)])
+    basis = "|".join([tenant, service.lower(), normalize(first_line), *_stack_frames(stacktrace), *_last_line(logs)])
     return hashlib.sha256(basis.encode()).hexdigest()[:24]

@@ -11,6 +11,7 @@ class IncidentIn(BaseModel):
     channel: str
     thread_ts: str | None = None
     service: str = Field(description="장애가 발생한 서비스 이름. RAG 메타데이터 필터에 쓰인다")
+    tenant: str = Field("common", description="고객사. 회신 채널, 지식 검색 범위, 지문을 고객사별로 나눈다")
     severity: str = "unknown"
     message: str = Field(description="알림 본문 또는 에러 메시지")
     stacktrace: str | None = None
@@ -31,6 +32,7 @@ class KnowledgeDocIn(BaseModel):
     doc_id: str
     text: str
     service: str = "common"
+    tenant: str = "common"
     category: str = "general"
     doc_type: str = "runbook"          # runbook | postmortem | code_doc | adr ...
     updated_at: datetime | None = None

@@ -2,17 +2,6 @@
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
-  name: shopapi
-  namespace: shop
-spec:
-  selector:
-    matchLabels: {app.kubernetes.io/name: shopapi}
-  endpoints:
-    - {port: http, path: /metrics, interval: 15s}
----
-apiVersion: monitoring.coreos.com/v1
-kind: ServiceMonitor
-metadata:
   name: ai-api
   namespace: aiops
 spec:

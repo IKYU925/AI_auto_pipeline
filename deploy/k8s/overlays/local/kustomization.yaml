@@ -3,7 +3,9 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
   - ../../base
+  - ../../tenants/tenant-a
+  - ../../tenants/tenant-b
 images:
   - name: aiops
     newName: 192.168.56.10:30500/aiops
-    newTag: base-655665a
+    newTag: base-d944f6c

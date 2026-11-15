@@ -66,6 +66,7 @@ class Settings(BaseSettings):
     # --- Slack 결과 회신 ---
     slack_bot_token: str = ""
     alert_slack_channel: str = ""                # Alertmanager로 들어온 장애의 카드를 올릴 채널(스레드 없이 새 글)
+    tenant_slack_channels: dict[str, str] = {}   # 고객사별 회신 채널(JSON). 없는 고객사는 alert_slack_channel
 
     # --- Alertmanager 입구(3단계) ---
     loki_url: str = ""                           # 비우면 스택트레이스 조회를 하지 않는다

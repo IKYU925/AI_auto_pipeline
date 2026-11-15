@@ -36,6 +36,7 @@ def load_markdown_dir(root: str) -> list[Document]:
                 doc_id=str(path.relative_to(base)),
                 text=body,
                 service=meta.get("service", "common"),
+                tenant=meta.get("tenant", "common"),
                 category=meta.get("category", "general"),
                 doc_type=meta.get("doc_type", "runbook"),
                 updated_at=datetime.fromisoformat(updated) if updated else None,

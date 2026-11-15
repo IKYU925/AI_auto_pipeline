@@ -49,3 +49,15 @@ spec:
       http:
         paths:
           - {path: /, pathType: Prefix, backend: {service: {name: shopapi, port: {name: http}}}}
+---
+# Prometheus(kube-prometheus-stack)는 모든 namespace의 ServiceMonitor를 읽는다(plan.md 9-2)
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: shopapi
+  namespace: shop
+spec:
+  selector:
+    matchLabels: {app.kubernetes.io/name: shopapi}
+  endpoints:
+    - {port: http, path: /metrics, interval: 15s}

@@ -162,3 +162,29 @@ Alertmanager API를 1초마다 읽어 알림이 처음 들어온 시각을 기�
 - S08 거짓 통과(F10).
 - 전달 구간의 규칙 평가기 쪽 30초의 원인.
 - 커버리지와 정확도를 운영에서 셀 데이터(알림 기록, 담당자 피드백). 4단계 전에 정한다(docs/sli.md).
+
+## 3-9 고객사 분리
+
+2026-11-15 KST 16시 8분~16시 12분. 같은 코드 버그(S01)를 tenant-a, tenant-b의 shopapi에 차례로 넣었다. 실행은 `scripts/run_cluster.py S01 --tenants`, 원본 값은 `results/phase3.csv`의 `experiment`가 `tenant:*`인 2행이다. 실행 비용은 $0.183이다.
+
+| 항목 | tenant-a | tenant-b |
+| --- | --- | --- |
+| 장애 | 582a8ac6c21f, 자동 수정(resolved) | ec844527b44a, 자동 수정(resolved) |
+| 장애 넣은 시각 | 16:08:06 | 16:09:39(첫 장애 처리 직후, 중복 제거 기간 10분 안) |
+| 감지, 전달, 처리, 전체 | 31초, 30초, 30초, 91초 | 57초, 30초, 30초, 118초 |
+| LLM 비용 | $0.091 | $0.092 |
+| 근거 문서 | `shopapi/orders-summary.md`, `shopapi/pricing-coupon.md`, `tenants/tenant-a-escalation.md` | `shopapi/orders-summary.md`, `shopapi/pricing-coupon.md`, `tenants/tenant-b-escalation.md`, `k8s/crashloop.md` |
+| 다른 고객사 문서 | 0개 | 0개 |
+
+채널별 Slack 메시지는 `#tenant-a-ops` 2개, `#tenant-b-ops` 2개, 공통 채널 `#aiops-report` 0개였다. 장애마다 카드와 패치 2개가 가므로 다른 채널로 간 회신은 0이다.
+
+- **같은 버그라도 고객사가 다르면 다른 장애다.** tenant-b 장애는 첫 장애의 중복 제거 기간 안에 들어왔지만 새 장애로 접수됐다. 수정안 재사용 없이 따로 분석했다(호출 비용이 tenant-a와 같은 수준).
+- **런북 검색이 고객사 경계를 지켰다.** 각 장애가 자기 고객사의 연락, 배포 문서만 가져왔다.
+- **전달 시간이 30.0초로 group_wait와 같았다(관찰).** 3-8에서는 알림 시작부터 Alertmanager 도착까지 30초가 더 있었다. 이번에는 그 구간이 없었다. 실험 직전 infra 적용으로 모니터링 스택이 다시 배포됐다. 그것과 관련 있어 보이지만 원인은 확인하지 않았다(추정).
+
+### 고객사 분리 결과 표(plan.md 11장 MSP 운영 항목)
+
+| 지표 | 값 | 비고 |
+| --- | --- | --- |
+| 고객사 간 회신 혼선 | 0 | 같은 버그를 두 고객사에 차례로 주입. 목표 0 |
+| 다른 고객사 문서를 근거로 쓴 장애 | 0/2 | `result.context_doc_ids` 기준 |
