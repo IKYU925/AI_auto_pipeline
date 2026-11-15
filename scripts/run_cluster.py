@@ -487,9 +487,11 @@ def approved_action_note(incident: dict, approve_timeout_sec: float = 900) -> st
     resolved = ts(psql(f"SELECT alert_resolved_at FROM incidents WHERE id = '{incident['id']}'")[0]["alert_resolved_at"])
     reported = datetime.fromtimestamp(float(incident["report_ts"]), timezone.utc)
     approved = ts(action["approved_at"])
+    after = (f"승인부터 알림 해소까지 {seconds(approved, resolved)}초" if resolved >= approved
+             else f"알림이 승인 {seconds(resolved, approved)}초 전에 해소됨(조치 효과 아님)")
     return (f"조치 {proposal['action']} @ {proposal['target']}: 알림부터 승인 요청까지 {seconds(ts(incident['occurred_at']), reported)}초, "
             f"승인 대기 {seconds(reported, approved)}초, 승인부터 조치 끝까지 {seconds(approved, ts(action['finished_at']))}초, "
-            f"승인부터 알림 해소까지 {seconds(approved, resolved)}초, 조치 {action['status']}, 승인자 {action['approver']}")
+            f"{after}, 조치 {action['status']}, 승인자 {action['approver']}")
 
 
 def run_disk_fill(s: Scenario, started: datetime, timeout_sec: float, exp: Experiment) -> dict:
