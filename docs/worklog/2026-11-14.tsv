@@ -32,7 +32,7 @@ ts	phase	decision	why	evidence	result
 2026-11-13T20:40Z	exp	S10 분류(dependency)를 보고도 기대값(infra)을 고치지 않음	결과를 보고 정답을 고치면 실험을 결과에 맞추는 것	docs/decisions/0011	보고서에 주석
 2026-11-13T20:50Z	exp	서버를 조건 B로 바꾸고 /api/v1/config로 확인 후 13건 실행	1단계 A/B 비교	results/phase1_B.csv	$1.15, 코드 버그 8/9, S08 거짓 통과 1건
 2026-11-13T21:05Z	exp	요약 스크립트가 1회 실행에도 차이 있음을 붙이던 것을 판단 보류로 수정	1회 실행은 범위가 없어 plan.md 7장 규칙을 쓸 수 없음	scripts/summarize_results.py, tests/test_summarize_results.py	판단 보류 표시
-2026-11-13T21:10Z	exp	A/B 비용 차이 $0.32를 출처별로 나눠 합이 맞는지 확인	숫자를 믿기 전에 원인을 확인하려고	results/phase1_summary.md	코드 버그 $0.13, 비코드 $0.09, 재발 $0.09, 중복 $0.02로 합 일치
+2026-11-13T21:10Z	exp	A/B 비용 차이 $0.32를 출처별로 나눠 합이 맞는지 확인	숫자를 믿기 전에 원인을 확인하려고	results/phase1_summary.md	코드 버그 $0.13, 설정·인프라 $0.09, 재발 $0.09, 중복 $0.02로 합 일치
 2026-11-13T21:10Z	exp	B의 S08 거짓 통과를 최적화 효과로 보지 않음	A와 B 모두 같은 Opus가 수정을 생성했고 1회 실행	results/phase1_summary.md, 두 조건의 S08 패치 비교	LLM 결과 흔들림으로 기록
 2026-11-13T21:15Z	verify	검증 스킬 verify-aiops 작성 후 launch, doctor, 장애 접수 기능, cleanup까지 증명	사용자가 본 실험 후 검증 스킬 생성을 지시	results/verify/proof1/, .claude/skills/verify-aiops	doctor 7개 OK, cleanup 후 증거 6개 파일 남음
 2026-11-13T21:38Z	verify	launch 직후 첫 장애가 10~20초 걸리는 것을 기능 지도 주의사항에 추가	워커가 임베딩 모델을 처음 불러옴	results/verify/proof1/worker.log	기능 지도 수정
@@ -89,6 +89,6 @@ ts	phase	decision	why	evidence	result
 2026-11-14T21:00Z	3-3	모델 폴더를 chown하지 않고 같은 RUN에서 chmod a+rX	chown -R이 모델 253MB를 새 레이어에 한 번 더 담아 이미지가 1.84GB가 됨, 런타임 쓰기 권한은 필요 없음(nobody, --network none으로 확인)	Dockerfile	1.37GB
 2026-11-14T21:20Z	3-4	알림 규칙 4개(ShopapiException, ShopapiHighErrorRate, ShopapiSlowPayment, PodOOMKilled)를 이 레포에서 관리	plan.md 9-3, Prometheus는 모든 namespace의 PrometheusRule을 읽고 Loki ruler는 monitoring의 loki-alert-rules를 읽음	deploy/k8s/base/alert-rules.yaml	4개 모두 health ok
 2026-11-14T21:20Z	3-4	infra_local_set 라우팅 변경은 사용자 확인 뒤로 미룸	다른 레포 변경은 먼저 알리는 규칙, infra_local_set에 다른 세션의 커밋 안 된 변경 있음	-	-
-2026-11-14T21:25Z	3-5	실제 PodOOMKilled 알림이 자동화와 #aiops-report 카드까지 이어진 것을 막지 않고 관찰	실제 장애이고 비코드라 분류 1회($0.0003)로 끝남, 알림 경로 첫 실사례	results/phase3_alert_path.md	5초, no_code_fix
+2026-11-14T21:25Z	3-5	실제 PodOOMKilled 알림이 자동화와 #aiops-report 카드까지 이어진 것을 막지 않고 관찰	실제 장애이고 설정·인프라라 분류 1회($0.0003)로 끝남, 알림 경로 첫 실사례	results/phase3_alert_path.md	5초, no_code_fix
 2026-11-14T21:30Z	3-5	Kubernetes 런북 카테고리를 general로	OOM이 config로 분류되자 infra로 묶인 OOM 런북이 검색 후보에서 빠지고 기동 실패 런북이 안내됨	knowledge/k8s/*.md, 클러스터 검색 확인 5/5	-
 2026-11-14T21:31Z	3-5	api 컨테이너 안에서 무거운 확인 프로세스를 실행하지 않음	임베딩 모델이 이미 올라간 api에 모델을 하나 더 올려 OOMKilled	임시 Pod(메모리 1Gi)로 확인	-
