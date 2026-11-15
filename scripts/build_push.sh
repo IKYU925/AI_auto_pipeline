@@ -5,8 +5,8 @@
 #   scripts/build_push.sh s01      버그를 주입한 상태면 시나리오 이름을 붙인다(s01-<sha>)
 # 커밋하지 않은 변경(주입한 버그)이 있으면 그 diff의 해시를 태그에 붙인다. 같은 태그를 다시 올리면
 # 노드가 이미 받아 둔 이미지를 그대로 써서 버그가 배포되지 않는다(plan.md 9-1).
-#   ECR_REPOSITORY_URL=<infra output ecr_repository_url> scripts/build_push.sh s18
-#                                  4단계. 같은 이미지를 ECR에 올린다. 배포는 infra_template의 lab.sh deploy <이미지>
+#   ECR_REPOSITORY_URL=<infra output ecr_repository_url> scripts/build_push.sh s20
+#                                  4단계(EKS). 같은 이미지를 ECR에 올린다
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 REGISTRY="${REGISTRY:-192.168.56.10:30500}"
