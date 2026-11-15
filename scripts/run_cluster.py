@@ -12,6 +12,7 @@
   --burst 50 S13                  실패 요청 50회가 장애 몇 건이 되는지(반복 알림 합치기)
   --kill-worker-after root_cause S02  그 단계가 끝나면 처리 중인 워커 Pod를 강제 삭제
   --halt-after classify S16       걸어 둔 장애의 그 단계가 끝나면 노드 전원 차단
+  --tenants tenant-a tenant-b S01 같은 버그를 고객사마다 차례로 넣고 회신 채널과 근거 문서를 확인(plan.md 9-7)
 """
 import argparse
 import json
@@ -52,6 +53,8 @@ OVERLAY = ROOT / "deploy/k8s/overlays/local"
 SHOP_URL = os.environ.get("SHOP_URL", "http://shop.192.168.56.10.nip.io")
 ALERTMANAGER = os.environ.get("ALERTMANAGER_URL", "http://192.168.56.10:30093")
 PROMETHEUS = os.environ.get("PROMETHEUS_URL", "http://192.168.56.10:30090")
+TENANTS = ("tenant-a", "tenant-b")
+ROLLOUTS = [("shop", "shopapi"), *((t, "shopapi") for t in TENANTS), ("aiops", "api"), ("aiops", "worker")]
 COLUMNS = [
     "scenario", "type", "alert", "incident_id", "fault_at", "occurred_at", "received_at", "finished_at", "reported_at",
     "detect_sec", "deliver_sec", "process_sec", "total_sec", "outcome", "expected_outcome", "outcome_correct",
@@ -100,15 +103,15 @@ def restore() -> None:
     """kubectl apply는 set env, set resources로 더한 필드를 지우지 않는다. shopapi Deployment는 매니페스트로 통째로 바꾼다."""
     sh("git", "checkout", "--", str(OVERLAY / "kustomization.yaml"), cwd=ROOT)
     docs = yaml.safe_load_all(kubectl("kustomize", str(OVERLAY)))
-    shopapi = next(d for d in docs if d and d["kind"] == "Deployment" and d["metadata"]["name"] == "shopapi")
-    kubectl("replace", "-f", "-", stdin=yaml.safe_dump(shopapi))
+    for shopapi in (d for d in docs if d and d["kind"] == "Deployment" and d["metadata"]["name"] == "shopapi"):
+        kubectl("replace", "-f", "-", stdin=yaml.safe_dump(shopapi))
     try:
         kubectl("apply", "-k", str(OVERLAY))
     except RuntimeError as e:
         print(f"  apply 재시도: {e}", file=sys.stderr)
         time.sleep(10)
         kubectl("apply", "-k", str(OVERLAY))
-    for ns, deploy in (("shop", "shopapi"), ("aiops", "api"), ("aiops", "worker")):
+    for ns, deploy in ROLLOUTS:
         kubectl("-n", ns, "rollout", "status", f"deploy/{deploy}", "--timeout=300s")
 
 
@@ -200,7 +203,7 @@ def deploy_bug(scenario_id: str) -> None:
         inject(scenario_id, SHOPAPI, revert=True)
     print(f"  버그 이미지 {image}", file=sys.stderr)
     kubectl("apply", "-k", str(OVERLAY))
-    for ns, deploy in (("shop", "shopapi"), ("aiops", "worker"), ("aiops", "api")):
+    for ns, deploy in ROLLOUTS:
         kubectl("-n", ns, "rollout", "status", f"deploy/{deploy}", "--timeout=300s")
 
 
@@ -254,17 +257,18 @@ class Waited:
     others: list[dict]
 
 
-def wait_incident(alert: str, since: datetime, timeout_sec: float, skip: set[str] = frozenset()) -> Waited:
+def wait_incident(alert: str, since: datetime, timeout_sec: float, skip: set[str] = frozenset(),
+                  tenant: str | None = None) -> Waited:
     deadline = time.monotonic() + timeout_sec
     while time.monotonic() < deadline:
         try:
             rows = psql(f"""SELECT id, alertname, status, category, attempts, created_at, occurred_at, finished_at,
-                                   report_ts FROM incidents
+                                   report_ts, tenant FROM incidents
                             WHERE source = 'alertmanager' AND created_at >= '{since.isoformat()}' ORDER BY created_at""")
         except RuntimeError:
             time.sleep(10)  # 노드 장애 중에는 DB가 없다
             continue
-        mine = [r for r in rows if r["alertname"] == alert and r["id"] not in skip]
+        mine = [r for r in rows if r["alertname"] == alert and r["id"] not in skip and tenant in (None, r["tenant"])]
         if mine and mine[0]["status"] in FINAL_STATUSES and mine[0]["report_ts"]:
             return Waited(mine[0], [r for r in rows if r["id"] != mine[0]["id"] and r["id"] not in skip])
         time.sleep(5)
@@ -305,11 +309,13 @@ def kill_holding_worker() -> str:
     return pod
 
 
-def slack_messages(since: datetime) -> int:
-    """회신 채널에 올라온 메시지 수. 회신 카드와 패치 메시지가 같은 장애에 두 번 가면 중복 회신이다."""
-    code = ("import os,httpx;r=httpx.get('https://slack.com/api/conversations.history',"
+def slack_messages(since: datetime, tenant: str = "common") -> int:
+    """고객사 회신 채널(없으면 공통 채널)에 올라온 메시지 수. 회신 카드와 패치 메시지가 같은 장애에 두 번 가면 중복 회신이다."""
+    code = ("import os,json,httpx;"
+            f"ch=json.loads(os.environ.get('TENANT_SLACK_CHANNELS') or '{{}}').get('{tenant}',os.environ['ALERT_SLACK_CHANNEL']);"
+            "r=httpx.get('https://slack.com/api/conversations.history',"
             "headers={'Authorization':'Bearer '+os.environ['SLACK_BOT_TOKEN']},"
-            f"params={{'channel':os.environ['ALERT_SLACK_CHANNEL'],'oldest':'{since.timestamp()}','limit':100}}).json();"
+            f"params={{'channel':ch,'oldest':'{since.timestamp()}','limit':100}}).json();"
             "print(len(r['messages']))")
     return int(kubectl("-n", "aiops", "exec", "deploy/api", "-c", "api", "--", "python", "-c", code))
 
@@ -468,6 +474,38 @@ def wait_incident_created(alert: str, since: datetime, timeout_sec: float) -> st
     raise TimeoutError(f"{alert} 장애가 접수되지 않았다")
 
 
+def run_tenants(s: Scenario, timeout_sec: float) -> list[dict]:
+    """같은 코드 버그를 고객사마다 차례로 넣는다. 두 번째 고객사는 첫 장애의 중복 제거 기간(10분) 안에 들어간다."""
+    if not isinstance(s.trigger, Requests):
+        raise ValueError(f"{s.id}는 코드 버그 시나리오가 아니다")
+    check_clock()
+    wait_quiet()
+    clear_caches()
+    started = now()
+    waited: list[tuple[str, datetime, Waited]] = []
+    try:
+        deploy_bug(s.id)
+        for t in TENANTS:
+            with httpx.Client(base_url=f"http://{t}.192.168.56.10.nip.io", timeout=30) as shop:
+                fault_at = now()
+                send_requests(s.trigger.items, shop)
+            waited.append((t, fault_at, wait_incident(s.cluster.alert, fault_at, timeout_sec, tenant=t)))
+        time.sleep(10)  # 다른 채널로 잘못 간 회신이 있다면 처리 직후에 온다
+        messages = {t: slack_messages(started, t) for t in (*TENANTS, "common")}
+        rows = []
+        for t, fault_at, w in waited:
+            docs = psql(f"SELECT result->'context_doc_ids' AS ids FROM incidents WHERE id = '{w.incident['id']}'")[0]["ids"] or []
+            foreign = [d for d in docs if any(o in d for o in TENANTS if o != t)]
+            note = (f"고객사 {t}, 회신 채널 메시지 {messages[t]}개, 다른 채널 "
+                    f"{', '.join(f'{c} {n}개' for c, n in messages.items() if c != t)}, "
+                    f"근거 문서 {docs}, 다른 고객사 문서 {len(foreign)}개")
+            rows.append({**summarize(s, fault_at, w, 1), "note": note, "experiment": f"tenant:{t}"})
+        rows[-1]["procedure_usd"] = procedure_usd(started)
+        return rows
+    finally:
+        restore()
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("scenarios", nargs="+")
@@ -477,6 +515,7 @@ def main() -> None:
     ap.add_argument("--burst", type=int, help="중복 시나리오(S13)의 실패 요청 수")
     ap.add_argument("--kill-worker-after", metavar="TASK", help="이 단계 LLM 호출이 끝나면 처리 중인 워커 Pod를 강제 삭제")
     ap.add_argument("--halt-after", metavar="TASK", help="노드 장애(S16) 전에 걸어 둔 장애의 이 단계가 끝나면 전원 차단")
+    ap.add_argument("--tenants", action="store_true", help="코드 버그 시나리오 하나를 고객사(tenant-a, tenant-b)마다 넣는다")
     ap.add_argument("--tag", default="", help="CSV experiment 열에 남길 이름(예: 3-8 분류 개선 뒤 재실행)")
     args = ap.parse_args()
     exp = Experiment(args.burst, args.kill_worker_after, args.halt_after, args.tag)
@@ -488,11 +527,13 @@ def main() -> None:
                 print(f"누적 비용 ${spent:.3f}가 상한 ${args.max_usd}에 닿아 {sid}부터 멈춘다", file=sys.stderr)
                 break
             print(f"== {sid}", file=sys.stderr)
-            row = run_scenario(load_scenario(sid), shop, args.timeout, exp)
-            spent += row["procedure_usd"]
-            print(json.dumps(row, ensure_ascii=False, default=str))
-            if args.out:
-                append_csv(args.out, row, COLUMNS)
+            rows = (run_tenants(load_scenario(sid), args.timeout) if args.tenants
+                    else [run_scenario(load_scenario(sid), shop, args.timeout, exp)])
+            for row in rows:
+                spent += row.get("procedure_usd") or 0
+                print(json.dumps(row, ensure_ascii=False, default=str))
+                if args.out:
+                    append_csv(args.out, row, COLUMNS)
 
 
 if __name__ == "__main__":
