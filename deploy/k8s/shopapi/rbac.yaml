@@ -1,0 +1,18 @@
+# 자동화가 이 namespace의 배포 상태를 읽고(api, 롤백 제안), 승인되면 롤백한다(approvals). plan.md 9-8, 3-10b
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: aiops-deploy-read
+  namespace: shop
+roleRef: {apiGroup: rbac.authorization.k8s.io, kind: ClusterRole, name: aiops-deploy-read}
+subjects:
+  - {kind: ServiceAccount, name: ai-api, namespace: aiops}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: aiops-rollout
+  namespace: shop
+roleRef: {apiGroup: rbac.authorization.k8s.io, kind: ClusterRole, name: aiops-rollout}
+subjects:
+  - {kind: ServiceAccount, name: ai-approvals, namespace: aiops}
