@@ -9,7 +9,7 @@
 4. 클러스터를 매니페스트 상태로 되돌리고(kubectl apply -k) 결과를 한 줄 남긴다
 
 3-8 실험은 시나리오 위에 옵션으로 얹는다(plan.md 9-9).
-  --burst 50 S13                  실패 요청 50회가 장애 몇 건이 되는지(알림 묶기)
+  --burst 50 S13                  실패 요청 50회가 장애 몇 건이 되는지(반복 알림 합치기)
   --kill-worker-after root_cause S02  그 단계가 끝나면 처리 중인 워커 Pod를 강제 삭제
   --halt-after classify S16       걸어 둔 장애의 그 단계가 끝나면 노드 전원 차단
 """
@@ -123,7 +123,7 @@ def firing_automation_alerts() -> list[str]:
 
 
 def watch_alerts(seen: dict[str, str], stop: threading.Event) -> None:
-    """알림 묶기: 실행 동안 자동화로 가는 알림을 지문별로 모은다. 억제된 알림은 웹훅으로 가지 않는다."""
+    """반복 알림 합치기: 실행 동안 자동화로 가는 알림을 지문별로 모은다. 억제된 알림은 웹훅으로 가지 않는다."""
     while not stop.is_set():
         try:
             for a in automation_alerts(inhibited=True):
