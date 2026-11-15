@@ -37,6 +37,17 @@ spec:
           labels: {severity: critical}
           annotations:
             summary: "{{ $labels.namespace }}/{{ $labels.pod }}의 {{ $labels.container }}가 메모리 초과로 종료됨"
+    - name: nodes
+      rules:
+        # S17. 차트 기본 디스크 규칙은 for가 30분 이상이라 실험용 볼륨 전용 규칙을 둔다. node 라벨이 없어 nodename을 붙인다
+        - alert: AppdataDiskFull
+          expr: |
+            (1 - node_filesystem_avail_bytes{mountpoint="/srv/appdata"} / node_filesystem_size_bytes{mountpoint="/srv/appdata"})
+              * on (instance) group_left (nodename) node_uname_info > 0.9
+          for: 1m
+          labels: {severity: critical}
+          annotations:
+            summary: "{{ $labels.nodename }}의 실험용 볼륨(/srv/appdata) 사용률이 90%를 넘음"
 ---
 # Loki ruler가 /rules/fake로 읽는다(infra_local_set loki values의 extraVolumes)
 apiVersion: v1
