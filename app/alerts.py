@@ -11,6 +11,7 @@ class AlertKind:
     target_labels: tuple[str, ...]
     needs_stacktrace: bool = False
     needs_pod_logs: bool = False
+    action: str | None = None     # 승인 후 조치(app/actions.py의 허용 목록 이름)
 
 
 # 3-4에서 실제 알림 라벨을 본 뒤 고칠 곳은 이 표 하나다(plan.md 9-3, 9-4)
@@ -21,6 +22,7 @@ ALERT_KINDS: dict[str, AlertKind] = {
     "KubePodCrashLooping": AlertKind(("container", "pod"), needs_pod_logs=True),
     "PodOOMKilled": AlertKind(("container", "pod"), needs_pod_logs=True),
     "KubeNodeNotReady": AlertKind(("node",)),
+    "AppdataDiskFull": AlertKind(("nodename",), action="cleanup-appdata"),
 }
 DEFAULT_KIND = AlertKind(("service", "container", "pod", "node", "namespace"))
 

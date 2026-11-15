@@ -67,6 +67,8 @@ class Settings(BaseSettings):
     slack_bot_token: str = ""
     alert_slack_channel: str = ""                # Alertmanager로 들어온 장애의 카드를 올릴 채널(스레드 없이 새 글)
     tenant_slack_channels: dict[str, str] = {}   # 고객사별 회신 채널(JSON). 없는 고객사는 alert_slack_channel
+    slack_app_token: str = ""                    # Socket Mode(xapp-). 비우면 승인 버튼을 받지 않는다
+    action_approvers: list[str] = []             # 승인할 수 있는 Slack 사용자 ID(JSON). 비우면 채널의 누구나
 
     # --- Alertmanager 입구(3단계) ---
     loki_url: str = ""                           # 비우면 스택트레이스 조회를 하지 않는다

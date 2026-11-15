@@ -26,3 +26,14 @@ class SlackNotifier:
             # 처리 결과는 이미 저장됐다. 회신 실패로 워커가 멈추거나 메시지를 다시 처리하면 안 된다
             log.warning("slack reply to #%s failed: %s", channel, e.response.get("error"))
             return ""
+
+    def update(self, channel: str, ts: str, text: str, blocks: list[dict]) -> None:
+        if not self.client:
+            log.info("[slack disabled] update #%s %s %s", channel, ts, text[:200])
+            return
+        from slack_sdk.errors import SlackApiError
+
+        try:
+            self.client.chat_update(channel=channel, ts=ts, text=text, blocks=blocks)
+        except SlackApiError as e:
+            log.warning("slack update of #%s %s failed: %s", channel, ts, e.response.get("error"))

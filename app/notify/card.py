@@ -74,7 +74,24 @@ def build_card(state: dict) -> tuple[str, list[dict]]:
         blocks.append(_section("마지막 테스트", _tests(state)))
     elif state.get("error"):
         blocks.append(_section("중단 사유", _clip(state["error"], BODY_MAX)))
+    if proposal := state.get("proposed_action"):
+        blocks.append(approve_button(state["incident_id"], proposal))
     return f"{look.emoji} {look.title} · {service} · {_clip(headline, 120)}", blocks
+
+
+APPROVE_ACTION_ID = "approve_action"
+
+
+def approve_button(incident_id: str, proposal: dict) -> dict:
+    """버튼 값은 장애 ID뿐이다. 실행할 조치와 대상은 승인 처리가 장애 기록에서 다시 읽는다."""
+    label = f"{proposal['action']} @ {proposal['target']}"
+    return {"type": "actions", "block_id": "approve", "elements": [{
+        "type": "button", "action_id": APPROVE_ACTION_ID, "style": "primary", "value": incident_id,
+        "text": {"type": "plain_text", "text": _clip(f"승인 후 실행: {label}", 75)},
+        "confirm": {"title": {"type": "plain_text", "text": "조치 실행"},
+                    "text": {"type": "mrkdwn", "text": f"`{label}`를 실행합니다. 같은 장애에는 한 번만 실행됩니다."},
+                    "confirm": {"type": "plain_text", "text": "실행"}, "deny": {"type": "plain_text", "text": "취소"}},
+    }]}
 
 
 def patch_message(state: dict) -> str | None:
