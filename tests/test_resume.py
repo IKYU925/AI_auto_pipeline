@@ -92,3 +92,19 @@ def test_without_checkpoint_the_reclaimed_message_starts_over(tmp_path, llm_call
         assert len(heavy_again) == 2, "원인 분석은 응답 캐시에 맞고, 캐시되지 않는 수정안 생성을 처음부터 다시 부른다"
     finally:
         c.db.close()
+
+
+def test_message_being_processed_is_not_reclaimed_until_its_worker_stops_holding_it(container):
+    import time
+
+    from app.worker import holding
+
+    container.queue.enqueue({"incident_id": "slow"})
+    [(msg_id, _)] = container.queue.consume("w1", count=1, block_ms=10)
+
+    with holding(container.queue, "w1", msg_id, claim_idle_ms=300):
+        time.sleep(0.6)
+        assert container.queue.reclaim_stale("w2", min_idle_ms=300) == [], "처리가 회수 기준보다 길어도 다른 워커가 가져가지 않는다"
+
+    time.sleep(0.4)
+    assert [m for m, _ in container.queue.reclaim_stale("w2", min_idle_ms=300)] == [msg_id], "붙잡던 워커가 죽으면 회수된다"

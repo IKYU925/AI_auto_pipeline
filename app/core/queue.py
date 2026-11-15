@@ -43,15 +43,19 @@ class IncidentQueue:
                 yield mid, json.loads(raw)
 
     def reclaim_stale(self, consumer: str, min_idle_ms: int = 15 * 60 * 1000) -> list[tuple[str, dict]]:
-        """죽은 워커가 잡고 있던 메시지를 회수한다."""
+        """죽은 워커가 잡고 있던 메시지를 하나씩 회수한다. 여러 개를 잡으면 뒤의 것은 처리 전에 유휴 시간이 쌓여 다시 회수된다."""
         self.ensure_group()
-        _next, messages, *_ = self.redis.xautoclaim(self.stream, self.group, consumer, min_idle_ms, "0-0", count=10)
+        _next, messages, *_ = self.redis.xautoclaim(self.stream, self.group, consumer, min_idle_ms, "0-0", count=1)
         out = []
         for msg_id, fields in messages:
             mid = msg_id.decode() if isinstance(msg_id, bytes) else msg_id
             raw = fields.get(b"data") or fields.get("data")
             out.append((mid, json.loads(raw)))
         return out
+
+    def keep_claimed(self, consumer: str, msg_id: str) -> None:
+        """처리 중인 메시지의 유휴 시간을 0으로 되돌린다. 다른 워커의 reclaim_stale은 유휴 시간만 본다."""
+        self.redis.xclaim(self.stream, self.group, consumer, 0, [msg_id], justid=True)
 
     def ack(self, msg_id: str) -> None:
         self.redis.xack(self.stream, self.group, msg_id)
