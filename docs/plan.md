@@ -62,7 +62,7 @@
 | 3-7 | 3단계 | K8s 장애 시나리오(S14~S16) 작성, 실제 감지 경로로 전체 시나리오 실행 | 감지 시간, 전체 처리 시간 측정 완료 |
 | 3-8 | 3단계 | 반복 알림 합치기, 설정·인프라 알림 분류, Pod 종료 중 재개 실험, 결과 분석 | phase3.csv, 요약 완성 |
 | 3-9 | 3단계 | 고객사 namespace 2개(tenant-a, tenant-b), 고객사 라벨과 Alertmanager 라우팅, 고객사별 Slack 채널과 런북 필터(9-7) | 같은 버그를 두 고객사에 주입하면 각 고객사 채널로 1건씩 회신 |
-| 3-10 | 3단계 | 승인 조치 Job과 허용 목록 플레이북, Slack 승인 버튼, 조치 기록, S17 노드 디스크 부족(9-8) | S17 알림이 승인 후 플레이북 실행, 알림 해소까지 사람 개입은 승인 1번 |
+| 3-10 | 3단계 | (a) 승인 조치 Job과 허용 목록 플레이북, Slack 승인 버튼(Socket Mode), 조치 기록, S17 노드 디스크 부족(9-8). (b) rollout restart와 롤백 | (a) S17 알림이 승인 후 플레이북 실행, 알림 해소까지 사람 개입은 승인 1번. (b) 10-2의 조치를 로컬에서 먼저 확인 |
 | 3-11 | 3단계 | 정리(README, 아키텍처 그림 갱신, velog 3편, 영상) | 3단계 결과 공개 가능 |
 | 4-1 | 4단계 | GitOps 골격. ArgoCD app-of-apps, sync wave, `deploy/k8s/overlays/eks`(설계 P2) | 빈 클러스터에서 Git만으로 모든 앱 Healthy |
 | 4-2 | 4단계 | 기존 경로 재현. S01과 S14를 EKS에서 감지부터 Slack 회신까지(P3) | 로컬 3단계와 같은 결과, 감지 시간과 처리 시간 측정값 |
@@ -385,17 +385,15 @@ MSP는 여러 고객사 환경을 한 운영 조직이 맡는다. 이를 namespa
 
 #### 9-8. 승인 후 조치
 
-> 4단계를 EKS로 바꾸면서 허용 목록에 ArgoCD 롤백과 rollout restart를 더한다(10-2, 결정 0014). 아래 노드 Ansible 방식과 S17은 로컬 K3s 전용으로 남긴다(EKS 관리형 노드에는 SSH가 없다). 승인 버튼 클릭은 Slack Socket Mode로 받는다. 자동화가 Slack에 먼저 연결하므로 공개 주소가 필요 없고, 로컬과 EKS가 같은 방식을 쓴다.
+자동화는 런북 안내에서 멈추지 않고, 사람이 승인하면 허용 목록의 조치까지 실행한다. 3단계(3-10a)는 노드 OS 수준의 정리 조치(S17)를 로컬 K3s에서 만든다. 롤백과 rollout restart는 3-10b와 4단계(10-2)에서 같은 틀에 더한다. 노드 Ansible 조치는 EKS 관리형 노드에 SSH가 없어서 로컬 전용이다(결정 0014). 기능 문서는 [F06](features/F06-approved-actions.md)이다.
 
-자동화는 런북 안내에서 멈추지 않고, 사람이 승인하면 정해진 조치까지 실행한다. 조치 범위는 노드 OS 수준의 정리 작업으로 좁힌다.
-
-1. 런북에 조치 이름(`cleanup-appdata`, `restart-service` 등)이 적혀 있고 분류가 설정·인프라 장애이면, 회신에 승인 버튼을 붙인다.
-2. 승인되면 자동화가 aiops namespace에 Kubernetes Job을 만든다. Job 이미지는 Ansible만 들어 있고, `deploy/ansible/`의 허용 목록 플레이북 중 하나를 대상 노드 하나에만 실행한다. 플레이북 이름과 대상은 장애 기록에서만 가져오고, LLM 출력은 쓰지 않는다.
-3. SSH 키는 aiops namespace의 Secret에 두고, 자동화 서비스 계정은 aiops의 Job 생성 권한만 가진다.
-4. 승인자, 승인 시각, 실행 결과, Job 로그를 장애 기록(`actions` 테이블)에 남긴다. 같은 장애에 같은 조치는 한 번만 실행한다.
+1. 알림 종류 표(`app/alerts.py`의 `ALERT_KINDS`)에 조치 이름이 있고, 분류 결과가 코드 수정 대상이 아니며, 대상이 허용 목록(`app/actions.py`의 `ACTIONS`)에 있으면 회신 카드에 승인 버튼을 붙인다. 조치 이름과 대상은 알림과 허용 목록에서만 정하고, LLM 출력은 쓰지 않는다.
+2. 버튼 클릭은 Slack Socket Mode로 받는다(`app/approvals.py`, `approvals` Deployment). 자동화가 Slack에 먼저 연결하므로 공개 주소가 필요 없고, 로컬과 EKS가 같은 방식을 쓴다. 버튼 값은 장애 ID뿐이고, 실행할 조치는 장애 기록에서 다시 읽는다.
+3. 승인되면 aiops namespace에 Job을 만들어 `deploy/ansible/`의 허용 목록 플레이북을 대상 노드 하나에만 실행한다. 노드 주소는 알림 라벨이 아니라 허용 목록에서 가져온다. SSH 키는 Secret(`aiops-node-ssh`)에 두고, 승인 처리의 서비스 계정은 aiops의 Job 생성과 Pod 로그 읽기 권한만 가진다.
+4. 승인자, 승인 시각, 실행 결과, Job 로그를 `actions` 테이블에 남긴다. 같은 장애의 같은 조치는 UNIQUE 제약으로 한 번만 실행한다. 승인할 수 있는 사람은 `ACTION_APPROVERS`로 좁힐 수 있다.
 5. 조치 뒤 알림이 해소되면 `alert_resolved_at`으로 조치 효과를 확인한다.
 
-S17은 노드 루트 디스크 대신 k3s-w1에 만든 1GB 실험용 볼륨을 채운다. 루트 디스크를 채우면 kubelet이 Pod를 축출하고, 맥 디스크도 함께 늘어난다. 볼륨은 infra_local_set의 Ansible로 만들고(루프 장치로 마운트), node-exporter가 이 마운트 지점을 수집한다. 기본 디스크 규칙의 `for`가 길면 9-3처럼 줄이거나 이 마운트 지점 전용 규칙을 쓴다.
+S17은 노드 루트 디스크 대신 k3s-w1에 만든 1GB 실험용 볼륨(`/srv/appdata`)을 채운다. 루트 디스크를 채우면 kubelet이 Pod를 축출하고, 맥 디스크도 함께 늘어난다. 볼륨은 infra_local_set의 Ansible로 만든다(루프 장치로 마운트). 차트 기본 디스크 규칙은 `for`가 30분 이상이라 이 마운트 지점 전용 규칙 `AppdataDiskFull`(90% 초과 1분)을 이 저장소에 둔다. 디스크 지표에는 노드 이름 라벨이 없어서 `node_uname_info`로 `nodename`을 붙인다.
 
 #### 9-9. 3단계 실험
 

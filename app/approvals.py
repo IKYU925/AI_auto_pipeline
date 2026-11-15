@@ -85,7 +85,8 @@ def job_spec(name: str, image: str, incident_id: str, p: Proposal) -> dict:
             "template": {"spec": {
                 "restartPolicy": "Never", "automountServiceAccountToken": False,
                 "containers": [{"name": "ansible", "image": image, "command": ["sh", "-c", script],
-                                "env": [{"name": "ANSIBLE_HOST_KEY_CHECKING", "value": "False"}],
+                                "env": [{"name": "ANSIBLE_HOST_KEY_CHECKING", "value": "False"},
+                                        {"name": "ANSIBLE_PYTHON_INTERPRETER", "value": "auto_silent"}],
                                 "volumeMounts": [{"name": "keys", "mountPath": "/keys", "readOnly": True}]}],
                 "volumes": [{"name": "keys", "secret": {"secretName": "aiops-node-ssh", "defaultMode": 0o444}}],
             }},
