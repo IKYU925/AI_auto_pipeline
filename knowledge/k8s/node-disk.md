@@ -8,7 +8,7 @@ updated_at: 2026-11-14
 
 ## 증상
 
-노드 디스크 사용률 알림(`NodeFilesystemSpaceFillingUp`, `NodeFilesystemAlmostOutOfSpace`)이 뜬다. 디스크가 더 차면 kubelet이 `DiskPressure`로 Pod를 축출하고, 새 이미지를 받지 못한다.
+노드 디스크 사용률 알림(`NodeFilesystemSpaceFillingUp`, `NodeFilesystemAlmostOutOfSpace`, 실험용 볼륨은 `AppdataDiskFull`)이 뜬다. 디스크가 더 차면 kubelet이 `DiskPressure`로 Pod를 축출하고, 새 이미지를 받지 못한다.
 
 ## 판단
 
@@ -18,7 +18,7 @@ updated_at: 2026-11-14
 
 1. 사용량을 본다. `vagrant ssh <node> -c "df -h; sudo du -xh --max-depth=1 /var/lib/rancher /var/log 2>/dev/null | sort -h | tail"`
 2. 쓰지 않는 이미지를 정리한다. `vagrant ssh <node> -c "sudo k3s crictl rmi --prune"`
-3. 오래된 로그와 임시 파일은 허용 목록의 정리 플레이북으로 지운다. 승인 후에만 실행한다(plan.md 9-8).
+3. 실험용 볼륨(`/srv/appdata`)이 원인이면 회신 카드의 승인 버튼으로 허용 목록 플레이북 `cleanup-appdata`를 실행한다. `/srv/appdata/tmp` 아래 파일만 지우고, 승인한 사람과 실행 결과가 장애 기록에 남는다(plan.md 9-8). 그 밖의 경로는 사람이 확인하고 지운다.
 4. 맥 디스크(`/vagrant`)가 원인이면 맥에서 Docker 이미지와 빌드 캐시, 쓰지 않는 VM을 정리한다.
 
 ## 확인

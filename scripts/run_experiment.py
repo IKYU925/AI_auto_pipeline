@@ -126,6 +126,15 @@ class NodeHalt:
 
 
 @dataclass(frozen=True)
+class DiskFill:
+    """노드의 실험용 볼륨을 채운다(S17). 사람이 Slack에서 승인하면 허용 목록 플레이북이 지운다."""
+
+    vm: str
+    size: str                     # fallocate -l 값
+    path: str = "/srv/appdata/tmp/s17-fill"
+
+
+@dataclass(frozen=True)
 class Cluster:
     """클러스터에서 장애를 만드는 방법(scripts/run_cluster.py). 비어 있으면 버그 이미지를 배포하고 requests를 보낸다."""
 
@@ -134,6 +143,7 @@ class Cluster:
     memory_limit: str | None = None
     traffic: Traffic | None = None
     node_halt: NodeHalt | None = None
+    disk_fill: DiskFill | None = None
 
     @classmethod
     def parse(cls, raw: dict) -> "Cluster":
@@ -142,6 +152,8 @@ class Cluster:
             raw["traffic"] = Traffic(**raw["traffic"])
         if "node_halt" in raw:
             raw["node_halt"] = NodeHalt(**raw["node_halt"])
+        if "disk_fill" in raw:
+            raw["disk_fill"] = DiskFill(**raw["disk_fill"])
         return cls(**raw)
 
 

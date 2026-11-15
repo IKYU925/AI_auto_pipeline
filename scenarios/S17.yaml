@@ -1,0 +1,14 @@
+id: S17
+title: 노드 디스크 부족(k3s-w1 실험용 볼륨)
+type: infra
+difficulty: easy
+expected:
+  category: infra
+  needs_code_fix: false
+  outcome: no_code_fix
+alert:
+  message: "AppdataDiskFull: k3s-w1의 실험용 볼륨(/srv/appdata) 사용률이 90%를 넘음"
+  severity: critical
+cluster:
+  alert: AppdataDiskFull
+  disk_fill: {vm: k3s-w1, size: 950M}

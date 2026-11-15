@@ -412,6 +412,8 @@ def run_scenario(s: Scenario, shop: httpx.Client, timeout_sec: float, exp: Exper
             threading.Thread(target=run_traffic, args=(s.cluster.traffic, shop, stop), daemon=True).start()
         if s.cluster.node_halt:
             return run_node_halt(s, shop, started, timeout_sec, exp)
+        if s.cluster.disk_fill:
+            return run_disk_fill(s, started, timeout_sec, exp)
         note = ""
         if exp.kill_worker_after:
             incident_id = wait_incident_created(base.cluster.alert, fault_at, timeout_sec)
@@ -463,6 +465,38 @@ def run_node_halt(s: Scenario, shop: httpx.Client, started: datetime, timeout_se
                 "procedure_usd": procedure_usd(started), "note": f"{s.cluster.alert} 알림이 자동화에 전달되지 않음. {note}",
                 "experiment": exp.label}
     return {**summarize(s, fault_at, w, 1), "procedure_usd": procedure_usd(started), "note": note, "experiment": exp.label}
+
+
+def run_disk_fill(s: Scenario, started: datetime, timeout_sec: float, exp: Experiment,
+                  approve_timeout_sec: float = 900) -> dict:
+    """알림, 승인 요청 카드, 사람의 승인 1번, 플레이북 실행, 알림 해소까지 잰다(plan.md 9-9)."""
+    d = s.cluster.disk_fill
+    fill = f"sudo mkdir -p {Path(d.path).parent} && sudo fallocate -l {d.size} {d.path} && df -h {Path(d.path).parent}"
+    fault_at = now()
+    try:
+        sh("vagrant", "ssh", d.vm, "-c", fill, cwd=INFRA)
+        w = wait_incident(s.cluster.alert, fault_at, timeout_sec)
+        if not psql(f"SELECT result->'proposed_action' AS p FROM incidents WHERE id = '{w.incident['id']}'")[0]["p"]:
+            return {**summarize(s, fault_at, w, 1), "procedure_usd": procedure_usd(started),
+                    "note": "승인 요청(조치 제안)이 없는 카드", "experiment": exp.label}
+        print(f"  {w.incident['id']} 카드에 승인 버튼. Slack에서 승인하세요({approve_timeout_sec:.0f}초 대기)", file=sys.stderr)
+        deadline = time.monotonic() + approve_timeout_sec
+        while not (rows := psql(f"""SELECT approver, approved_at, status, finished_at FROM actions
+                                    WHERE incident_id = '{w.incident['id']}' AND finished_at IS NOT NULL""")):
+            if time.monotonic() > deadline:
+                raise TimeoutError("승인되지 않았거나 조치가 끝나지 않았다")
+            time.sleep(5)
+        action = rows[0]
+        wait_alert_resolved(w.incident["id"])
+        resolved = ts(psql(f"SELECT alert_resolved_at FROM incidents WHERE id = '{w.incident['id']}'")[0]["alert_resolved_at"])
+        reported = datetime.fromtimestamp(float(w.incident["report_ts"]), timezone.utc)
+        approved = ts(action["approved_at"])
+        note = (f"알림부터 승인 요청까지 {seconds(ts(w.incident['occurred_at']), reported)}초, 승인 대기 {seconds(reported, approved)}초, "
+                f"승인부터 조치 끝까지 {seconds(approved, ts(action['finished_at']))}초, 승인부터 알림 해소까지 {seconds(approved, resolved)}초, "
+                f"조치 {action['status']}, 승인자 {action['approver']}")
+        return {**summarize(s, fault_at, w, 1), "procedure_usd": procedure_usd(started), "note": note, "experiment": exp.label}
+    finally:
+        sh("vagrant", "ssh", d.vm, "-c", f"sudo rm -f {d.path}", cwd=INFRA)
 
 
 def wait_incident_created(alert: str, since: datetime, timeout_sec: float) -> str:
