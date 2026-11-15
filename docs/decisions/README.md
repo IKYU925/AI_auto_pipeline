@@ -4,8 +4,8 @@
 
 | 번호 | 결정 | 상태 |
 | --- | --- | --- |
-| [0001](0001-no-eks.md) | 4단계에서 EKS를 쓰지 않고 EC2만 다룬다 | 채택 |
-| [0002](0002-sqs-intake.md) | AWS 알림은 EventBridge와 SQS로 받는다 | 채택 |
+| [0001](0001-no-eks.md) | 4단계에서 EKS를 쓰지 않고 EC2만 다룬다 | 대체됨(0014) |
+| [0002](0002-sqs-intake.md) | AWS 알림은 EventBridge와 SQS로 받는다 | 대체됨(0014) |
 | [0003](0003-approved-remediation.md) | 승인 후 허용 목록 Ansible 플레이북으로 조치한다 | 채택 |
 | [0004](0004-deployed-bug-premise.md) | 코드 버그 시나리오는 "배포된 버그"를 전제로 만든다 | 채택 |
 | [0005](0005-scenario-triggers.md) | 시나리오 재현 방식을 다섯 가지로 나눈다 | 채택 |
@@ -16,6 +16,7 @@
 | [0010](0010-single-run-ab.md) | 1단계 A/B 본 실험은 조건마다 1회만 실행한다 | 채택 |
 | [0011](0011-keep-expected-labels.md) | 결과를 본 뒤 시나리오 기대값을 고치지 않는다 | 채택 |
 | [0012](0012-postgres-scope.md) | LLM 응답 캐시는 Redis에 남기고 장애 결과는 jsonb 칼럼에 둔다 | 채택 |
+| [0014](0014-eks-replaces-ec2.md) | 4단계 AWS 환경은 EKS로 하고 0001, 0002를 대체한다 | 채택 |
 
 양식은 다음과 같다.
 
