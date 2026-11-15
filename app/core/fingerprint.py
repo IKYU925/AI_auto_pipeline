@@ -33,7 +33,13 @@ def _stack_frames(stacktrace: str | None, limit: int = 5) -> list[str]:
     return [f"{path.rsplit('/', 1)[-1]}:{func}" for path, func in frames[-limit:]]
 
 
-def fingerprint(service: str, message: str, stacktrace: str | None = None) -> str:
+def _last_line(logs: str | None) -> list[str]:
+    """Pod 알림은 문구가 같아도 원인이 다를 수 있다. 마지막 로그 줄(대개 예외 한 줄)로 구분한다."""
+    lines = [line for line in (logs or "").splitlines() if line.strip()]
+    return [normalize(lines[-1])] if lines else []
+
+
+def fingerprint(service: str, message: str, stacktrace: str | None = None, logs: str | None = None) -> str:
     first_line = message.strip().splitlines()[0] if message.strip() else ""
-    basis = "|".join([service.lower(), normalize(first_line), *_stack_frames(stacktrace)])
+    basis = "|".join([service.lower(), normalize(first_line), *_stack_frames(stacktrace), *_last_line(logs)])
     return hashlib.sha256(basis.encode()).hexdigest()[:24]

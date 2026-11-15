@@ -9,6 +9,7 @@ from app.schemas import IncidentIn
 class AlertKind:
     target_labels: tuple[str, ...]
     needs_stacktrace: bool = False
+    needs_pod_logs: bool = False
 
 
 # 3-4에서 실제 알림 라벨을 본 뒤 고칠 곳은 이 표 하나다(plan.md 9-3, 9-4)
@@ -16,8 +17,8 @@ ALERT_KINDS: dict[str, AlertKind] = {
     "ShopapiException": AlertKind(("service",), needs_stacktrace=True),
     "ShopapiHighErrorRate": AlertKind(("service",), needs_stacktrace=True),
     "ShopapiSlowPayment": AlertKind(("service",)),
-    "KubePodCrashLooping": AlertKind(("container", "pod")),
-    "PodOOMKilled": AlertKind(("container", "pod")),
+    "KubePodCrashLooping": AlertKind(("container", "pod"), needs_pod_logs=True),
+    "PodOOMKilled": AlertKind(("container", "pod"), needs_pod_logs=True),
     "KubeNodeNotReady": AlertKind(("node",)),
 }
 DEFAULT_KIND = AlertKind(("service", "container", "pod", "node", "namespace"))
@@ -55,10 +56,10 @@ class Alert:
     def target(self) -> str:
         return next((self.labels[k] for k in self.kind.target_labels if self.labels.get(k)), "unknown")
 
-    def to_incident(self, channel: str, stacktrace: str | None) -> IncidentIn:
+    def to_incident(self, channel: str, stacktrace: str | None, logs: str | None = None) -> IncidentIn:
         summary = self.annotations.get("summary") or self.annotations.get("description") or self.name
         return IncidentIn(
             source="alertmanager", channel=channel, service=self.target, severity=self.labels.get("severity", "unknown"),
-            message=f"[{self.name}] {summary}", stacktrace=stacktrace, occurred_at=self.starts_at,
+            message=f"[{self.name}] {summary}", stacktrace=stacktrace, logs=logs, occurred_at=self.starts_at,
             alertname=self.name, alert_fingerprint=self.fingerprint,
         )

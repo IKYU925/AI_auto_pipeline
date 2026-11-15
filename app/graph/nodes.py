@@ -52,7 +52,7 @@ class Nodes:
             "classify",
             Classification,
             prompts.CLASSIFY_SYSTEM,
-            prompts.classify_user(inc["service"], inc["message"], inc.get("stacktrace")),
+            prompts.classify_user(inc["service"], inc["message"], inc.get("stacktrace"), inc.get("logs")),
             incident_id=state["incident_id"],
             cache_key=state["fingerprint"],
         )
