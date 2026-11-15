@@ -498,9 +498,9 @@ def run_tenants(s: Scenario, timeout_sec: float) -> list[dict]:
         for t, fault_at, w in waited:
             docs = psql(f"SELECT result->'context_doc_ids' AS ids FROM incidents WHERE id = '{w.incident['id']}'")[0]["ids"] or []
             foreign = [d for d in docs if any(o in d for o in TENANTS if o != t)]
-            note = (f"고객사 {t}, 회신 채널 메시지 {messages[t]}개, 다른 채널 "
-                    f"{', '.join(f'{c} {n}개' for c, n in messages.items() if c != t)}, "
-                    f"근거 문서 {docs}, 다른 고객사 문서 {len(foreign)}개")
+            note = (f"고객사 {t}, 실행 전체의 채널별 메시지 "
+                    f"{', '.join(f'{c} {n}개' for c, n in messages.items())}(장애마다 카드와 패치 2개), "
+                    f"근거 문서 {sorted(set(docs))}, 다른 고객사 문서 {len(foreign)}개")
             rows.append({**summarize(s, fault_at, w, 1), "note": note, "experiment": f"tenant:{t}"})
         rows[-1]["procedure_usd"] = procedure_usd(started)
         return rows

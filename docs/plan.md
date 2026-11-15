@@ -375,7 +375,7 @@ S16에서 k3s-w1을 멈추면 앱 쪽이 모두 함께 멈춘다. shop, aiops의
 
 MSP는 여러 고객사 환경을 한 운영 조직이 맡는다. 이를 namespace 두 개로 흉내 낸다.
 
-- `shop` namespace 대신 `tenant-a`, `tenant-b`에 shopapi를 1개씩 올린다. 메모리를 늘리지 않도록 고객사당 replica는 1개로 둔다.
+- `shop` namespace 대신 `tenant-a`, `tenant-b`에 shopapi를 1개씩 올린다. 메모리를 늘리지 않도록 고객사당 replica는 1개로 둔다. (3-9에서 바꿈) `shop`은 남겨 운영 조직 공통 환경으로 쓴다. k3s-w1 메모리 요청이 31%라 여유가 있고, 3-7, 3-8 실험을 그대로 재현할 수 있다(F14).
 - 고객사는 namespace 이름에서 정한다. 알림 규칙과 LogQL은 `namespace=~"tenant-.*"`로 넓히고, Alertmanager 라우팅도 두 namespace를 받도록 infra_local_set에서 고친다.
 - 자동화는 장애 정보에 `tenant`를 붙인다. 결과는 고객사별 Slack 채널로 보내고, 런북 검색은 `service`와 함께 `tenant`로 범위를 줄인다. 고객사 공통 런북은 `tenant: common`으로 둔다.
 - 대시보드와 이력 집계도 고객사별로 나눠 본다.
