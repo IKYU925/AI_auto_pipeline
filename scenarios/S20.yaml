@@ -1,0 +1,16 @@
+id: S20
+title: 배포 직후 장애와 승인 후 롤백(S01 버그를 배포)
+type: code_bug
+difficulty: easy
+expected:
+  category: code_bug
+  needs_code_fix: true
+  root_cause_file: shopapi/orders.py
+  outcome: resolved
+requests:
+  - method: POST
+    path: /orders/summary
+    json: {items: []}
+hidden_test: hidden_tests/test_s01.py
+cluster:
+  approve: true

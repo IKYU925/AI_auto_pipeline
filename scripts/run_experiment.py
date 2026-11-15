@@ -144,6 +144,7 @@ class Cluster:
     traffic: Traffic | None = None
     node_halt: NodeHalt | None = None
     disk_fill: DiskFill | None = None
+    approve: bool = False         # 카드의 승인 버튼을 사람이 눌러 조치와 알림 해소까지 잰다(S20)
 
     @classmethod
     def parse(cls, raw: dict) -> "Cluster":
