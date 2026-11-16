@@ -6,6 +6,7 @@ expected:
   category: infra
   needs_code_fix: false
   outcome: no_code_fix
+  runbook: k8s/oom-killed.md
 alert:
   message: "PodOOMKilled: shop/shopapi 컨테이너가 메모리 limit(128Mi)을 넘어 OOMKilled로 재시작됨"
   severity: critical

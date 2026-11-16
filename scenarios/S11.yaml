@@ -6,6 +6,7 @@ expected:
   category: config
   needs_code_fix: false
   outcome: no_code_fix
+  runbook: shopapi/config-env.md
 startup:
   unset_env: [PG_API_KEY]
 cluster:
