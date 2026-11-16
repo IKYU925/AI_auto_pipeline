@@ -31,7 +31,8 @@ def test_api_dedupes_same_error(container):
 
 
 def test_regression_loop_retries_until_tests_pass(container, llm_calls):
-    container.ingestor.ingest(load_markdown_dir("knowledge"))
+    docs = load_markdown_dir("knowledge")
+    container.ingestor.ingest(docs)
     client = TestClient(create_app(container))
     inc_id = client.post("/api/v1/incidents", json=INCIDENT, headers=HEADERS).json()["incident_id"]
 
@@ -41,7 +42,9 @@ def test_regression_loop_retries_until_tests_pass(container, llm_calls):
     assert "2 failed" in final["history"][0]["failure"]          # 첫 수정안은 회귀 테스트에서 실패
     assert final["test_selection"]["tests"] == ["tests/test_cart.py", "tests/test_pricing.py"]
     assert [c[0] for c in llm_calls] == ["fake:light", "fake:heavy", "fake:heavy", "fake:heavy"]
-    assert {d["doc_id"] for d in final["context_docs"]} <= {"runbooks/checkout-unit-price.md", "common/deploy-rollback.md"}
+    found = {d["doc_id"] for d in final["context_docs"]}
+    assert "runbooks/checkout-unit-price.md" in found
+    assert found <= {d.doc_id for d in docs if d.service in ("checkout", "common")}  # 다른 서비스, 고객사 문서는 검색되지 않는다
 
     status = client.get(f"/api/v1/incidents/{inc_id}", headers=HEADERS).json()
     assert status["status"] == "resolved" and status["patch_path"].endswith(".patch")

@@ -9,18 +9,30 @@ from fastapi.testclient import TestClient
 
 from scripts.run_experiment import SHOPAPI
 
-sys.path.insert(0, str(SHOPAPI))
-from shopapi.config import Settings  # noqa: E402
-from shopapi.main import create_app  # noqa: E402
-from shopapi.observability import JsonFormatter  # noqa: E402
 
-
-SETTINGS = Settings(pg_url="http://pg", pg_api_key="k", pg_timeout_sec=1, tax_rate=0.1, page_size=5, slack_webhook_url="")
+@pytest.fixture
+def shop(monkeypatch):
+    """shopapi를 새로 불러오고 로거를 비운다. 실험 스크립트(_load_shopapi)가 같은 프로세스에서 모듈을 바꿔 끼우고
+    로거를 CRITICAL로 꺼 두므로, 처음 import한 클래스와 로거 상태에 기대면 실행 순서에 따라 결과가 달라진다."""
+    logger = logging.getLogger("shopapi")
+    handlers, level = logger.handlers[:], logger.level
+    logger.handlers.clear()
+    logger.setLevel(logging.NOTSET)
+    for name in [m for m in sys.modules if m == "shopapi" or m.startswith("shopapi.")]:
+        monkeypatch.delitem(sys.modules, name)
+    monkeypatch.syspath_prepend(str(SHOPAPI))
+    from shopapi import config, main, observability
+    settings = config.Settings(pg_url="http://pg", pg_api_key="k", pg_timeout_sec=1, tax_rate=0.1, page_size=5,
+                               slack_webhook_url="")
+    yield main.create_app, settings, observability.JsonFormatter
+    logger.handlers[:] = handlers
+    logger.setLevel(level)
 
 
 @pytest.fixture
-def app():
-    app = create_app(SETTINGS)
+def app(shop):
+    create_app, settings, _ = shop
+    app = create_app(settings)
 
     @app.get("/boom")
     def boom():
@@ -45,8 +57,9 @@ def test_metrics_group_unhandled_errors_as_5xx(app):
     assert 'handler="/metrics"' not in metrics
 
 
-def test_unhandled_error_is_one_json_line_with_traceback(app):
-    [handler] = [h for h in logging.getLogger("shopapi").handlers if isinstance(h.formatter, JsonFormatter)]
+def test_unhandled_error_is_one_json_line_with_traceback(app, shop):
+    json_formatter = shop[2]
+    [handler] = [h for h in logging.getLogger("shopapi").handlers if isinstance(h.formatter, json_formatter)]
     out = io.StringIO()
     previous = handler.setStream(out)
     try:
@@ -60,9 +73,10 @@ def test_unhandled_error_is_one_json_line_with_traceback(app):
     assert "service" not in line, "서비스 이름은 Alloy가 스트림 라벨로 붙인다"
 
 
-def test_json_handler_is_attached_once(app):
-    create_app(SETTINGS)
-    handlers = [h for h in logging.getLogger("shopapi").handlers if isinstance(h.formatter, JsonFormatter)]
+def test_json_handler_is_attached_once(app, shop):
+    create_app, settings, json_formatter = shop
+    create_app(settings)
+    handlers = [h for h in logging.getLogger("shopapi").handlers if isinstance(h.formatter, json_formatter)]
     assert len(handlers) == 1
 
 
