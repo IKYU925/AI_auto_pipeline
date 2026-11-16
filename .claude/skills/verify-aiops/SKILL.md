@@ -5,6 +5,8 @@ description: AI 장애 대응 자동화(AI_auto_pipeline)를 실제로 띄우고
 
 # verify-aiops
 
+이 스킬은 1, 2단계의 docker compose 경로(API 직접 접수)를 맡는다. 3단계의 로컬 K3s 감지 경로(Alertmanager 웹훅, 고객사 분리, 승인 후 조치, 재개)는 [verify-aiops-cluster](../verify-aiops-cluster/SKILL.md)를 쓴다.
+
 AI_auto_pipeline의 주 사용 지점은 HTTP API다. 장애는 shopapi(FastAPI)에서 나고, 자동화 api가 접수하고, worker가 처리한다. 이 스킬은 그 경로를 그대로 따라 검증한다. 화면은 없다.
 
 모든 명령은 저장소 루트(`AI_auto_pipeline/`)에서 실행한다. Docker Desktop이 켜져 있어야 하고, `.env`에 `AUTOMATION_TOKEN`이 있어야 한다. 실제 LLM을 쓸 때만 `ANTHROPIC_API_KEY`와 크레딧이 필요하다.
