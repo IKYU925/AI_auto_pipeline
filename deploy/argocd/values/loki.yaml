@@ -1,0 +1,79 @@
+# infra_local_set roles/monitoring의 Loki 값을 EKS에 맞춘 것
+# 실습 규모라 single binary. 청크와 인덱스는 S3(Pod Identity로 서비스 계정 loki에 권한)
+deploymentMode: SingleBinary
+
+loki:
+  auth_enabled: false           # 테넌트 하나(fake)만 쓴다
+  commonConfig:
+    replication_factor: 1
+  storage:
+    type: s3
+    bucketNames: {chunks: "{{ required "lokiBucket" .Values.lokiBucket }}", ruler: "{{ .Values.lokiBucket }}", admin: "{{ .Values.lokiBucket }}"}
+    s3: {region: "{{ .Values.region }}"}
+  schemaConfig:
+    configs:
+      - from: "2024-01-01"
+        store: tsdb
+        object_store: s3
+        schema: v13
+        index:
+          prefix: loki_index_
+          period: 24h
+  # 로그 알림 규칙: 앱 쪽에서 monitoring namespace 에 loki-alert-rules ConfigMap 을 만들면 /rules/fake 로 마운트된다
+  rulerConfig:
+    alertmanager_url: http://kube-prometheus-stack-alertmanager.monitoring.svc:9093
+    enable_api: true
+    enable_alertmanager_v2: true
+    storage:
+      type: local
+      local:
+        directory: /rules
+    rule_path: /var/loki/rules-temp
+    ring:
+      kvstore:
+        store: inmemory
+
+serviceAccount: {name: loki}
+
+singleBinary:
+  replicas: 1
+  nodeSelector:
+    workload: monitoring
+  persistence:
+    enabled: true
+    storageClass: gp3
+    size: 10Gi
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 1Gi
+  extraVolumes:
+    - name: alert-rules
+      configMap:
+        name: loki-alert-rules
+        optional: true
+  extraVolumeMounts:
+    - name: alert-rules
+      mountPath: /rules/fake
+
+# single binary 에서 쓰지 않는 구성 요소는 끈다
+backend:
+  replicas: 0
+read:
+  replicas: 0
+write:
+  replicas: 0
+gateway:
+  enabled: false
+chunksCache:
+  enabled: false
+resultsCache:
+  enabled: false
+lokiCanary:
+  enabled: false
+test:
+  enabled: false
+minio:
+  enabled: false
