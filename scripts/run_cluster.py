@@ -52,7 +52,13 @@ INFRA = Path(os.environ.get("INFRA_DIR", ROOT.parent / "infra_local_set"))
 os.environ.setdefault("KUBECONFIG", str(INFRA / "kubeconfig"))
 OVERLAY = ROOT / "deploy/k8s/overlays/local"
 CLUSTER_HOST = os.environ.get("CLUSTER_HOST", "192.168.56.10")
-SHOP_URL = os.environ.get("SHOP_URL", f"http://shop.{CLUSTER_HOST}.nip.io")
+# namespace별 shopapi 주소. 기본은 로컬 K3s 인그레스. 인그레스가 없는 EKS에서는 port-forward 주소를 넣는다
+# 예: SHOP_URLS='{"shop": "http://127.0.0.1:18001", "tenant-a": "http://127.0.0.1:18002", "tenant-b": "http://127.0.0.1:18003"}'
+SHOP_URLS: dict[str, str] = json.loads(os.environ.get("SHOP_URLS") or "{}")
+
+
+def shop_url(namespace: str) -> str:
+    return SHOP_URLS.get(namespace, f"http://{namespace}.{CLUSTER_HOST}.nip.io")
 ALERTMANAGER = os.environ.get("ALERTMANAGER_URL", f"http://{CLUSTER_HOST}:30093")
 PROMETHEUS = os.environ.get("PROMETHEUS_URL", f"http://{CLUSTER_HOST}:30090")
 TENANTS = ("tenant-a", "tenant-b")
@@ -530,7 +536,7 @@ def run_tenants(s: Scenario, timeout_sec: float) -> list[dict]:
     try:
         deploy_bug(s.id)
         for t in TENANTS:
-            with httpx.Client(base_url=f"http://{t}.{CLUSTER_HOST}.nip.io", timeout=30) as shop:
+            with httpx.Client(base_url=shop_url(t), timeout=30) as shop:
                 fault_at = now()
                 send_requests(s.trigger.items, shop)
             waited.append((t, fault_at, wait_incident(s.cluster.alert, fault_at, timeout_sec, tenant=t)))
@@ -565,7 +571,7 @@ def main() -> None:
     exp = Experiment(args.burst, args.kill_worker_after, args.halt_after, args.tag)
 
     spent = 0.0
-    with httpx.Client(base_url=SHOP_URL, timeout=30) as shop:
+    with httpx.Client(base_url=shop_url("shop"), timeout=30) as shop:
         for sid in args.scenarios:
             if spent >= args.max_usd:
                 print(f"누적 비용 ${spent:.3f}가 상한 ${args.max_usd}에 닿아 {sid}부터 멈춘다", file=sys.stderr)
