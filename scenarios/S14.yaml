@@ -6,6 +6,7 @@ expected:
   category: config
   needs_code_fix: false
   outcome: no_code_fix
+  runbook: k8s/crashloop.md
 alert:
   message: "KubePodCrashLooping: shop/shopapi 컨테이너가 반복해서 재시작됨. 마지막 로그 ValueError: could not convert string to float: '3s' (PG_TIMEOUT_SEC)"
   severity: warning

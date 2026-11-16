@@ -35,6 +35,7 @@
 | ShopapiSlowPayment | service | 아니오 |
 | KubePodCrashLooping | container, pod | 아니오 |
 | PodOOMKilled | container, pod | 아니오 |
+| PodImagePullFailed | container, pod | 아니오 |
 | KubeNodeNotReady | node | 아니오 |
 | 그 밖의 이름 | service, container, pod, node, namespace | 아니오 |
 

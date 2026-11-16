@@ -17,6 +17,7 @@ import tempfile
 from pathlib import Path
 
 from scripts.run_experiment import (
+    ROOT,
     SCENARIOS,
     SHOPAPI,
     Alert,
@@ -85,15 +86,17 @@ def _check_repeat(s: Scenario, base: str) -> list[str]:
 
 
 def check(s: Scenario) -> list[str]:
+    runbook = s.expected.runbook
+    missing = [f"기대 런북 {runbook}가 knowledge에 없다"] if runbook and not (ROOT / "knowledge" / runbook).is_file() else []
     match s.trigger:
         case Requests():
-            return _check_code_bug(s)
+            return missing + _check_code_bug(s)
         case Startup():
-            return _check_startup(s)
+            return missing + _check_startup(s)
         case Alert(message=message):
-            return [] if message.strip() else ["알림 문구가 비어 있다"]
+            return missing + ([] if message.strip() else ["알림 문구가 비어 있다"])
         case Recurrence(base=base) | Duplicate(base=base):
-            return _check_repeat(s, base)
+            return missing + _check_repeat(s, base)
 
 
 def main() -> None:

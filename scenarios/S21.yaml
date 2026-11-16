@@ -1,0 +1,17 @@
+id: S21
+title: 없는 이미지 태그를 배포해 새 Pod가 뜨지 않음(ImagePullBackOff)
+type: config
+difficulty: easy
+expected:
+  category: config
+  needs_code_fix: false
+  outcome: no_code_fix
+  runbook: k8s/image-pull.md
+alert:
+  message: "PodImagePullFailed: shop/shopapi 컨테이너 이미지를 받지 못해 컨테이너가 뜨지 않음(ImagePullBackOff)"
+  severity: warning
+# 기존 Pod는 그대로 요청을 받으므로 5xx 알림은 없다. 단서는 알림과 배포 이력(직전에 바뀐 이미지 태그)뿐이다
+cluster:
+  alert: PodImagePullFailed
+  image_tag: s21-missing
+  approve: true

@@ -51,6 +51,7 @@ class Expected:
     root_cause_file: str | None = None
     llm_calls: int | None = None
     incidents_created: int | None = None
+    runbook: str | None = None    # 런북 안내 경로에서 근거 문서에 있어야 할 문서 ID
 
 
 @dataclass(frozen=True)
@@ -141,6 +142,7 @@ class Cluster:
     alert: str = "ShopapiException"
     env: dict[str, str | None] = field(default_factory=dict)
     memory_limit: str | None = None
+    image_tag: str | None = None  # 없는 태그로 바꿔 이미지를 받지 못하게 한다(S21)
     traffic: Traffic | None = None
     node_halt: NodeHalt | None = None
     disk_fill: DiskFill | None = None

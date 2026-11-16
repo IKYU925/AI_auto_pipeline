@@ -6,6 +6,7 @@ expected:
   category: infra
   needs_code_fix: false
   outcome: no_code_fix
+  runbook: k8s/node-not-ready.md
 alert:
   message: "KubeNodeNotReady: k3s-w1 노드가 1분 넘게 NotReady"
   severity: critical

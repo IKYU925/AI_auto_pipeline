@@ -6,6 +6,7 @@ expected:
   category: infra
   needs_code_fix: false
   outcome: no_code_fix
+  runbook: k8s/node-disk.md
 alert:
   message: "AppdataDiskFull: k3s-w1의 실험용 볼륨(/srv/appdata) 사용률이 90%를 넘음"
   severity: critical

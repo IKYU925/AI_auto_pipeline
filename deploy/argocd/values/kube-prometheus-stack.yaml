@@ -89,7 +89,7 @@ alertmanager:
         # 기본 규칙(KubePodNotReady 등)까지 보내면 장애 하나가 여러 건으로 들어와 LLM 비용이 늘어난다
         - receiver: ai-automation
           matchers:
-            - alertname =~ "ShopapiException|ShopapiHighErrorRate|ShopapiSlowPayment|PodOOMKilled|KubePodCrashLooping"
+            - alertname =~ "ShopapiException|ShopapiHighErrorRate|ShopapiSlowPayment|PodOOMKilled|PodImagePullFailed|KubePodCrashLooping"
             - namespace =~ "shop|aiops|tenant-a|tenant-b"
         # 노드 장애와 노드 디스크(S17)는 namespace 라벨이 없어 따로 보낸다
         - receiver: ai-automation

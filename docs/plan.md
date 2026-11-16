@@ -320,6 +320,7 @@ infra_local_set 설정에서 이 레포가 맞춰야 할 점은 다음과 같다
 | KubePodCrashLooping | 차트 기본 규칙 | 기본 `for: 15m`을 `2m`으로 줄임 | 기동 실패 반복(S11, S14) |
 | PodOOMKilled | PrometheusRule(새로 작성) | 최근 종료 사유가 OOMKilled | 메모리 초과(S15). 차트에 기본 규칙이 없음 |
 | KubeNodeNotReady | 차트 기본 규칙 | 기본 `for: 15m`을 `1m`으로 줄임 | 워커 노드 장애(S16) |
+| PodImagePullFailed | PrometheusRule(새로 작성) | 컨테이너 대기 사유가 `ErrImagePull`, `ImagePullBackOff`, 1분 지속 | 없는 이미지 태그 배포(S21). 차트 기본 `KubePodNotReady`는 `for: 15m` |
 
 infra_local_set에서 바꿀 것은 다음과 같다. 모두 `kube-prometheus-stack.values.yaml.j2` 한 파일이다.
 

@@ -22,6 +22,7 @@ ALERT_KINDS: dict[str, AlertKind] = {
     "ShopapiSlowPayment": AlertKind(("service",)),
     "KubePodCrashLooping": AlertKind(("container", "pod"), needs_pod_logs=True, rollback=True),
     "PodOOMKilled": AlertKind(("container", "pod"), needs_pod_logs=True),
+    "PodImagePullFailed": AlertKind(("container", "pod"), rollback=True),
     "KubeNodeNotReady": AlertKind(("node",)),
     "AppdataDiskFull": AlertKind(("nodename",), action="cleanup-appdata"),
 }
