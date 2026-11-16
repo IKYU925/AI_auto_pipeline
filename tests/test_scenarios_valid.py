@@ -38,3 +38,14 @@ def test_cluster_block_is_parsed_and_unknown_keys_are_rejected(tmp_path, monkeyp
         "PodOOMKilled", "64Mi", {"PG_API_KEY": None}, "/orders/summary", 30)
     with pytest.raises(TypeError, match="memroy_limit"):
         rx.load_scenario("SY")
+
+
+def test_missing_expected_runbook_is_reported(tmp_path, monkeypatch):
+    import scripts.run_experiment as rx
+
+    (tmp_path / "SX.yaml").write_text(
+        "id: SX\ntitle: t\ntype: infra\ndifficulty: easy\nexpected: {outcome: no_code_fix, runbook: k8s/nope.md}\n"
+        "alert: {message: m}\n"
+    )
+    monkeypatch.setattr(rx, "SCENARIOS", tmp_path)
+    assert check(load_scenario("SX")) == ["기대 런북 k8s/nope.md가 knowledge에 없다"]

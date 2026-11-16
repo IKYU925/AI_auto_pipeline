@@ -37,6 +37,15 @@ spec:
           labels: {severity: critical}
           annotations:
             summary: "{{ $labels.namespace }}/{{ $labels.pod }}의 {{ $labels.container }}가 메모리 초과로 종료됨"
+        # S21. 이미지를 받지 못하면 컨테이너가 뜨지 않아 로그도 재시작도 없다. 차트 기본 KubePodNotReady는 for 15분이라 따로 둔다
+        - alert: PodImagePullFailed
+          expr: |
+            max by (namespace, pod, container) (kube_pod_container_status_waiting_reason{namespace=~"shop|tenant-.*|aiops",
+              reason=~"ErrImagePull|ImagePullBackOff"}) > 0
+          for: 1m
+          labels: {severity: warning}
+          annotations:
+            summary: "{{ $labels.namespace }}/{{ $labels.pod }}의 {{ $labels.container }} 이미지를 받지 못해 컨테이너가 뜨지 않음"
     - name: nodes
       rules:
         # S17. 차트 기본 디스크 규칙은 for가 30분 이상이라 실험용 볼륨 전용 규칙을 둔다. node 라벨이 없어 nodename을 붙인다

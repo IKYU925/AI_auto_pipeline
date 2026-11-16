@@ -66,7 +66,7 @@ ROLLOUTS = [("shop", "shopapi"), *((t, "shopapi") for t in TENANTS), ("aiops", "
 COLUMNS = [
     "scenario", "type", "alert", "incident_id", "fault_at", "occurred_at", "received_at", "finished_at", "reported_at",
     "detect_sec", "deliver_sec", "process_sec", "total_sec", "outcome", "expected_outcome", "outcome_correct",
-    "category", "expected_category", "category_correct", "attempts", "usd", "llm_calls", "heavy_calls",
+    "category", "expected_category", "category_correct", "runbook_hit", "attempts", "usd", "llm_calls", "heavy_calls",
     "incidents_created", "other_incidents", "procedure_usd", "note", "experiment",
 ]
 
@@ -257,6 +257,9 @@ def inject_cluster_fault(s: Scenario) -> None:
                 *(f"{k}-" if v is None else f"{k}={v}" for k, v in c.env.items()))
     if c.memory_limit:
         kubectl("-n", "shop", "set", "resources", "deploy/shopapi", f"--limits=memory={c.memory_limit}")
+    if c.image_tag:
+        image = kubectl("-n", "shop", "get", "deploy/shopapi", "-o", "jsonpath={.spec.template.spec.containers[0].image}").strip()
+        kubectl("-n", "shop", "set", "image", "deploy/shopapi", f"shopapi={image.rsplit(':', 1)[0]}:{c.image_tag}")
 
 
 @dataclass
@@ -372,6 +375,7 @@ def procedure_usd(since: datetime) -> float:
 def summarize(s: Scenario, fault_at: datetime, w: Waited, created: int) -> dict:
     i = w.incident
     calls = psql(f"SELECT model, usd FROM llm_calls WHERE incident_id = '{i['id']}'")
+    docs = psql(f"SELECT result->'context_doc_ids' AS ids FROM incidents WHERE id = '{i['id']}'")[0]["ids"] or []
     occurred, received, finished = ts(i["occurred_at"]), ts(i["created_at"]), ts(i["finished_at"])
     reported = datetime.fromtimestamp(float(i["report_ts"]), timezone.utc)
     return {
@@ -384,6 +388,7 @@ def summarize(s: Scenario, fault_at: datetime, w: Waited, created: int) -> dict:
         "outcome_correct": i["status"] == s.expected.outcome,
         "category": i["category"], "expected_category": s.expected.category,
         "category_correct": None if s.expected.category is None else i["category"] == s.expected.category,
+        "runbook_hit": None if s.expected.runbook is None else s.expected.runbook in docs,
         "attempts": i["attempts"], "usd": round(sum(float(c["usd"] or 0) for c in calls), 6),
         "llm_calls": len(calls), "heavy_calls": sum("opus" in c["model"] for c in calls),
         "incidents_created": created,
