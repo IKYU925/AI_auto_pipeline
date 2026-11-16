@@ -19,8 +19,7 @@
 
 - 시나리오별 실험 원본 데이터(CSV)와 요약 표
 - README 결과 섹션 갱신
-- Slack 회신 스크린샷, Grafana 대시보드 스크린샷, 시연 영상(2~3분)
-- velog 회고 글(단계별 1편, 총 4편)
+- Slack 회신 스크린샷, Grafana 대시보드 스크린샷
 
 이번 계획에서 하지 않는 것은 다음과 같다.
 
@@ -45,14 +44,14 @@
 | 1-4 | 1단계 | Slack 실연동(테스트 채널, ngrok, n8n, 봇 회신) | 실제 Slack 알림 3건이 스레드 회신까지 완주 |
 | 1-5 | 1단계 | 본 실험 A(최적화 켬), 전 시나리오 3회 반복 | phase1_A.csv 완성 |
 | 1-6 | 1단계 | 본 실험 B(최적화 끔), 결과 분석 | phase1_B.csv, 비교 요약 완성 |
-| 1-7 | 1단계 | 정리(README 결과 표, velog 초안, 영상) | 1단계 결과 공개 가능 |
+| 1-7 | 1단계 | 정리(README 결과 표) | 1단계 결과 공개 가능 |
 | 2-1 | 2단계 | 스키마 설계, PostgreSQL(pgvector) 컨테이너, Alembic 마이그레이션 | 테이블 생성, 확장 활성화 확인 |
 | 2-2 | 2단계 | 상태, 비용, 수정안 저장을 PostgreSQL로 이전 | 기존 테스트 전부 통과 |
 | 2-3 | 2단계 | pgvector 검색 + pg_trgm 하이브리드 검색(RRF) | 검색 품질 비교 데이터 확보 |
 | 2-4 | 2단계 | LangGraph PostgreSQL 체크포인터, 멱등성 처리 | 워커를 죽여도 중간부터 재개 |
 | 2-5 | 2단계 | 장애 상황 실험(워커 강제 종료, 재시작 후 이력 확인) | 재개 실험 결과 기록 |
 | 2-6 | 2단계 | 1단계와 같은 시나리오 재실행, 전후 비교 | phase2.csv, 전후 비교 표 완성 |
-| 2-7 | 2단계 | 정리(README, velog 2편, 영상) | 2단계 결과 공개 가능 |
+| 2-7 | 2단계 | 정리(README) | 2단계 결과 공개 가능 |
 | 3-1 | 3단계 | `./up.sh`로 클러스터 점검, 빌드 스크립트(`scripts/build_push.sh`), 이미지 등록 | 세 노드 Ready, 레지스트리에서 이미지 pull 성공, Grafana에서 클러스터 지표가 보임 |
 | 3-2 | 3단계 | 자동화 시스템과 shopapi 매니페스트(kustomize), Secret, PVC, Ingress | 모든 Pod Running, Ingress로 API 접근 |
 | 3-3 | 3단계 | 클러스터에서 S01 실행(API 직접 호출), shopapi와 자동화의 `/metrics`, JSON 로그, ServiceMonitor | 1, 2단계와 같은 결과가 K3s에서도 나옴. Grafana에서 shopapi 메트릭과 로그가 보임 |
@@ -63,14 +62,14 @@
 | 3-8 | 3단계 | 반복 알림 합치기, 설정·인프라 알림 분류, Pod 종료 중 재개 실험, 결과 분석 | phase3.csv, 요약 완성 |
 | 3-9 | 3단계 | 고객사 namespace 2개(tenant-a, tenant-b), 고객사 라벨과 Alertmanager 라우팅, 고객사별 Slack 채널과 런북 필터(9-7) | 같은 버그를 두 고객사에 주입하면 각 고객사 채널로 1건씩 회신 |
 | 3-10 | 3단계 | (a) 승인 조치 Job과 허용 목록 플레이북, Slack 승인 버튼(Socket Mode), 조치 기록, S17 노드 디스크 부족(9-8). (b) 배포 상태 기록과 승인 후 롤백, S20 | (a) S17 알림이 승인 후 플레이북 실행, 알림 해소까지 사람 개입은 승인 1번. (b) S20 알림이 승인 후 롤백으로 해소 |
-| 3-11 | 3단계 | 정리(README, 아키텍처 그림 갱신, velog 3편 재료(docs/retro/phase3.md), 영상) | 3단계 결과 공개 가능 |
+| 3-11 | 3단계 | 정리(README, 아키텍처 그림 갱신, 회고 자료(docs/retro/phase3.md)) | 3단계 결과 공개 가능 |
 | 4-1 | 4단계 | GitOps 골격. ArgoCD app-of-apps, sync wave, `deploy/k8s/overlays/eks`(설계 P2) | 빈 클러스터에서 Git만으로 모든 앱 Healthy |
 | 4-2 | 4단계 | 기존 경로 재현. S01과 S14를 EKS에서 감지부터 Slack 회신까지(P3) | 로컬 3단계와 같은 결과, 감지 시간과 처리 시간 측정값 |
 | 4-3 | 4단계 | 분석 컨텍스트 추가. ArgoCD 배포 이력, K8s 이벤트(P4) | S20, S21에서 분석 결과가 직전 배포를 원인 후보로 지목 |
 | 4-4 | 4단계 | 승인 후 조치. ArgoCD 롤백, rollout restart, 조치 기록(P5) | S20에서 승인 1번으로 롤백되고 알림 해소가 기록됨 |
-| 4-5 | 4단계 | 고객사 분리와 전체 시나리오 실험, 정리(README, 로컬 K3s 대 EKS 비교 표, velog 4편), 클러스터 삭제 후 남은 리소스 확인(P6) | 4단계 결과 공개 가능, 과금 리소스 0개 |
+| 4-5 | 4단계 | 고객사 분리와 전체 시나리오 실험, 정리(README, 로컬 K3s 대 EKS 비교 표), 클러스터 삭제 후 남은 리소스 확인(P6) | 4단계 결과 공개 가능, 과금 리소스 0개 |
 
-작업이 밀리면 측정, Slack 연동, 영상 순으로 우선순위를 둔다. 측정 결과가 없으면 나머지는 의미가 없다. 3단계가 밀리면 대시보드는 shopapi 하나로 줄이고, S16(노드 장애)은 뒤로 미루고, K3s 위에서 감지부터 회신까지 완주하는 것을 우선한다. 3단계 추가 작업이 밀리면 승인 조치를 먼저 하고 고객사 분리는 라우팅만 남긴다. 4단계가 밀리면 S22를 빼고, S01 재현(4-2)과 S20 롤백(4-4)을 우선한다.
+작업이 밀리면 측정, Slack 연동 순으로 우선순위를 둔다. 측정 결과가 없으면 나머지는 의미가 없다. 3단계가 밀리면 대시보드는 shopapi 하나로 줄이고, S16(노드 장애)은 뒤로 미루고, K3s 위에서 감지부터 회신까지 완주하는 것을 우선한다. 3단계 추가 작업이 밀리면 승인 조치를 먼저 하고 고객사 분리는 라우팅만 남긴다. 4단계가 밀리면 S22를 빼고, S01 재현(4-2)과 S20 롤백(4-4)을 우선한다.
 
 ### 3. 대상 서비스 설계 (1단계)
 
@@ -555,14 +554,14 @@ LLM 성능은 1, 2단계에서 측정했으므로 여기서는 감지와 연결 
 
 ### 13. 1-1 체크리스트
 
-- [ ] `targets/shopapi` 생성(FastAPI 앱, 모듈 6개)
-- [ ] 모듈별 테스트 30개 내외 작성, 전부 통과 확인
-- [ ] `docker-compose.yml` 워커 볼륨을 `./targets/shopapi:/repo:ro`로 변경
-- [ ] 워커 컨테이너 안에서 shopapi 테스트 실행 확인(`docker compose exec worker python -m pytest /repo -q`)
-- [ ] `knowledge/shopapi/`에 런북 3~5개 작성 후 `scripts.ingest_knowledge` 실행
-- [ ] `scenarios/` 구조 만들고 S01(patch, yaml, 숨은 테스트) 작성
-- [ ] Anthropic 요금표 확인 후 `.env`의 `MODEL_PRICES` 갱신
-- [ ] S01을 수동으로 주입하고 API로 장애 접수, 실제 LLM으로 끝까지 실행
-- [ ] S01 결과(분류, 시도 횟수, 처리 시간, 비용, 숨은 테스트 결과)를 `results/phase1_first_run.md`에 기록
+- [x] `targets/shopapi` 생성(FastAPI 앱, 모듈 6개)
+- [x] 모듈별 테스트 30개 내외 작성, 전부 통과 확인
+- [x] `docker-compose.yml` 워커 볼륨을 `./targets/shopapi:/repo:ro`로 변경
+- [x] 워커 컨테이너 안에서 shopapi 테스트 실행 확인(`docker compose exec worker python -m pytest /repo -q`)
+- [x] `knowledge/shopapi/`에 런북 3~5개 작성 후 `scripts.ingest_knowledge` 실행
+- [x] `scenarios/` 구조 만들고 S01(patch, yaml, 숨은 테스트) 작성
+- [x] Anthropic 요금표 확인 후 `.env`의 `MODEL_PRICES` 갱신
+- [x] S01을 수동으로 주입하고 API로 장애 접수, 실제 LLM으로 끝까지 실행
+- [x] S01 결과(분류, 시도 횟수, 처리 시간, 비용, 숨은 테스트 결과)를 `results/phase1_first_run.md`에 기록
 
 1-1 완료 기준은 S01 한 건이 실제 LLM으로 접수부터 결과까지 완주하고, 그 결과가 기록되는 것이다.
