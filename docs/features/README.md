@@ -19,7 +19,7 @@
 | F02 | 최적화 끄기 옵션, 지표 수집, A/B 실행 | 1단계, 1-3~1-6 | 6, 7장 | [완료](F02-experiment.md) |
 | F03 | PostgreSQL 이전과 체크포인터 재개 | 2단계, 2-1~2-6 | 8장 | [완료](F03-postgres.md) |
 | F04 | Alertmanager 어댑터와 Loki 스택트레이스 조회 | 3단계, 3-4~3-5 | 9-3, 9-4 | [완료](F04-alertmanager.md) |
-| F05 | 고객사 분리 | 3단계, 3-9 | 9-7 | 예정 |
+| F05 | 고객사 분리 | 3단계, 3-9 | 9-7 | F14로 대체 |
 | F06 | 승인 후 조치(허용 목록, Slack Socket Mode 승인, 조치 Job, S17) | 3단계, 3-10 | 9-8 | [완료](F06-approved-actions.md) |
 | F07 | SQS 어댑터(EC2, CloudWatch) | 4단계 | - | 취소(결정 0014, EKS로 대체) |
 | F08 | Slack 실연동(알림, n8n, 스레드 회신) | 1단계, 1-4 | 5장 | [완료](F08-slack.md) |
