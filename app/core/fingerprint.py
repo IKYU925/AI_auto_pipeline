@@ -8,6 +8,9 @@ import hashlib
 import re
 
 _PATTERNS = [
+    # Deployment Pod 이름의 템플릿 해시와 Pod 접미사. Kubernetes가 모음과 0, 1, 3을 뺀 문자로 만든다.
+    # 뒤에 한글 조사가 바로 붙어 \b가 맞지 않으므로 영숫자가 아닌지로 끝을 본다
+    (re.compile(r"-[bcdfghjklmnpqrstvwxz2456789]{6,10}-[bcdfghjklmnpqrstvwxz2456789]{5}(?![a-z0-9])"), "-<pod>"),
     (re.compile(r"\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b", re.I), "<uuid>"),
     (re.compile(r"\b\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:?\d{2})?\b"), "<ts>"),
     (re.compile(r"\b0x[0-9a-f]+\b", re.I), "<hex>"),
