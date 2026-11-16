@@ -463,7 +463,7 @@ LLM 성능은 1, 2단계에서 측정했으므로 여기서는 감지와 연결 
 
 | 단계 | 내용 | 저장소 | 작업 |
 | --- | --- | --- | --- |
-| P0 | 로컬 K3s에서 전체 스택의 실제 메모리, CPU 사용량 측정(노드 크기 근거) | infra_local_set | - |
+| P0 | 로컬 K3s에서 전체 스택의 실제 메모리, CPU 사용량 측정(노드 크기 근거) | infra_local_set | 완료. [results/phase4_p0_resources.md](../results/phase4_p0_resources.md) |
 | P1a | EC2 경로(aiops-lab, SQS 입구) 정리 | 두 저장소 | 이 저장소는 결정 0014로 끝남 |
 | P1b | `envs/aiops-eks` Terraform, `eks-up`, `eks-down`, 남은 리소스 검사 | infra_template | - |
 | P2 | GitOps 골격 | 이 저장소 | 4-1 |
