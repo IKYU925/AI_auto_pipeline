@@ -7,6 +7,7 @@ from fastapi.testclient import TestClient
 from app.actions import Proposal, propose
 from app.approvals import RolloutRunner
 from app.deploys import REVISION, read_state
+from app.llm import prompts
 from app.kube import Kube
 from app.main import create_app
 
@@ -107,3 +108,10 @@ def test_alert_intake_records_the_deploy_state(container):
     inc = payload["incident"]
     assert inc["deploy"]["current"]["number"] == 4 and inc["deploy"]["previous"]["image"] == "reg/aiops:base-1"
     assert propose(inc, "resolved") == Proposal("rollout-undo", "tenant-a/shopapi", 4, 3)
+
+
+def test_root_cause_prompt_shows_the_deploy_just_before_the_incident():
+    prompt = prompts.root_cause_user({**incident("2026-11-15T10:04:00+00:00"), "message": "m"}, {"category": "code_bug", "summary": "s"}, "", "")
+    assert "tenant-a/shopapi 현재 리비전 4, 이미지 s01, 배포 2026-11-15T10:00:00+00:00 (장애 4분 전)" in prompt
+    assert "직전 리비전 3, 이미지 base" in prompt
+    assert "(배포 정보 없음)" in prompts.root_cause_user({"service": "shopapi", "message": "m"}, {"category": "x", "summary": "s"}, "", "")

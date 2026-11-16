@@ -1,4 +1,5 @@
 """프롬프트 템플릿. 프롬프트에 넣는 모든 입력은 길이 상한을 둬서 토큰 비용을 통제한다."""
+from datetime import datetime
 
 
 def clip(text: str | None, limit: int) -> str:
@@ -33,7 +34,23 @@ def classify_user(service: str, message: str, stacktrace: str | None, logs: str 
 
 ROOT_CAUSE_SYSTEM = """너는 시니어 백엔드 엔지니어다. 장애 정보, 관련 코드, 사내 문서(런북, 포스트모템)를 근거로
 근본 원인을 추론한다. 추측이면 추측이라고 쓰고, evidence에는 근거가 된 코드 위치나 문서를 적는다.
-suspected_files에는 실제로 수정이 필요할 가능성이 높은 파일만 저장소 루트 기준 상대 경로로 넣는다."""
+suspected_files에는 실제로 수정이 필요할 가능성이 높은 파일만 저장소 루트 기준 상대 경로로 넣는다.
+장애 직전에 배포가 있었으면 그 배포를 원인 후보로 검토하고, 그렇게 판단했으면 evidence에 배포 리비전과 시각을 적는다."""
+
+
+def deploy_history(incident: dict) -> str:
+    """알림 시점의 배포 상태(app/deploys.py)를 장애 시각 기준 경과 시간과 함께 적는다."""
+    d = incident.get("deploy")
+    if not d:
+        return "(배포 정보 없음)"
+    cur, prev = d["current"], d.get("previous")
+    line = f"{d['namespace']}/{d['deployment']} 현재 리비전 {cur['number']}, 이미지 {cur['image']}, 배포 {cur['at']}"
+    if occurred := incident.get("occurred_at"):
+        minutes = (datetime.fromisoformat(str(occurred)) - datetime.fromisoformat(str(cur["at"]))).total_seconds() / 60
+        line += f" (장애 {minutes:.0f}분 전)" if minutes >= 0 else " (장애 이후 배포)"
+    if prev:
+        line += f"\n직전 리비전 {prev['number']}, 이미지 {prev['image']}"
+    return line
 
 
 def root_cause_user(incident: dict, classification: dict, code_context: str, docs: str) -> str:
@@ -44,6 +61,9 @@ def root_cause_user(incident: dict, classification: dict, code_context: str, doc
 {clip(incident.get('stacktrace'), 3000)}
 
 [분류] {classification['category']} - {classification['summary']}
+
+[배포 이력]
+{deploy_history(incident)}
 
 [관련 코드]
 {code_context or '(스택트레이스에서 저장소 내부 파일을 찾지 못함)'}
