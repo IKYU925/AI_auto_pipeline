@@ -8,4 +8,4 @@ resources:
 images:
   - name: aiops
     newName: 192.168.56.10:30500/aiops
-    newTag: base-dd030cb
+    newTag: base-00b2501
