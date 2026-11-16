@@ -472,6 +472,15 @@ LLM 성능은 1, 2단계에서 측정했으므로 여기서는 감지와 연결 
 | P5 | 승인 후 롤백과 rollout restart | 이 저장소 | 4-4 |
 | P6 | 고객사 분리와 전체 실험, 정리 | 두 저장소 | 4-5 |
 
+P2(4-1)의 구성은 다음과 같다.
+
+- infra_template의 Terraform은 ArgoCD와 루트 Application 하나만 만든다. 루트 앱은 `deploy/argocd`(Helm 차트)를 가리키고 `ecrRepositoryUrl`, `lokiBucket`, `region`, `targetRevision`, `imageTag`를 값으로 받는다.
+- 앱 목록과 sync wave는 `deploy/argocd/values.yaml`의 `apps` 표 하나에 있다. 순서는 External Secrets(-2), `deploy/k8s/eks-cluster`(gp3 StorageClass, ClusterSecretStore, Alertmanager 토큰, -1), 관측(kube-prometheus-stack, Loki, Alloy, 0), 자동화와 고객사 shopapi(`deploy/k8s/overlays/eks`, 1)다. 관측 Helm 값은 infra_local_set의 값을 옮겨 NodePort를 빼고 저장소를 gp3, Loki를 S3로 바꾼 것이다.
+- 모든 앱은 자동 sync에 selfHeal을 끈다. 장애 주입이 Deployment 이미지를 바꾸는데 selfHeal이 켜져 있으면 ArgoCD가 바로 되돌린다. 앞 wave의 CRD가 늦게 생기는 경우는 재시도로 따라잡는다.
+- 비밀은 Secrets Manager `ai-incident/aiops` 하나에서 ExternalSecret으로 받는다. `DATABASE_URL`은 비밀번호로 클러스터 안에서 조합한다.
+- 인그레스 컨트롤러가 없으므로 EKS overlay에서 Ingress를 지운다. 접속은 port-forward다.
+- Grafana의 자동화 이력 데이터 소스(`scripts/k8s_grafana.sh`)는 DB 사용자를 만드는 명령형 단계라 아직 GitOps 밖이다. P3에서 EKS에 대고 실행한다.
+
 #### 10-5. 비용과 정리
 
 - 클러스터를 상시 운영하지 않는다. 실험 세션마다 `eks-up`으로 만들고 `eks-down`으로 지운다.

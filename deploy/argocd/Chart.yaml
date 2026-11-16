@@ -1,0 +1,5 @@
+# EKS 클러스터의 루트 앱(app-of-apps). infra_template의 Terraform이 이 차트를 가리키는 Application 하나만 만들고,
+# 그 아래 앱은 이 저장소가 관리한다(docs/plan.md 4단계 P2)
+apiVersion: v2
+name: aiops-apps
+version: 0.1.0

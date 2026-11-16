@@ -1,0 +1,37 @@
+{{- range .Values.apps }}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ .name }}
+  namespace: argocd
+  annotations: {argocd.argoproj.io/sync-wave: "{{ .wave }}"}
+  finalizers: [resources-finalizer.argocd.argoproj.io]
+spec:
+  project: default
+  destination: {server: https://kubernetes.default.svc, namespace: {{ .namespace }}}
+  source:
+  {{- if .chart }}
+    repoURL: {{ .chart.repo }}
+    chart: {{ .chart.name }}
+    targetRevision: {{ .chart.version }}
+    helm:
+      releaseName: {{ .name }}
+      values: |
+        {{- tpl ($.Files.Get (printf "values/%s.yaml" .name)) $ | nindent 8 }}
+  {{- else }}
+    repoURL: {{ $.Values.repoURL }}
+    path: {{ .path }}
+    targetRevision: {{ $.Values.targetRevision }}
+    {{- if .image }}
+    kustomize:
+      images: ["{{ .image }}={{ required "ecrRepositoryUrl" $.Values.ecrRepositoryUrl }}:{{ $.Values.imageTag }}"]
+    {{- end }}
+  {{- end }}
+  # 장애 주입이 Deployment 이미지를 바꾸므로 selfHeal은 끈다. 켜면 ArgoCD가 주입을 바로 되돌린다
+  syncPolicy:
+    automated: {prune: true, selfHeal: false}
+    # 앞 wave의 CRD(ExternalSecret, ServiceMonitor)가 아직 없으면 실패하므로 재시도로 따라잡는다
+    syncOptions: [CreateNamespace=true, ServerSideApply=true, SkipDryRunOnMissingResource=true]
+    retry: {limit: 10, backoff: {duration: 10s, factor: 2, maxDuration: 3m}}
+{{- end }}

@@ -1,0 +1,137 @@
+# infra_local_set roles/monitoring 값을 EKS에 맞춘 것. 차이: NodePort 없음(port-forward), 저장소 gp3, Grafana 관리자 비밀번호는 차트가 만듦
+
+# EKS 컨트롤 플레인 구성 요소는 AWS가 관리해 따로 수집할 수 없다.
+# 켜 두면 수집 실패로 "다운" 알림이 계속 울리므로 끈다.
+kubeControllerManager:
+  enabled: false
+kubeScheduler:
+  enabled: false
+kubeEtcd:
+  enabled: false
+kubeProxy:
+  enabled: false
+
+# 기본 15분이면 감지 시간이 규칙 대기 시간에 묻힌다 (AI 자동화 시나리오 S11, S14, S16)
+customRules:
+  KubePodCrashLooping:
+    for: 2m
+  KubeNodeNotReady:
+    for: 1m
+
+defaultRules:
+  rules:
+    etcd: false
+    kubeControllerManager: false
+    kubeSchedulerAlerting: false
+    kubeSchedulerRecording: false
+    kubeProxy: false
+
+prometheusOperator:
+  nodeSelector:
+    workload: monitoring
+
+kube-state-metrics:
+  nodeSelector:
+    workload: monitoring
+
+prometheus:
+  prometheusSpec:
+    nodeSelector:
+      workload: monitoring
+    retention: 1d
+    # 다른 namespace(shop, aiops, tenant-a, tenant-b)의 ServiceMonitor, PodMonitor, PrometheusRule 도 읽는다
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+      limits:
+        memory: 1536Mi
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: gp3
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 10Gi
+
+alertmanager:
+  alertmanagerSpec:
+    nodeSelector:
+      workload: monitoring
+    # 웹훅 인증 토큰: /etc/alertmanager/secrets/ai-automation-token/token 으로 마운트된다
+    secrets:
+      - ai-automation-token
+    resources:
+      requests:
+        cpu: 20m
+        memory: 64Mi
+      limits:
+        memory: 256Mi
+  config:
+    global:
+      resolve_timeout: 5m
+    route:
+      receiver: "null"
+      group_by: ["alertname", "namespace", "service"]
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 1h
+      routes:
+        # 항상 울리는 감시용 알림은 버린다
+        - receiver: "null"
+          matchers:
+            - alertname =~ "Watchdog|InfoInhibitor"
+        # 앱 namespace 에서는 정해 둔 알림만 AI 장애 대응 자동화로 보낸다.
+        # 기본 규칙(KubePodNotReady 등)까지 보내면 장애 하나가 여러 건으로 들어와 LLM 비용이 늘어난다
+        - receiver: ai-automation
+          matchers:
+            - alertname =~ "ShopapiException|ShopapiHighErrorRate|ShopapiSlowPayment|PodOOMKilled|KubePodCrashLooping"
+            - namespace =~ "shop|aiops|tenant-a|tenant-b"
+        # 노드 장애와 노드 디스크(S17)는 namespace 라벨이 없어 따로 보낸다
+        - receiver: ai-automation
+          matchers:
+            - alertname =~ "KubeNodeNotReady|AppdataDiskFull"
+    # 리스트라 values 에 쓰면 차트 기본값을 통째로 대체한다. 앞의 4개는 차트 기본값 그대로다
+    inhibit_rules:
+      - source_matchers: ['severity = "critical"']
+        target_matchers: ['severity =~ "warning|info"']
+        equal: [namespace, alertname]
+      - source_matchers: ['severity = "warning"']
+        target_matchers: ['severity = "info"']
+        equal: [namespace, alertname]
+      - source_matchers: ['alertname = "InfoInhibitor"']
+        target_matchers: ['severity = "info"']
+        equal: [namespace]
+      - target_matchers: ['alertname = "InfoInhibitor"']
+      # 코드 버그 하나에 두 규칙이 모두 걸리므로, 예외 로그 알림이 있으면 5xx 비율 알림은 보내지 않는다
+      - source_matchers: ['alertname = "ShopapiException"']
+        target_matchers: ['alertname = "ShopapiHighErrorRate"']
+        equal: [namespace, service]
+    receivers:
+      - name: "null"
+      - name: ai-automation
+        webhook_configs:
+          - url: "http://ai-api.aiops.svc:8000/api/v1/alerts/alertmanager"
+            send_resolved: true
+            http_config:
+              authorization:
+                type: Bearer
+                credentials_file: /etc/alertmanager/secrets/ai-automation-token/token
+
+grafana:
+  nodeSelector:
+    workload: monitoring
+  sidecar:
+    dashboards:
+      enabled: true
+      searchNamespace: ALL      # 앱 쪽에서 grafana_dashboard 라벨을 단 ConfigMap 으로 대시보드를 추가한다
+  additionalDataSources:
+    - name: Loki
+      type: loki
+      uid: loki
+      access: proxy
+      url: http://loki.monitoring.svc:3100

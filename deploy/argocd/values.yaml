@@ -1,0 +1,36 @@
+# Terraform이 루트 Application의 helm.valuesObject로 넘기는 값
+repoURL: https://github.com/IKYU925/AI_auto_pipeline.git
+targetRevision: main
+region: ap-northeast-2
+ecrRepositoryUrl: ""
+lokiBucket: ""
+# scripts/build_push.sh로 ECR에 먼저 올린 태그
+imageTag: base-1ec6b58
+
+# sync wave 순서: 비밀 연동 → 클러스터 설정 → 관측 → 자동화와 고객사 shopapi
+apps:
+  - name: external-secrets
+    wave: -2
+    namespace: external-secrets
+    chart: {repo: https://charts.external-secrets.io, name: external-secrets, version: 2.14.0}
+  - name: eks-cluster
+    wave: -1
+    namespace: kube-system
+    path: deploy/k8s/eks-cluster
+  - name: kube-prometheus-stack
+    wave: 0
+    namespace: monitoring
+    chart: {repo: https://prometheus-community.github.io/helm-charts, name: kube-prometheus-stack, version: 93.2.2}
+  - name: loki
+    wave: 0
+    namespace: monitoring
+    chart: {repo: https://grafana.github.io/helm-charts, name: loki, version: 7.6.0}
+  - name: alloy
+    wave: 0
+    namespace: monitoring
+    chart: {repo: https://grafana.github.io/helm-charts, name: alloy, version: 1.15.0}
+  - name: aiops
+    wave: 1
+    namespace: aiops
+    path: deploy/k8s/overlays/eks
+    image: aiops
