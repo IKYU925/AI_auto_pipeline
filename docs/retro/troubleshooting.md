@@ -43,16 +43,7 @@
 | 23 | 11-16 | L2 | 운영 | 다른 맥에서 만든 이미지가 레지스트리에 없어 클러스터 기동 실패 |
 | 24 | 11-17 | AWS | 비용 안전장치 | 정리 워크플로가 시험 중인 EKS를 지울 수 있었음 |
 | 25 | 11-13 ~ 11-17 | 전체 | 작업 방식 | 여러 세션이 같은 저장소와 클러스터를 동시에 씀 |
-
-## 포트폴리오 대표 사례
-
-면접이나 글에서 먼저 꺼낼 만한 것 다섯 개다. 증상, 원인 추적, 수정, 재발 방지 검증이 모두 남아 있다.
-
-- **#14 중복 회신.** 분산 큐에서 처리 중인 메시지의 소유권 문제를 노드 전원 차단으로 재현하고 heartbeat로 고쳤다. "이어서 처리했나"만 세다가 놓친 것을 "한 번만 회신했나"로 다시 셌다.
-- **#20 replica마다 따로 접수된 장애.** 중복 제거 지문에 Pod 이름이 들어간 것을 실제 클러스터에서 찾아 실패 테스트로 먼저 재현하고, Kubernetes의 Pod 이름 생성 규칙에 맞춘 정규식으로 고쳤다.
-- **#1 조용히 실패한 패치.** 종료 코드 0으로 실패하는 도구가 실험 결과를 오염시킬 뻔했다. 재현 단계에서 멈춰 잡았다.
-- **#19 맥 메모리 부족.** 증상(k3s 재시작, 측정 깨짐)에서 VM 배분 문제를 숫자로 짚고, 증설 전후 지표를 같은 방법으로 비교했다.
-- **#22 잘못 누른 승인.** 사람이 다른 카드의 롤백을 승인했지만, 제안 시점의 리비전을 고정해 둔 설계 덕분에 아무 일도 일어나지 않았다.
+| 26 | 11-17 | AWS | IaC | EKS 첫 apply가 EBS CSI 애드온 설정 스키마 오류로 멈춤 |
 
 ---
 
@@ -266,3 +257,16 @@
   - 병합 뒤 pull을 하지 않아 한 맥의 main이 뒤처져 있었다.
   - 이미 옮긴 경로를 `git add`에 넣어 첫 커밋에서 매니페스트가 빠졌다. 커밋 뒤 `git status`로 남은 파일을 확인한다.
 - **근거.** infra_local_set 세션 기록(2026-11-14), `docs/retro/phase3.md`.
+
+## 26. EKS 첫 apply가 EBS CSI 애드온에서 멈춤
+
+- **환경.** AWS. infra_template `make eks-up`(envs/aiops-eks/cluster), 2026-11-17 01:06 ~ 01:49 KST.
+- **증상.** VPC, EKS 클러스터, 노드 그룹 2개, coredns, kube-proxy까지 만든 뒤 `aws-ebs-csi-driver` 애드온 생성이 400으로 실패했다. ArgoCD와 루트 앱은 그 뒤 단계라 설치되지 않았다.
+  ```
+  InvalidParameterException: ConfigurationValue provided in request is not supported:
+  [$.controller.k8sTagClusterId: is not defined in the schema and the schema does not allow additional properties]
+  ```
+- **원인.** `cluster/main.tf`가 애드온 설정으로 넘기는 `controller.k8sTagClusterId`를 이 애드온 버전의 설정 스키마가 허용하지 않는다(오류 메시지로 확인). 가짜 AWS(floci)로 검증할 때는 애드온 설정 스키마를 검사하지 않아 드러나지 않은 것으로 본다(추정).
+- **같이 본 것.** 노드 그룹 생성이 32분 51초 걸렸다. 실패 직후 노드 2대는 `Ready`였고 나이는 1분 남짓이었다. 지연 원인은 확인하지 않았다.
+- **상태.** 클러스터와 노드는 떠 있는 채로 과금 중이었다. 해당 키를 빼고 다시 apply하거나 `make eks-down`으로 지우는 것이 다음 일이다.
+- **근거.** 이 세션에서 읽은 `make eks-up` 로그, `kubectl get nodes`, `kubectl get ns`(argocd 없음).
