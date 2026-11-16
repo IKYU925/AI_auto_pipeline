@@ -14,4 +14,3 @@ alert:
 cluster:
   alert: PodImagePullFailed
   image_tag: s21-missing
-  approve: true
