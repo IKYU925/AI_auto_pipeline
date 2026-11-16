@@ -6,7 +6,7 @@ EKS 노드 크기와 대수를 정할 근거다(plan.md 10-4 P0, infra_template 
 
 - 표본기: `results/phase4_p0/sample_top.sh`. 노드와 Pod의 CPU(m), 메모리(Mi, working set)를 CSV로 남긴다.
 - 대기: 배포 후 5분, 30초 간격 10회(`idle.csv`).
-- 장애 처리: S01(코드 버그)과 S14(설정 오류)를 `run_cluster`로 실제 감지 경로에 넣고 15초 간격 44회(`load.csv`, `p0_scenarios.csv`). LLM 비용은 S01 $0.078, S14 $0.0003.
+- 장애 처리: S01(코드 버그)과 S14(설정 오류)를 `run_cluster`로 실제 감지 경로에 넣고 15초 간격으로 쟀다(`load.csv`, `p0_scenarios.csv`). 표의 "장애 처리 중"은 02:37:00~02:47:52(UTC) 44회다. `load.csv`의 그 뒤 행은 ArgoCD 설치 구간과 겹친다. LLM 비용은 S01 $0.078, S14 $0.0003.
 - ArgoCD: chart `argo/argo-cd` 10.17.2(v3.6.1)를 dex, notifications를 끄고 설치한 뒤 5분, 30초 간격 10회(`argocd.csv`). Application은 하나도 없다. 측정 후 지웠다.
 - 노드 메모리에는 OS와 k3s 자체 사용량이 들어 있다. EKS 노드와 그대로 비교하지 않고, namespace 합계를 크기 산정에 쓴다.
 
