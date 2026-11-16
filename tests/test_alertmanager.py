@@ -133,3 +133,18 @@ def test_same_alert_in_two_tenants_becomes_two_incidents_each_replying_to_its_ow
     with container.db.connection() as conn:
         rows = conn.execute("SELECT tenant FROM incidents ORDER BY created_at").fetchall()
     assert [r["tenant"] for r in rows] == ["tenant-a", "tenant-b", "common"]
+
+
+def test_same_fault_on_two_pods_of_one_deployment_is_one_incident(container):
+    client = TestClient(create_app(container), headers=BEARER)
+
+    def oom(pod, fp):
+        a = alert("PodOOMKilled", fp=fp, pod=pod, container="shopapi")
+        a["annotations"]["summary"] = f"shop/{pod}의 shopapi가 메모리 초과로 종료됨"
+        return a
+
+    res = client.post("/api/v1/alerts/alertmanager", json=webhook(
+        oom("shopapi-775d8668d4-2lqvx", "fp-oom-1"), oom("shopapi-775d8668d4-p6kvj", "fp-oom-2"))).json()
+    with container.db.connection() as conn:
+        count = conn.execute("SELECT count(*) AS n FROM incidents").fetchone()["n"]
+    assert len(set(res["accepted"])) == 1 and count == 1, "replica마다 같은 원인의 알림이 와도 장애는 1건(S15)"
