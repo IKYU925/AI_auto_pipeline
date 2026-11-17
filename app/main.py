@@ -11,6 +11,7 @@ from app.container import Container
 from app.alerts import Alert
 from app.core.fingerprint import fingerprint
 from app.deploys import read_state
+from app.pod_events import read_pod_events
 from app.rag.ingest import Document
 from app.schemas import IncidentAccepted, IncidentIn, KnowledgeIngestIn
 
@@ -93,8 +94,11 @@ def create_app(container: Container | None = None) -> FastAPI:
             if alert.kind.rollback and c.kube and alert.labels.get("namespace"):
                 state = read_state(c.kube, alert.labels["namespace"], alert.target)
                 deploy = state.to_dict() if state else None
+            events = None
+            if c.kube and alert.labels.get("pod"):
+                events = read_pod_events(c.kube, alert.labels.get("namespace", "shop"), alert.labels["pod"])
             channel = c.settings.tenant_slack_channels.get(alert.tenant, c.settings.alert_slack_channel)
-            accepted.append(accept(c, alert.to_incident(channel, stacktrace, logs, deploy)).incident_id)
+            accepted.append(accept(c, alert.to_incident(channel, stacktrace, logs, deploy, events)).incident_id)
         return {"accepted": accepted, "already_open": already_open, "resolved": resolved}
 
     @app.get("/api/v1/incidents/{incident_id}", dependencies=[Depends(verify_token)])

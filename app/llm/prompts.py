@@ -18,18 +18,21 @@ CLASSIFY_SYSTEM = """너는 장애 알림을 분류하는 SRE 보조 도구다.
 - infra: 노드 장애, 메모리나 디스크 같은 자원 부족(OOMKilled 포함), 네트워크, 외부 연동(결제 대행사 등)의 지연과 타임아웃.
 - dependency: 라이브러리, 패키지 버전 문제.
 - data: 잘못 들어간 데이터.
-로그가 없으면 알림 이름과 문구로 판단한다. 근거가 부족할 때만 unknown을 쓰고, 확신이 낮으면 confidence를 낮게 준다.
+로그가 없으면 Pod 상태와 K8s 이벤트(종료 사유, 이미지 받기 실패 등), 알림 이름과 문구로 판단한다. 근거가 부족할 때만 unknown을 쓰고, 확신이 낮으면 confidence를 낮게 준다.
 keywords에는 런북 검색에 쓸 단어를 3~6개 넣는다."""
 
 
-def classify_user(service: str, message: str, stacktrace: str | None, logs: str | None = None) -> str:
+def classify_user(service: str, message: str, stacktrace: str | None, logs: str | None = None,
+                  events: str | None = None) -> str:
     return f"""[서비스] {service}
 [알림]
 {clip(message, 1500)}
 [스택트레이스 마지막 부분]
 {clip(stacktrace, 1500)[-1500:]}
 [대상 Pod 마지막 로그]
-{(logs or "")[-2000:]}"""
+{(logs or "")[-2000:]}
+[대상 Pod 상태와 K8s 이벤트]
+{clip(events, 2000)}"""
 
 
 ROOT_CAUSE_SYSTEM = """너는 시니어 백엔드 엔지니어다. 장애 정보, 관련 코드, 사내 문서(런북, 포스트모템)를 근거로
@@ -64,6 +67,9 @@ def root_cause_user(incident: dict, classification: dict, code_context: str, doc
 
 [배포 이력]
 {deploy_history(incident)}
+
+[대상 Pod 상태와 K8s 이벤트]
+{clip(incident.get('events'), 2000) or '(Pod 알림 아님)'}
 
 [관련 코드]
 {code_context or '(스택트레이스에서 저장소 내부 파일을 찾지 못함)'}
