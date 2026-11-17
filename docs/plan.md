@@ -468,7 +468,7 @@ LLM 성능은 1, 2단계에서 측정했으므로 여기서는 감지와 연결 
 | P1b | `envs/aiops-eks` Terraform, `eks-up`, `eks-down`, 남은 리소스 검사 | infra_template | 완료(11-17 실계정 up 804초, down 811초, 남은 리소스 0). [results/phase4_eks.md](../results/phase4_eks.md) |
 | P2 | GitOps 골격 | 이 저장소 | 4-1 완료. 앱 7개 Synced/Healthy. [results/phase4_eks.md](../results/phase4_eks.md) |
 | P3 | S01, S14 재현 | 이 저장소 | 4-2 완료. S14 186.9초, S01 110.7초, 둘 다 정답. [results/phase4_eks.md](../results/phase4_eks.md) |
-| P4 | 배포 이력, K8s 이벤트 컨텍스트 | 이 저장소 | 4-3 일부. 배포 이력은 완료(EKS S20 보고서가 ArgoCD 이력의 직전 배포를 원인 후보로 적음, [results/phase4_eks.md](../results/phase4_eks.md)). EKS S21과 K8s 이벤트 컨텍스트는 남음(이벤트 조회는 아직 구현하지 않음) |
+| P4 | 배포 이력, K8s 이벤트 컨텍스트 | 이 저장소 | 4-3 일부. 배포 이력은 완료(EKS S20 보고서가 ArgoCD 이력의 직전 배포를 원인 후보로 적음, [results/phase4_eks.md](../results/phase4_eks.md)). K8s 이벤트 컨텍스트는 구현(#65, 이미지 `base-92322d4`), EKS S21로 실제 확인이 남음 |
 | P5 | 승인 후 롤백과 rollout restart | 이 저장소 | 4-4 완료. EKS S20 승인부터 롤백 끝까지 6.4초, 알림 해소까지 105.2초. rollout restart는 풀리는 시나리오가 생길 때 |
 | P6 | 고객사 분리와 전체 실험, 정리 | 두 저장소 | 4-5 |
 
