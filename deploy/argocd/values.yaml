@@ -5,7 +5,7 @@ region: ap-northeast-2
 ecrRepositoryUrl: ""
 lokiBucket: ""
 # scripts/build_push.sh로 ECR에 먼저 올린 태그
-imageTag: base-1ec6b58
+imageTag: base-9b15467
 
 # sync wave 순서: 비밀 연동 → 클러스터 설정 → 관측 → 자동화와 고객사 shopapi
 apps:
