@@ -2,7 +2,7 @@
 
 장애 알림을 받아 원인을 분석하고, 수정 코드를 만들고, 관련 회귀 테스트만 골라 검증한 뒤 결과를 Slack에 회신하는 파이프라인이다. 테스트가 실패하면 실패 로그를 붙여 수정안을 다시 만들고 다시 검증한다. 전 구간에 비용 최적화(캐시, 모델 분리, 범위 축소)를 적용했다.
 
-1, 2단계는 Slack 알림(n8n)으로 장애를 받았다. 3단계는 로컬 K3s 클러스터에서 Prometheus, Loki, Alertmanager가 감지한 장애를 사람 개입 없이 받는다. 고객사(namespace)별로 회신 채널과 런북 검색 범위를 나누고, 정해진 조치(노드 정리, 배포 롤백)는 Slack 승인 버튼 한 번으로 실행한다.
+1, 2단계는 Slack 알림(n8n)으로 장애를 받았다. 3단계는 로컬 K3s 클러스터에서 Prometheus, Loki, Alertmanager가 감지한 장애를 사람 개입 없이 받는다. 고객사(namespace)별로 회신 채널과 런북 검색 범위를 나누고, 정해진 조치(노드 정리, 배포 롤백)는 Slack 승인 버튼 한 번으로 실행한다. 4단계는 같은 매니페스트와 이미지를 ArgoCD로 AWS EKS에 배포해 같은 경로로 처리하고, 배포 이력과 Pod 이벤트를 분석에 넣어 배포 직후 장애를 ArgoCD 롤백으로 되돌린다.
 
 ## 전체 흐름
 
@@ -80,6 +80,34 @@ flowchart LR
 | 고객사 | `app/tenants.py` | namespace `tenant-*`이면 그 고객사. 지문, 회신 채널, 런북 검색 범위가 고객사를 넘지 않는다 |
 | 승인 후 조치 | `app/actions.py`, `app/approvals.py`, `deploy/ansible/` | 허용 목록 조치만 카드에 버튼으로 붙인다. 승인되면 노드 플레이북 Job이나 Deployment 롤백을 실행하고 `actions`에 기록한다 |
 | 배포 상태 | `app/deploys.py` | 알림 접수 때 현재와 직전 리비전, 배포 시각을 남긴다. 배포 직후 장애면 롤백을 제안한다 |
+| Pod 상태와 이벤트 | `app/pod_events.py` | Pod 알림이면 대기 사유, 직전 종료 사유, K8s 이벤트를 분류와 원인 분석에 넣는다(4단계) |
+
+### 4단계 EKS 구성
+
+```mermaid
+flowchart LR
+    subgraph IT[infra_template Terraform]
+        EKS[EKS, Graviton 노드 2대]
+        ARGO[ArgoCD, 루트 앱]
+    end
+    GIT[이 저장소 main<br/>deploy/argocd] -->|app-of-apps| ARGO
+    ARGO -->|wave -2..0| OBS[External Secrets, 관측]
+    ARGO -->|wave 1| AI[aiops 앱<br/>api, worker, approvals]
+    ARGO -->|wave 2| SH[shopapi-shop, tenant-a, tenant-b 앱]
+    SM[Secrets Manager] --> OBS
+    ECR[ECR] --> AI
+    AI -->|배포 이력 읽기| ARGO
+    APR[approvals] -->|argocd-rollback<br/>이미지 되돌리기| SH
+```
+
+| 구성 | 구현 위치 | 하는 일 |
+| --- | --- | --- |
+| 앱 목록 | `deploy/argocd/values.yaml` | 앱 10개와 sync wave, 이미지 태그(`imageTag`) 한 곳. 모든 앱은 자동 sync에 selfHeal을 끈다 |
+| EKS overlay | `deploy/k8s/overlays/eks/` | 3단계 base에 Ingress 삭제, 비밀(ExternalSecret), ArgoCD 권한만 더한다. shopapi는 고객사마다 Application이다 |
+| ArgoCD 롤백 | `app/actions.py`, `app/approvals.py` | 배포 직후 장애면 고객사 Application의 이미지를 직전 배포 이력 값으로 되돌린다. 제안 뒤 배포가 바뀌면 거부한다 |
+| 클러스터 수명 | infra_template `make eks-up`, `make eks-down` | 실험할 때만 만들고 지운다. 지운 뒤 남은 리소스를 태그로 검사한다 |
+
+기능별 요구사항과 완료 기준은 [F15](docs/features/F15-eks-gitops.md), [F16](docs/features/F16-analysis-context.md), [F17](docs/features/F17-argocd-rollback.md)에 있다.
 
 ## 1단계 결과
 
@@ -123,12 +151,12 @@ flowchart LR
 | 승인 후 롤백(배포 직후 장애, S20) | 승인부터 롤백 끝까지 6초, 알림 해소까지 119초 | 해소 대기는 대부분 알림 규칙의 창과 평가 주기(추정) |
 
 - 3단계 실험 전체 비용은 약 $1.2다(3-7 $0.60, 3-8 $0.27, 3-9 $0.18, 3-10 $0.18).
-- SLI는 [docs/sli.md](docs/sli.md)에 정의했다. 웹훅 전달 100%, 3분 안 회신(코드 버그) 83%(놓친 2건은 노드 장애 중), 처리 결과 정확도 94%다. SLO 목표는 4단계에서 정한다.
+- SLI는 [docs/sli.md](docs/sli.md)에 정의했다. 웹훅 전달 100%, 3분 안 회신(코드 버그) 83%(놓친 2건은 노드 장애 중), 처리 결과 정확도 94%다. SLO 목표는 아직 정하지 않았다.
 - 시그니처가 어긋난 버그(S08)는 클러스터에서도 거짓 통과로 끝났다(1단계와 같음). 자동 수정은 사람 승인 전까지 배포하지 않는다.
 
 ## 4단계 결과
 
-3단계의 자동화와 대상 서비스, 관측 도구를 같은 매니페스트로 EKS 클러스터 하나(Graviton 노드 2대)에 올리고 ArgoCD로 배포했다. 클러스터는 실험할 때만 만들고 지운다(2026-11-17 두 세션, 매번 남은 리소스 0). 상세는 [results/phase4_eks.md](results/phase4_eks.md), 회고 자료는 [docs/retro/phase4.md](docs/retro/phase4.md), 계획은 [docs/plan.md](docs/plan.md) 10장이다. 모든 값은 1회 측정이다.
+3단계의 자동화와 대상 서비스, 관측 도구를 같은 매니페스트로 EKS 클러스터 하나(Graviton 노드 2대)에 올리고 ArgoCD로 배포했다. 클러스터는 실험할 때만 만들고 지운다(2026-11-17 세 세션, 매번 남은 리소스 0). 상세는 [results/phase4_eks.md](results/phase4_eks.md), 회고 자료는 [docs/retro/phase4.md](docs/retro/phase4.md), 계획은 [docs/plan.md](docs/plan.md) 10장이다. 모든 값은 1회 측정이다.
 
 | 지표 | 로컬 K3s | AWS EKS |
 | --- | --- | --- |
@@ -258,7 +286,32 @@ caffeinate -i .venv/bin/python -m scripts.run_cluster S01 S14 --max-usd 0.5 --ou
 
 `run_cluster`는 장애를 실제로 넣고(버그 이미지 배포, 설정 변경, 노드 정지, 디스크 채우기) 알림이 자동화를 거쳐 Slack에 회신될 때까지 구간별 시간을 잰다. 맥이 잠들면 VM이 멈추므로 `caffeinate`로 실행하고, 노드 시계가 5초 넘게 어긋나면 시작하지 않는다. 승인이 필요한 시나리오(S17, S20)는 카드의 버튼을 사람이 누를 때까지 기다린다.
 
-### 5. 실제 서비스 저장소에 붙이기
+### 5. AWS EKS에서 실행(4단계)
+
+클러스터는 형제 저장소 infra_template이 만든다. base 층(ECR, S3, Secrets Manager)은 한 번만 만들고(`make eks-base-up`, `make eks-secrets AIOPS_ENV=.env`), 클러스터는 세션마다 만들고 지운다.
+
+```bash
+# 이미지는 ECR에 먼저 올리고 deploy/argocd/values.yaml의 imageTag를 그 태그로 맞춘다
+ECR_REPOSITORY_URL=<계정>.dkr.ecr.ap-northeast-2.amazonaws.com/aiops scripts/build_push.sh
+
+(cd ../infra_template && make eks-up)        # 약 12~14분, 그 뒤 ArgoCD가 앱 10개를 4~6분에 올린다
+aws eks update-kubeconfig --region ap-northeast-2 --name ai-incident
+scripts/k8s_grafana.sh
+kubectl -n aiops exec deploy/api -c api -- python -m scripts.ingest_knowledge knowledge
+
+# Alertmanager 19093, Prometheus 19090, shopapi 18001~18003으로 port-forward를 띄운 뒤
+CLUSTER=eks ALERTMANAGER_URL=http://127.0.0.1:19093 PROMETHEUS_URL=http://127.0.0.1:19090 \
+SHOP_URLS='{"shop":"http://127.0.0.1:18001","tenant-a":"http://127.0.0.1:18002","tenant-b":"http://127.0.0.1:18003"}' \
+caffeinate -i .venv/bin/python -m scripts.run_cluster S20 --max-usd 0.5 --out results/verify/runs.csv
+
+(cd ../infra_template && make eks-down)      # 루트 앱 삭제, destroy, 남은 리소스 검사
+```
+
+- `CLUSTER=eks`면 실행기가 shopapi 버그 이미지를 ArgoCD Application으로 배포하고, 끝나면 Git 기준으로 되돌린다.
+- 실험 중에는 이 저장소의 `main`에 병합하지 않는다. 루트 앱이 다시 sync해 넣은 장애가 풀린다.
+- 평일 코어타임(09:30~12:00) 밖에서는 정리 워크플로가 매시 클러스터를 지운다. 저장소 변수 `EKS_HOLD_UNTIL`로 그날 13:00까지 늦출 수 있다.
+
+### 6. 실제 서비스 저장소에 붙이기
 
 - `docker-compose.yml`의 `./targets/shopapi:/repo:ro`를 대상 서비스 저장소로 바꾼다. 운영에서는 워커가 배포된 커밋을 clone해서 쓰는 방식이 맞다.
 - `knowledge/` 아래에 런북, 포스트모템을 front matter(`service`, `tenant`, `category`, `doc_type`, `updated_at`. `tenant`를 빼면 모든 고객사가 보는 공통 문서)와 함께 넣고 `scripts.ingest_knowledge`를 주기적으로(문서 저장소 push 시 CI 등) 실행한다. 바뀐 청크만 임베딩되므로 자주 돌려도 비용이 거의 들지 않는다.
@@ -274,7 +327,8 @@ AI_auto_pipeline/
 │   ├── tenants.py           # 고객사 판별
 │   ├── actions.py           # 승인 후 조치 허용 목록과 제안
 │   ├── approvals.py         # Slack 승인 버튼 처리(Socket Mode), 조치 Job과 롤백 실행
-│   ├── deploys.py, kube.py  # 배포 상태 조회, Kubernetes API
+│   ├── deploys.py, kube.py  # 배포 상태 조회(ReplicaSet, ArgoCD 이력), Kubernetes API
+│   ├── pod_events.py        # Pod 상태와 K8s 이벤트 조회
 │   ├── container.py         # 의존성 조립
 │   ├── config.py            # 환경변수 설정
 │   ├── core/                # 에러 지문, Redis Streams 큐, 상태 저장소
@@ -284,7 +338,8 @@ AI_auto_pipeline/
 │   ├── testing/runner.py    # 샌드박스 패치 적용 + pytest 실행
 │   ├── graph/               # LangGraph 상태, 노드, 워크플로
 │   └── notify/              # Slack 회신 카드와 승인 버튼
-├── deploy/k8s/               # kustomize base, shopapi, 고객사, overlays/local(3단계)
+├── deploy/k8s/               # kustomize base, shopapi, 고객사, overlays/local(3단계), overlays/eks와 eks-cluster(4단계)
+├── deploy/argocd/           # ArgoCD app-of-apps Helm 차트(앱 목록, sync wave, 이미지 태그)
 ├── deploy/ansible/          # 승인 후 조치 허용 목록 플레이북
 ├── n8n/incident_workflow.json
 ├── knowledge/               # RAG 원천 문서 예시
