@@ -125,13 +125,14 @@ def wait_argo(app: str, done, what: str, timeout_sec: float = 300) -> None:
     raise RuntimeError(f"ArgoCD {app}: {what}이 끝나지 않았다")
 
 
-def argo_deploy(app: str, image: str) -> None:
-    """Application의 이미지를 바꾸면 자동 sync가 배포하고 배포 이력이 하나 쌓인다."""
+def argo_deploy(app: str, image: str, healthy: bool = True) -> None:
+    """Application의 이미지를 바꾸면 자동 sync가 배포하고 배포 이력이 하나 쌓인다. 뜨지 않는 이미지(S21)는 healthy=False"""
     before = len(argo_app(app)["status"].get("history", []))
     kubectl("-n", "argocd", "patch", "application", app, "--type", "merge",
             "-p", json.dumps({"spec": {"source": {"kustomize": {"images": [f"aiops={image}"]}}}}))
     wait_argo(app, lambda a: len(a["status"].get("history", [])) > before
-              and a["status"]["sync"]["status"] == "Synced" and a["status"]["health"]["status"] == "Healthy", f"{image} 배포")
+              and a["status"]["sync"]["status"] == "Synced" and (not healthy or a["status"]["health"]["status"] == "Healthy"),
+              f"{image} 배포")
 
 
 def resync_from_git(app: str, resources: list[tuple[str, str]]) -> None:
@@ -331,7 +332,11 @@ def inject_cluster_fault(s: Scenario) -> None:
         kubectl("-n", "shop", "set", "resources", "deploy/shopapi", f"--limits=memory={c.memory_limit}")
     if c.image_tag:
         image = kubectl("-n", "shop", "get", "deploy/shopapi", "-o", "jsonpath={.spec.template.spec.containers[0].image}").strip()
-        kubectl("-n", "shop", "set", "image", "deploy/shopapi", f"shopapi={image.rsplit(':', 1)[0]}:{c.image_tag}")
+        bad = f"{image.rsplit(':', 1)[0]}:{c.image_tag}"
+        if EKS:  # ArgoCD 배포 이력에 남아야 분석이 직전 배포를 본다
+            argo_deploy(SHOPAPI_APPS["shop"], bad, healthy=False)
+        else:
+            kubectl("-n", "shop", "set", "image", "deploy/shopapi", f"shopapi={bad}")
 
 
 @dataclass
