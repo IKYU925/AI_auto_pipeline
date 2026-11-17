@@ -21,16 +21,25 @@ class RolloutUndo:
     window: timedelta             # 배포부터 장애 시작까지 이 안이면 배포를 원인 후보로 본다
 
 
-ACTIONS: dict[str, Playbook | RolloutUndo] = {
+@dataclass(frozen=True)
+class ArgoRollback:
+    """ArgoCD가 배포하는 환경(EKS)에서 고객사 shopapi Application을 직전 배포 이력의 이미지로 되돌린다(4-4)."""
+
+    apps: frozenset[str]
+    window: timedelta
+
+
+ACTIONS: dict[str, Playbook | RolloutUndo | ArgoRollback] = {
     "cleanup-appdata": Playbook("cleanup-appdata.yml", {"k3s-w1": "192.168.56.11"}),
     "rollout-undo": RolloutUndo(frozenset({"shop", "tenant-a", "tenant-b"}), timedelta(minutes=30)),
+    "argocd-rollback": ArgoRollback(frozenset({"shopapi-shop", "shopapi-tenant-a", "shopapi-tenant-b"}), timedelta(minutes=30)),
 }
 
 
 @dataclass(frozen=True)
 class Proposal:
     action: str
-    target: str                   # 노드 이름, 또는 namespace/deployment
+    target: str                   # 노드 이름, namespace/deployment, 또는 ArgoCD Application 이름
     from_revision: int | None = None
     to_revision: int | None = None
 
@@ -50,6 +59,8 @@ def allowed(p: Proposal) -> bool:
             return p.target in hosts
         case RolloutUndo(namespaces=namespaces):
             return p.target.split("/")[0] in namespaces and p.to_revision is not None
+        case ArgoRollback(apps=apps):
+            return p.target in apps and p.to_revision is not None
     return False
 
 
@@ -71,7 +82,8 @@ def _rollback(incident: dict) -> Proposal | None:
     d, occurred = incident.get("deploy"), incident.get("occurred_at")
     if not d or not d.get("previous") or not occurred:
         return None
+    action, target = ("argocd-rollback", d["app"]) if d.get("app") else ("rollout-undo", f"{d['namespace']}/{d['deployment']}")
     deployed = datetime.fromisoformat(d["current"]["at"])
-    if not timedelta(0) <= datetime.fromisoformat(occurred) - deployed <= ACTIONS["rollout-undo"].window:
+    if not timedelta(0) <= datetime.fromisoformat(occurred) - deployed <= ACTIONS[action].window:
         return None
-    return Proposal("rollout-undo", f"{d['namespace']}/{d['deployment']}", d["current"]["number"], d["previous"]["number"])
+    return Proposal(action, target, d["current"]["number"], d["previous"]["number"])

@@ -51,7 +51,8 @@ from scripts.run_experiment import (
 INFRA = Path(os.environ.get("INFRA_DIR", ROOT.parent / "infra_local_set"))
 os.environ.setdefault("KUBECONFIG", str(INFRA / "kubeconfig"))
 OVERLAY = ROOT / "deploy/k8s/overlays/local"
-# EKS(4단계)는 ArgoCD가 배포한다. 버그 이미지는 ECR_REPOSITORY_URL로 올려 set image로 넣고, 복원은 ArgoCD에 맡긴다
+# EKS(4단계)는 ArgoCD가 배포한다. 버그 이미지는 ECR_REPOSITORY_URL로 올린다. shopapi는 고객사별 Application의 이미지를
+# 바꿔 배포 이력에 남기고(승인 후 ArgoCD 롤백의 대상, 4-4), 자동화 본체는 set image로 넣는다. 복원은 ArgoCD에 맡긴다
 EKS = os.environ.get("CLUSTER") == "eks"
 ARGO_APP = "aiops"
 CLUSTER_HOST = os.environ.get("CLUSTER_HOST", "192.168.56.10")
@@ -66,6 +67,7 @@ ALERTMANAGER = os.environ.get("ALERTMANAGER_URL", f"http://{CLUSTER_HOST}:30093"
 PROMETHEUS = os.environ.get("PROMETHEUS_URL", f"http://{CLUSTER_HOST}:30090")
 TENANTS = ("tenant-a", "tenant-b")
 ROLLOUTS = [("shop", "shopapi"), *((t, "shopapi") for t in TENANTS), ("aiops", "api"), ("aiops", "worker")]
+SHOPAPI_APPS = {ns: f"shopapi-{ns}" for ns in ("shop", *TENANTS)}
 COLUMNS = [
     "scenario", "type", "alert", "incident_id", "fault_at", "occurred_at", "received_at", "finished_at", "reported_at",
     "detect_sec", "deliver_sec", "process_sec", "total_sec", "outcome", "expected_outcome", "outcome_correct",
@@ -110,29 +112,61 @@ def now() -> datetime:
     return datetime.now(timezone.utc)
 
 
-def resync_from_git(timeout_sec: float = 300) -> None:
-    """kubectl apply로 덮으면 ArgoCD 추적 표시가 지워져 eks-down의 연쇄 삭제에서 빠진다. ArgoCD가 Git 기준으로 다시 만들게 한다."""
-    app = ("-n", "argocd", "get", "application", ARGO_APP, "-o")
-    before = kubectl(*app, "jsonpath={.status.operationState.startedAt}")
-    resources = [{"group": "apps", "kind": "Deployment", "namespace": ns, "name": d} for ns, d in ROLLOUTS]
-    op = {"operation": {"initiatedBy": {"username": "run_cluster"},
-                        "sync": {"syncOptions": ["Replace=true"], "resources": resources}}}
-    kubectl("-n", "argocd", "patch", "application", ARGO_APP, "--type", "merge", "-p", json.dumps(op))
+def argo_app(app: str) -> dict:
+    return json.loads(kubectl("-n", "argocd", "get", "application", app, "-o", "json"))
+
+
+def wait_argo(app: str, done, what: str, timeout_sec: float = 300) -> None:
     deadline = time.monotonic() + timeout_sec
     while time.monotonic() < deadline:
-        state = json.loads(kubectl(*app, "json"))["status"].get("operationState", {})
-        if state.get("startedAt") != before and state.get("phase") in ("Succeeded", "Failed", "Error"):
-            if state["phase"] != "Succeeded":
-                raise RuntimeError(f"ArgoCD 복원 실패: {state.get('message')}")
+        if done(argo_app(app)):
             return
         time.sleep(3)
-    raise RuntimeError("ArgoCD 복원이 끝나지 않았다")
+    raise RuntimeError(f"ArgoCD {app}: {what}이 끝나지 않았다")
+
+
+def argo_deploy(app: str, image: str) -> None:
+    """Application의 이미지를 바꾸면 자동 sync가 배포하고 배포 이력이 하나 쌓인다."""
+    before = len(argo_app(app)["status"].get("history", []))
+    kubectl("-n", "argocd", "patch", "application", app, "--type", "merge",
+            "-p", json.dumps({"spec": {"source": {"kustomize": {"images": [f"aiops={image}"]}}}}))
+    wait_argo(app, lambda a: len(a["status"].get("history", [])) > before
+              and a["status"]["sync"]["status"] == "Synced" and a["status"]["health"]["status"] == "Healthy", f"{image} 배포")
+
+
+def resync_from_git(app: str, resources: list[tuple[str, str]]) -> None:
+    """kubectl apply로 덮으면 ArgoCD 추적 표시가 지워져 eks-down의 연쇄 삭제에서 빠진다. ArgoCD가 Git 기준으로 다시 만들게 한다."""
+    before = argo_app(app)["status"].get("operationState", {}).get("startedAt")
+    op = {"operation": {"initiatedBy": {"username": "run_cluster"},
+                        "sync": {"syncOptions": ["Replace=true"],
+                                 "resources": [{"group": "apps", "kind": "Deployment", "namespace": ns, "name": d}
+                                               for ns, d in resources]}}}
+    kubectl("-n", "argocd", "patch", "application", app, "--type", "merge", "-p", json.dumps(op))
+
+    def done(a: dict) -> bool:
+        state = a["status"].get("operationState", {})
+        if state.get("startedAt") == before or state.get("phase") not in ("Succeeded", "Failed", "Error"):
+            return False
+        if state["phase"] != "Succeeded":
+            raise RuntimeError(f"ArgoCD {app} 복원 실패: {state.get('message')}")
+        return True
+    wait_argo(app, done, "복원")
+
+
+def restore_eks() -> None:
+    """shopapi는 Application 이미지를 자동화 본체(aiops 앱)와 같은 기본 이미지로 돌린 뒤, set env 같은 수동 변경까지 Git 기준으로 지운다."""
+    base = argo_app(ARGO_APP)["spec"]["source"]["kustomize"]["images"][0].split("=", 1)[1]
+    for ns, app in SHOPAPI_APPS.items():
+        if argo_app(app)["spec"]["source"]["kustomize"]["images"] != [f"aiops={base}"]:
+            argo_deploy(app, base)
+        resync_from_git(app, [(ns, "shopapi")])
+    resync_from_git(ARGO_APP, [r for r in ROLLOUTS if r[0] == "aiops"])
 
 
 def restore() -> None:
     """kubectl apply는 set env, set resources로 더한 필드를 지우지 않는다. shopapi Deployment는 매니페스트로 통째로 바꾼다."""
     if EKS:
-        resync_from_git()
+        restore_eks()
     else:
         sh("git", "checkout", "--", str(OVERLAY / "kustomization.yaml"), cwd=ROOT)
         docs = yaml.safe_load_all(kubectl("kustomize", str(OVERLAY)))
@@ -237,7 +271,10 @@ def deploy_bug(scenario_id: str) -> None:
     print(f"  버그 이미지 {image}", file=sys.stderr)
     if EKS:
         for ns, deploy in ROLLOUTS:
-            kubectl("-n", ns, "set", "image", f"deploy/{deploy}", f"*={image}")
+            if ns in SHOPAPI_APPS:
+                argo_deploy(SHOPAPI_APPS[ns], image)
+            else:
+                kubectl("-n", ns, "set", "image", f"deploy/{deploy}", f"*={image}")
     else:
         kubectl("apply", "-k", str(OVERLAY))
     for ns, deploy in ROLLOUTS:

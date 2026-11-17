@@ -444,7 +444,7 @@ LLM 성능은 1, 2단계에서 측정했으므로 여기서는 감지와 연결 
 
 1. **배포 이력 컨텍스트.** 장애 접수 때 ArgoCD API로 해당 Application의 직전 sync 리비전, 이미지 태그, 시각을 조회해 분석 입력에 넣는다. 배포 시각과 장애 시작 시각을 비교해 배포를 원인 후보로 넣거나 뺀다.
 2. **K8s 이벤트 컨텍스트.** Pod의 최근 이벤트(BackOff, OOMKilled, FailedScheduling)와 종료 사유를 함께 넣는다. 스택트레이스가 없는 인프라 장애의 분류 근거가 된다.
-3. **승인 후 조치.** 허용 목록은 `argocd-rollback`(직전 정상 리비전)과 `rollout-restart` 두 가지다. 로컬에서는 같은 틀의 `rollout-undo`(ReplicaSet 리비전, 3-10b)로 먼저 확인했다. rollout restart는 이 조치로 풀리는 시나리오가 생길 때 더한다. 조치 이름과 대상은 장애 기록에서만 가져오고 LLM 출력은 쓰지 않는다. EKS 관리형 노드에는 SSH가 없어서 노드 대상 Ansible 조치(9-8)는 EKS에서 쓰지 않는다. 같은 방식을 로컬 K3s에서 먼저 만들어 확인한다.
+3. **승인 후 조치.** 허용 목록은 `argocd-rollback`(직전 정상 리비전)과 `rollout-restart` 두 가지다. `argocd-rollback`은 고객사 shopapi Application(`shopapi-shop`, `shopapi-tenant-a`, `shopapi-tenant-b`)만 대상으로 한다. 이를 위해 EKS에서는 shopapi를 `aiops` 앱에서 떼어 고객사마다 Application을 둔다. 자동 sync가 켜진 앱은 ArgoCD가 rollback 작업을 거부하므로, Application의 이미지를 직전 배포 이력의 값으로 되돌리고 자동 sync가 배포하게 한다. 로컬에서는 같은 틀의 `rollout-undo`(ReplicaSet 리비전, 3-10b)로 먼저 확인했다. rollout restart는 이 조치로 풀리는 시나리오가 생길 때 더한다. 조치 이름과 대상은 장애 기록에서만 가져오고 LLM 출력은 쓰지 않는다. EKS 관리형 노드에는 SSH가 없어서 노드 대상 Ansible 조치(9-8)는 EKS에서 쓰지 않는다. 같은 방식을 로컬 K3s에서 먼저 만들어 확인한다.
 4. **자동화 권한.** aiops 서비스 계정은 읽기(Pod, 이벤트, 로그)와 고객사 Application 롤백 권한만 가진다.
 
 #### 10-3. 4단계 시나리오
@@ -469,7 +469,7 @@ LLM 성능은 1, 2단계에서 측정했으므로 여기서는 감지와 연결 
 | P2 | GitOps 골격 | 이 저장소 | 4-1 완료. 앱 7개 Synced/Healthy. [results/phase4_eks.md](../results/phase4_eks.md) |
 | P3 | S01, S14 재현 | 이 저장소 | 4-2 완료. S14 186.9초, S01 110.7초, 둘 다 정답. [results/phase4_eks.md](../results/phase4_eks.md) |
 | P4 | 배포 이력, K8s 이벤트 컨텍스트 | 이 저장소 | 4-3 |
-| P5 | 승인 후 롤백과 rollout restart | 이 저장소 | 4-4 |
+| P5 | 승인 후 롤백과 rollout restart | 이 저장소 | 4-4. `argocd-rollback` 구현(단위 테스트), EKS에서 S20 측정 남음. rollout restart는 풀리는 시나리오가 생길 때 |
 | P6 | 고객사 분리와 전체 실험, 정리 | 두 저장소 | 4-5 |
 
 P2(4-1)의 구성은 다음과 같다.

@@ -9,7 +9,7 @@ import threading
 import time
 from dataclasses import dataclass
 
-from app.actions import ACTIONS, Playbook, Proposal, allowed
+from app.actions import ACTIONS, ArgoRollback, Playbook, Proposal, RolloutUndo, allowed
 from app.deploys import REVISION
 from app.kube import Kube
 from app.notify.card import APPROVE_ACTION_ID
@@ -113,14 +113,45 @@ class RolloutRunner:
         return False, f"{p.target} 롤백이 {ROLLOUT_TIMEOUT_SEC}초 안에 끝나지 않았다"
 
 
-class Executor:
-    def __init__(self, jobs: JobRunner, rollouts: RolloutRunner):
-        self.jobs = jobs
-        self.rollouts = rollouts
+def _images(entry: dict) -> list[str]:
+    return entry.get("source", {}).get("kustomize", {}).get("images", [])
+
+
+class ArgoRunner:
+    """argocd app rollback과 같은 결과. ArgoCD는 자동 sync가 켜진 앱의 rollback을 거부하므로,
+    Application의 이미지를 그 이력의 값으로 되돌리고 자동 sync가 배포하게 한다. 되돌린 배포도 이력에 남는다."""
+
+    def __init__(self, kube: Kube, poll_sec: float = 3):
+        self.kube = kube
+        self.poll_sec = poll_sec
 
     def run(self, incident_id: str, p: Proposal) -> tuple[bool, str]:
-        runner = self.jobs if isinstance(ACTIONS[p.action], Playbook) else self.rollouts
-        return runner.run(incident_id, p)
+        history = self.kube.application(p.target)["status"].get("history", [])
+        current = history[-1]["id"] if history else None
+        if current != p.from_revision:
+            return False, f"제안 뒤 배포가 바뀌었다(제안 이력 {p.from_revision}, 지금 이력 {current}). 롤백하지 않았다"
+        target = next((h for h in history if h["id"] == p.to_revision), None)
+        if target is None:
+            return False, f"{p.target}에 이력 {p.to_revision}이 없다"
+        images = _images(target)
+        self.kube.set_app_images(p.target, images)
+        deadline = time.monotonic() + ROLLOUT_TIMEOUT_SEC
+        while time.monotonic() < deadline:
+            st = self.kube.application(p.target)["status"]
+            last = st.get("history", [{}])[-1]
+            if (last.get("id", 0) > current and _images(last) == images
+                    and st.get("sync", {}).get("status") == "Synced" and st.get("health", {}).get("status") == "Healthy"):
+                return True, f"{p.target} 이력 {current} -> {last['id']}(이력 {p.to_revision}의 이미지 {', '.join(images)})"
+            time.sleep(self.poll_sec)
+        return False, f"{p.target} 롤백이 {ROLLOUT_TIMEOUT_SEC}초 안에 끝나지 않았다"
+
+
+class Executor:
+    def __init__(self, jobs: JobRunner, rollouts: RolloutRunner, argo: ArgoRunner):
+        self.runners = {Playbook: jobs, RolloutUndo: rollouts, ArgoRollback: argo}
+
+    def run(self, incident_id: str, p: Proposal) -> tuple[bool, str]:
+        return self.runners[type(ACTIONS[p.action])].run(incident_id, p)
 
 
 REPLIES = {
@@ -159,7 +190,7 @@ def serve(c) -> None:
     from slack_sdk.socket_mode.response import SocketModeResponse
 
     kube = Kube()
-    runner = Executor(JobRunner(kube, kube.own_image()), RolloutRunner(kube))
+    runner = Executor(JobRunner(kube, kube.own_image()), RolloutRunner(kube), ArgoRunner(kube))
 
     def on_request(client: SocketModeClient, req: SocketModeRequest) -> None:
         # 3초 안에 확인 응답을 보내야 Slack이 다시 보내지 않는다. 조치는 따로 실행한다

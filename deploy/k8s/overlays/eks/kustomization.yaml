@@ -1,12 +1,12 @@
-# EKS. 이미지는 루트 앱(deploy/argocd)이 ECR 주소와 태그로 바꾼다.
-# 인그레스 컨트롤러가 없어 Ingress를 지운다(남기면 ArgoCD가 Progressing으로 본다). 접속은 port-forward
+# EKS의 자동화 본체. 이미지는 루트 앱(deploy/argocd)이 ECR 주소와 태그로 바꾼다.
+# shopapi는 고객사마다 따로 롤백하도록 Application을 나눈다(shopapi-*/, deploy/argocd/values.yaml)
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
   - ../../base
-  - ../../tenants/tenant-a
-  - ../../tenants/tenant-b
   - aiops-secrets.yaml
+  - argocd-rbac.yaml
+# 인그레스 컨트롤러가 없어 Ingress를 지운다(남기면 ArgoCD가 Progressing으로 본다). 접속은 port-forward
 patches:
   - target: {kind: Ingress}
     patch: |-

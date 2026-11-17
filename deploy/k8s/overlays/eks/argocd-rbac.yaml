@@ -1,0 +1,41 @@
+# api는 고객사 shopapi Application의 배포 이력을 읽고(롤백 제안), approvals는 승인되면 이미지를 이력의 값으로 되돌린다(4-4).
+# 자동화 본체(aiops)와 관측 앱은 건드리지 못하게 이름으로 묶는다
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: aiops-shopapi-apps
+  namespace: argocd
+rules:
+  - apiGroups: ["argoproj.io"]
+    resources: ["applications"]
+    resourceNames: ["shopapi-shop", "shopapi-tenant-a", "shopapi-tenant-b"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: aiops-shopapi-rollback
+  namespace: argocd
+rules:
+  - apiGroups: ["argoproj.io"]
+    resources: ["applications"]
+    resourceNames: ["shopapi-shop", "shopapi-tenant-a", "shopapi-tenant-b"]
+    verbs: ["get", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: aiops-shopapi-apps
+  namespace: argocd
+roleRef: {apiGroup: rbac.authorization.k8s.io, kind: Role, name: aiops-shopapi-apps}
+subjects:
+  - {kind: ServiceAccount, name: ai-api, namespace: aiops}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: aiops-shopapi-rollback
+  namespace: argocd
+roleRef: {apiGroup: rbac.authorization.k8s.io, kind: Role, name: aiops-shopapi-rollback}
+subjects:
+  - {kind: ServiceAccount, name: ai-approvals, namespace: aiops}

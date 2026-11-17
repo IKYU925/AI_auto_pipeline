@@ -1,0 +1,12 @@
+# ArgoCD Application shopapi-tenant-b. 인그레스 컨트롤러가 없어 Ingress를 지운다(남기면 ArgoCD가 Progressing으로 본다). 접속은 port-forward
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../../tenants/tenant-b
+patches:
+  - target: {kind: Ingress}
+    patch: |-
+      $patch: delete
+      apiVersion: networking.k8s.io/v1
+      kind: Ingress
+      metadata: {name: any}
