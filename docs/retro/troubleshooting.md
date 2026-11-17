@@ -44,6 +44,8 @@
 | 24 | 11-17 | AWS | 비용 안전장치 | 정리 워크플로가 시험 중인 EKS를 지울 수 있었음 |
 | 25 | 11-13 ~ 11-17 | 전체 | 작업 방식 | 여러 세션이 같은 저장소와 클러스터를 동시에 씀 |
 | 26 | 11-17 | AWS | IaC | EKS 첫 apply가 EBS CSI 애드온 설정 스키마 오류로 멈춤 |
+| 27 | 11-17 | AWS | 실험 도구 | EKS에서 버그 이미지 배포 직후 port-forward가 끊겨 S01을 넣지 못함 |
+| 28 | 11-17 | 전체 | 작업 방식 | 쌓은 PR이 아래 PR 병합 때 base 브랜치 삭제로 자동으로 닫힘 |
 
 ---
 
@@ -244,7 +246,7 @@
 - **환경.** AWS. infra_template에는 비용을 막으려고 코어타임 밖이면 매시 5분에 EKS를 지우는 GitHub Actions 정리 워크플로가 있다.
 - **상황.** 첫 실계정 시험(2026-11-17 새벽)은 코어타임 밖이었다. 그대로 두면 정리 워크플로가 시험 중인 클러스터를 지운다. 기한을 늘리는 `EKS_HOLD_UNTIL`은 09:30 이후에만 효과가 있어 쓸 수 없었다.
 - **조치.** 시험 동안 Environment `dev`의 `AWS_APPLY_ROLE_ARN`을 잠시 지워 워크플로가 AWS에 접근하지 못하게 했다. 같은 시기에 bootstrap의 GitHub OIDC 신뢰 조건을 GitHub의 `sub_claim_prefix`(immutable subject)에 맞췄다(커밋 `efe4bdb`).
-- **남은 일.** 시험이 끝나면 `make eks-down`, 남은 리소스 0 확인, `AWS_APPLY_ROLE_ARN` 복구가 필요하다. 이 문서를 쓰는 시점(01:10 KST)에 `make eks-up`이 진행 중이었다.
+- **결과.** 그 클러스터는 지워졌고 `AWS_APPLY_ROLE_ARN`은 02:19 KST에 복구됐다(11-17 09:40 KST에 EKS 클러스터, NAT, 로드밸런서가 없음을 조회로 확인). 이후 세션은 역할을 지우지 않고, 저장소 변수 `EKS_HOLD_UNTIL`을 그날 13:00으로 넣어 정리 워크플로를 미뤘다가 세션이 끝나면 지운다.
 - **근거.** infra_template 세션 기록, `docs/aiops-eks-cost.md`.
 
 ## 25. 여러 세션이 같은 저장소와 클러스터를 동시에 씀
@@ -268,5 +270,22 @@
   ```
 - **원인.** `cluster/main.tf`가 애드온 설정으로 넘기는 `controller.k8sTagClusterId`를 이 애드온 버전의 설정 스키마가 허용하지 않는다(오류 메시지로 확인). 가짜 AWS(floci)로 검증할 때는 애드온 설정 스키마를 검사하지 않아 드러나지 않은 것으로 본다(추정).
 - **같이 본 것.** 노드 그룹 생성이 32분 51초 걸렸다. 실패 직후 노드 2대는 `Ready`였고 나이는 1분 남짓이었다. 지연 원인은 확인하지 않았다.
-- **상태.** 클러스터와 노드는 떠 있는 채로 과금 중이었다. 해당 키를 빼고 다시 apply하거나 `make eks-down`으로 지우는 것이 다음 일이다.
+- **결과.** 키를 뺀 수정이 infra_template #28로 `main`에 들어갔다. 11-17 10:14 KST 재시도에서 `make eks-up`이 804초에 끝났고 노드 그룹은 1분 19초, 1분 48초 만에 만들어졌다. 첫 시도의 33분은 재현되지 않았다. `make eks-down`은 811초, 남은 리소스 0개였다([results/phase4_eks.md](../../results/phase4_eks.md)).
 - **근거.** 이 세션에서 읽은 `make eks-up` 로그, `kubectl get nodes`, `kubectl get ns`(argocd 없음).
+
+## 27. EKS에서 버그 이미지 배포 직후 port-forward가 끊김
+
+- **환경.** AWS. EKS 클러스터, `run_cluster`(`CLUSTER=eks`), 2026-11-17 10:40 KST.
+- **증상.** S01의 버그 이미지를 배포한 직후 장애 요청이 `httpx.RemoteProtocolError: Server disconnected without sending a response`로 실패하고 `run_cluster`가 멈췄다. 장애는 접수되지 않았고 LLM 비용도 없었다(DB의 장애 2건 중 이 실행 것은 없음).
+- **원인.** EKS에는 인그레스가 없어 shopapi를 `kubectl port-forward svc/shopapi`로 부른다. port-forward는 시작할 때 고른 Pod 하나에 붙는다. 버그 이미지로 Pod가 바뀌자 그 연결이 끊겼다. 로컬 K3s는 인그레스를 거쳐 새 Pod로 이어지므로 502만 났고, `send_requests`는 502, 503, 504만 다시 보냈다.
+- **조치.** `send_requests`가 연결 오류(`httpx.TransportError`)도 다시 보내게 했다(#58). 재실행에서 `RemoteProtocolError` 한 번 뒤 `500`을 받아 S01이 끝까지 돌았다. port-forward는 끊기면 1초 뒤 다시 여는 루프로 띄운다.
+- **근거.** `results/verify/eks-20261117-*/run_cluster.log`(git 제외), `tests/test_run_cluster_eks.py`.
+
+## 28. 쌓은 PR이 아래 PR 병합 때 자동으로 닫힘
+
+- **환경.** 전체. GitHub, 2026-11-17 11:17 KST.
+- **증상.** #59(4-4)는 #58의 브랜치를 base로 쌓았다. #58을 `--delete-branch`로 병합하자 #59가 병합되지 않은 채 닫혔고, base를 `main`으로 바꾸는 것도 거부됐다(`Cannot change the base branch of a closed pull request`).
+- **원인.** base 브랜치가 지워지면 GitHub은 그 브랜치를 base로 쓰는 열린 PR을 닫는다. 아래 PR을 병합하기 전에 위 PR의 base를 `main`으로 바꿔 두지 않았다.
+- **조치.** 브랜치에 `main`을 병합하고(충돌 없음, 테스트 135개 통과) 같은 내용을 #61로 다시 올려 병합했다. 쌓은 PR을 병합할 때는 위 PR의 base를 먼저 `main`으로 바꾸거나, 아래 PR의 브랜치를 지우지 않는다.
+- **근거.** PR #58, #59, #61.
+
