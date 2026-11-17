@@ -29,6 +29,9 @@
 | F12 | 클러스터 감지 경로 시나리오 실행과 시간 측정(S14~S16) | 3단계, 3-7 | 9-6 | [완료](F12-cluster-scenarios.md) |
 | F13 | 반복 알림 합치기, 설정·인프라 알림 분류, 워커 종료 중 재개, 3단계 결과 분석 | 3단계, 3-8 | 9-4, 9-9 | [완료](F13-phase3-analysis.md) |
 | F14 | 고객사 분리(tenant-a, tenant-b), 고객사별 회신 채널과 런북 검색 범위 | 3단계, 3-9 | 9-7 | [완료](F14-tenants.md) |
+| F15 | EKS GitOps 배포(ArgoCD app-of-apps)와 기존 경로 재현 | 4단계, 4-1~4-2 | 10장 P2, P3 | [완료](F15-eks-gitops.md) |
+| F16 | 분석 컨텍스트(배포 이력, Pod 상태와 K8s 이벤트) | 4단계, 4-3 | 10장 P4 | [완료](F16-analysis-context.md) |
+| F17 | EKS 승인 후 ArgoCD 롤백 | 4단계, 4-4 | 10장 P5 | [완료](F17-argocd-rollback.md) |
 
 ## 양식
 
