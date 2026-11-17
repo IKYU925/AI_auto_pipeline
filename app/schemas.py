@@ -20,6 +20,7 @@ class IncidentIn(BaseModel):
     alertname: str | None = None          # Alertmanager로 들어온 장애만
     alert_fingerprint: str | None = None  # 해소(resolved) 알림을 같은 장애에 잇는 키
     deploy: dict | None = Field(None, description="알림 시점의 배포 상태(app/deploys.py). 롤백 제안의 근거")
+    events: str | None = Field(None, description="Pod 알림 시점의 컨테이너 상태와 K8s 이벤트(app/pod_events.py)")
 
 
 class IncidentAccepted(BaseModel):

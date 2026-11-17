@@ -65,10 +65,11 @@ class Alert:
     def target(self) -> str:
         return next((self.labels[k] for k in self.kind.target_labels if self.labels.get(k)), "unknown")
 
-    def to_incident(self, channel: str, stacktrace: str | None, logs: str | None = None, deploy: dict | None = None) -> IncidentIn:
+    def to_incident(self, channel: str, stacktrace: str | None, logs: str | None = None, deploy: dict | None = None,
+                    events: str | None = None) -> IncidentIn:
         summary = self.annotations.get("summary") or self.annotations.get("description") or self.name
         return IncidentIn(
             source="alertmanager", channel=channel, service=self.target, severity=self.labels.get("severity", "unknown"),
             message=f"[{self.name}] {summary}", stacktrace=stacktrace, logs=logs, tenant=self.tenant, occurred_at=self.starts_at,
-            alertname=self.name, alert_fingerprint=self.fingerprint, deploy=deploy,
+            alertname=self.name, alert_fingerprint=self.fingerprint, deploy=deploy, events=events,
         )
