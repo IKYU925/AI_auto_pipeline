@@ -6,6 +6,7 @@ import httpx
 
 SA_DIR = Path("/var/run/secrets/kubernetes.io/serviceaccount")
 AIOPS = "aiops"
+ARGOCD = "argocd"
 
 
 def in_cluster() -> bool:
@@ -53,3 +54,11 @@ class Kube:
         self.http.patch(f"/apis/apps/v1/namespaces/{namespace}/deployments/{name}",
                         json=[{"op": "replace", "path": "/spec/template", "value": template}],
                         headers={"Content-Type": "application/json-patch+json"}).raise_for_status()
+
+    def application(self, name: str) -> dict:
+        return self.get(f"/apis/argoproj.io/v1alpha1/namespaces/{ARGOCD}/applications/{name}")
+
+    def set_app_images(self, name: str, images: list[str]) -> None:
+        self.http.patch(f"/apis/argoproj.io/v1alpha1/namespaces/{ARGOCD}/applications/{name}",
+                        json={"spec": {"source": {"kustomize": {"images": images}}}},
+                        headers={"Content-Type": "application/merge-patch+json"}).raise_for_status()

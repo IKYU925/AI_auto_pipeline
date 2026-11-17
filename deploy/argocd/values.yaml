@@ -7,7 +7,7 @@ lokiBucket: ""
 # scripts/build_push.sh로 ECR에 먼저 올린 태그
 imageTag: base-9b15467
 
-# sync wave 순서: 비밀 연동 → 클러스터 설정 → 관측 → 자동화와 고객사 shopapi
+# sync wave 순서: 비밀 연동 → 클러스터 설정 → 관측 → 자동화 → 고객사 shopapi(고객사마다 롤백하도록 앱을 나눈다, 4-4)
 apps:
   - name: external-secrets
     wave: -2
@@ -33,4 +33,19 @@ apps:
     wave: 1
     namespace: aiops
     path: deploy/k8s/overlays/eks
+    image: aiops
+  - name: shopapi-shop
+    wave: 2
+    namespace: shop
+    path: deploy/k8s/overlays/eks/shopapi-shop
+    image: aiops
+  - name: shopapi-tenant-a
+    wave: 2
+    namespace: tenant-a
+    path: deploy/k8s/overlays/eks/shopapi-tenant-a
+    image: aiops
+  - name: shopapi-tenant-b
+    wave: 2
+    namespace: tenant-b
+    path: deploy/k8s/overlays/eks/shopapi-tenant-b
     image: aiops
