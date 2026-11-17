@@ -465,9 +465,9 @@ LLM 성능은 1, 2단계에서 측정했으므로 여기서는 감지와 연결 
 | --- | --- | --- | --- |
 | P0 | 로컬 K3s에서 전체 스택의 실제 메모리, CPU 사용량 측정(노드 크기 근거) | infra_local_set | 완료. [results/phase4_p0_resources.md](../results/phase4_p0_resources.md) |
 | P1a | EC2 경로(aiops-lab, SQS 입구) 정리 | 두 저장소 | 이 저장소는 결정 0014로 끝남 |
-| P1b | `envs/aiops-eks` Terraform, `eks-up`, `eks-down`, 남은 리소스 검사 | infra_template | - |
-| P2 | GitOps 골격 | 이 저장소 | 4-1 |
-| P3 | S01, S14 재현 | 이 저장소 | 4-2 |
+| P1b | `envs/aiops-eks` Terraform, `eks-up`, `eks-down`, 남은 리소스 검사 | infra_template | 완료(11-17 실계정 up 804초, down 811초, 남은 리소스 0). [results/phase4_eks.md](../results/phase4_eks.md) |
+| P2 | GitOps 골격 | 이 저장소 | 4-1 완료. 앱 7개 Synced/Healthy. [results/phase4_eks.md](../results/phase4_eks.md) |
+| P3 | S01, S14 재현 | 이 저장소 | 4-2 완료. S14 186.9초, S01 110.7초, 둘 다 정답. [results/phase4_eks.md](../results/phase4_eks.md) |
 | P4 | 배포 이력, K8s 이벤트 컨텍스트 | 이 저장소 | 4-3 |
 | P5 | 승인 후 롤백과 rollout restart | 이 저장소 | 4-4 |
 | P6 | 고객사 분리와 전체 실험, 정리 | 두 저장소 | 4-5 |
