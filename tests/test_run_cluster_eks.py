@@ -27,6 +27,8 @@ class FakeArgoCD:
                 self.replace_syncs.append((args[4], {(r["namespace"], r["name"]) for r in body["operation"]["sync"]["resources"]}))
                 app["status"]["operationState"] = {"startedAt": f"t{len(self.replace_syncs)}", "phase": "Succeeded"}
             return ""
+        if args[-2:] == ("-o", "jsonpath={.spec.template.spec.containers[0].image}"):
+            return "ecr/aiops:base-1"
         if "set" in args:
             self.set_images.append((args[1], args[4], args[5]))
             return ""
@@ -80,3 +82,17 @@ def test_send_requests_retries_when_port_forward_drops(monkeypatch):
     with httpx.Client(transport=httpx.MockTransport(handler), base_url="http://shop") as shop:
         rc.send_requests([{"method": "POST", "path": "/orders/summary", "json": {"items": []}}], shop)
     assert len(attempts) == 2, "끊긴 요청을 다시 보내 앱의 500을 받는다"
+
+
+def test_eks_missing_image_tag_lands_in_argocd_history_without_waiting_for_healthy(monkeypatch):
+    argo = FakeArgoCD()
+    shop = argo.apps[rc.SHOPAPI_APPS["shop"]]
+    shop["status"]["health"]["status"] = "Degraded"
+    monkeypatch.setattr(rc, "EKS", True)
+    monkeypatch.setattr(rc, "kubectl", argo)
+    monkeypatch.setattr(rc.time, "sleep", lambda s: None)
+
+    rc.inject_cluster_fault(rc.load_scenario("S21"))
+    assert argo.images(rc.SHOPAPI_APPS["shop"]) == ["aiops=ecr/aiops:s21-missing"]
+    assert len(shop["status"]["history"]) == 2, "분석이 직전 배포로 볼 수 있게 ArgoCD 이력에 남는다"
+    assert argo.set_images == []
