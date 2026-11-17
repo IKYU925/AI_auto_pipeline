@@ -128,7 +128,7 @@ flowchart LR
 
 ## 4단계 결과
 
-3단계의 자동화와 대상 서비스, 관측 도구를 같은 매니페스트로 EKS 클러스터 하나(Graviton 노드 2대)에 올리고 ArgoCD로 배포했다. 클러스터는 실험할 때만 만들고 지운다(2026-11-17 두 세션, 매번 남은 리소스 0). 상세는 [results/phase4_eks.md](results/phase4_eks.md), 계획은 [docs/plan.md](docs/plan.md) 10장이다. 모든 값은 1회 측정이다.
+3단계의 자동화와 대상 서비스, 관측 도구를 같은 매니페스트로 EKS 클러스터 하나(Graviton 노드 2대)에 올리고 ArgoCD로 배포했다. 클러스터는 실험할 때만 만들고 지운다(2026-11-17 두 세션, 매번 남은 리소스 0). 상세는 [results/phase4_eks.md](results/phase4_eks.md), 회고 자료는 [docs/retro/phase4.md](docs/retro/phase4.md), 계획은 [docs/plan.md](docs/plan.md) 10장이다. 모든 값은 1회 측정이다.
 
 | 지표 | 로컬 K3s | AWS EKS |
 | --- | --- | --- |
