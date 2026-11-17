@@ -39,3 +39,20 @@ def test_eks_deploys_bug_with_set_image_and_restores_through_argocd(monkeypatch)
     sync = json.loads(patch[-1])["operation"]["sync"]
     assert sync["syncOptions"] == ["Replace=true"]
     assert {(r["namespace"], r["name"]) for r in sync["resources"]} == set(rc.ROLLOUTS)
+
+
+def test_send_requests_retries_when_port_forward_drops(monkeypatch):
+    import httpx
+
+    attempts = []
+
+    def handler(request):
+        attempts.append(request)
+        if len(attempts) == 1:
+            raise httpx.RemoteProtocolError("Server disconnected without sending a response.")
+        return httpx.Response(500)
+
+    monkeypatch.setattr(rc.time, "sleep", lambda s: None)
+    with httpx.Client(transport=httpx.MockTransport(handler), base_url="http://shop") as shop:
+        rc.send_requests([{"method": "POST", "path": "/orders/summary", "json": {"items": []}}], shop)
+    assert len(attempts) == 2, "끊긴 요청을 다시 보내 앱의 500을 받는다"
