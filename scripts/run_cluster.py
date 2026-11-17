@@ -51,6 +51,9 @@ from scripts.run_experiment import (
 INFRA = Path(os.environ.get("INFRA_DIR", ROOT.parent / "infra_local_set"))
 os.environ.setdefault("KUBECONFIG", str(INFRA / "kubeconfig"))
 OVERLAY = ROOT / "deploy/k8s/overlays/local"
+# EKS(4단계)는 ArgoCD가 배포한다. 버그 이미지는 ECR_REPOSITORY_URL로 올려 set image로 넣고, 복원은 ArgoCD에 맡긴다
+EKS = os.environ.get("CLUSTER") == "eks"
+ARGO_APP = "aiops"
 CLUSTER_HOST = os.environ.get("CLUSTER_HOST", "192.168.56.10")
 # namespace별 shopapi 주소. 기본은 로컬 K3s 인그레스. 인그레스가 없는 EKS에서는 port-forward 주소를 넣는다
 # 예: SHOP_URLS='{"shop": "http://127.0.0.1:18001", "tenant-a": "http://127.0.0.1:18002", "tenant-b": "http://127.0.0.1:18003"}'
@@ -107,18 +110,40 @@ def now() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def resync_from_git(timeout_sec: float = 300) -> None:
+    """kubectl apply로 덮으면 ArgoCD 추적 표시가 지워져 eks-down의 연쇄 삭제에서 빠진다. ArgoCD가 Git 기준으로 다시 만들게 한다."""
+    app = ("-n", "argocd", "get", "application", ARGO_APP, "-o")
+    before = kubectl(*app, "jsonpath={.status.operationState.startedAt}")
+    resources = [{"group": "apps", "kind": "Deployment", "namespace": ns, "name": d} for ns, d in ROLLOUTS]
+    op = {"operation": {"initiatedBy": {"username": "run_cluster"},
+                        "sync": {"syncOptions": ["Replace=true"], "resources": resources}}}
+    kubectl("-n", "argocd", "patch", "application", ARGO_APP, "--type", "merge", "-p", json.dumps(op))
+    deadline = time.monotonic() + timeout_sec
+    while time.monotonic() < deadline:
+        state = json.loads(kubectl(*app, "json"))["status"].get("operationState", {})
+        if state.get("startedAt") != before and state.get("phase") in ("Succeeded", "Failed", "Error"):
+            if state["phase"] != "Succeeded":
+                raise RuntimeError(f"ArgoCD 복원 실패: {state.get('message')}")
+            return
+        time.sleep(3)
+    raise RuntimeError("ArgoCD 복원이 끝나지 않았다")
+
+
 def restore() -> None:
     """kubectl apply는 set env, set resources로 더한 필드를 지우지 않는다. shopapi Deployment는 매니페스트로 통째로 바꾼다."""
-    sh("git", "checkout", "--", str(OVERLAY / "kustomization.yaml"), cwd=ROOT)
-    docs = yaml.safe_load_all(kubectl("kustomize", str(OVERLAY)))
-    for shopapi in (d for d in docs if d and d["kind"] == "Deployment" and d["metadata"]["name"] == "shopapi"):
-        kubectl("replace", "-f", "-", stdin=yaml.safe_dump(shopapi))
-    try:
-        kubectl("apply", "-k", str(OVERLAY))
-    except RuntimeError as e:
-        print(f"  apply 재시도: {e}", file=sys.stderr)
-        time.sleep(10)
-        kubectl("apply", "-k", str(OVERLAY))
+    if EKS:
+        resync_from_git()
+    else:
+        sh("git", "checkout", "--", str(OVERLAY / "kustomization.yaml"), cwd=ROOT)
+        docs = yaml.safe_load_all(kubectl("kustomize", str(OVERLAY)))
+        for shopapi in (d for d in docs if d and d["kind"] == "Deployment" and d["metadata"]["name"] == "shopapi"):
+            kubectl("replace", "-f", "-", stdin=yaml.safe_dump(shopapi))
+        try:
+            kubectl("apply", "-k", str(OVERLAY))
+        except RuntimeError as e:
+            print(f"  apply 재시도: {e}", file=sys.stderr)
+            time.sleep(10)
+            kubectl("apply", "-k", str(OVERLAY))
     for ns, deploy in ROLLOUTS:
         kubectl("-n", ns, "rollout", "status", f"deploy/{deploy}", "--timeout=300s")
 
@@ -210,7 +235,11 @@ def deploy_bug(scenario_id: str) -> None:
     finally:
         inject(scenario_id, SHOPAPI, revert=True)
     print(f"  버그 이미지 {image}", file=sys.stderr)
-    kubectl("apply", "-k", str(OVERLAY))
+    if EKS:
+        for ns, deploy in ROLLOUTS:
+            kubectl("-n", ns, "set", "image", f"deploy/{deploy}", f"*={image}")
+    else:
+        kubectl("apply", "-k", str(OVERLAY))
     for ns, deploy in ROLLOUTS:
         kubectl("-n", ns, "rollout", "status", f"deploy/{deploy}", "--timeout=300s")
 
