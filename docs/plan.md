@@ -470,7 +470,7 @@ LLM 성능은 1, 2단계에서 측정했으므로 여기서는 감지와 연결 
 | P3 | S01, S14 재현 | 이 저장소 | 4-2 완료. S14 186.9초, S01 110.7초, 둘 다 정답. [results/phase4_eks.md](../results/phase4_eks.md) |
 | P4 | 배포 이력, K8s 이벤트 컨텍스트 | 이 저장소 | 4-3 완료. EKS S20 보고서가 ArgoCD 이력의 직전 배포를 원인 후보로 적음. EKS S21 분류가 Pod 이벤트의 이미지 태그와 NotFound를 근거로 씀(#65). [results/phase4_eks.md](../results/phase4_eks.md) |
 | P5 | 승인 후 롤백과 rollout restart | 이 저장소 | 4-4 완료. EKS S20 승인부터 롤백 끝까지 6.4초, 알림 해소까지 105.2초. rollout restart는 풀리는 시나리오가 생길 때 |
-| P6 | 고객사 분리와 전체 실험, 정리 | 두 저장소 | 4-5 완료. EKS 고객사 분리(S01 두 고객사), README 비교 표, 회고 자료([docs/retro/phase4.md](retro/phase4.md)), 세션마다 남은 리소스 0. 실험 기간 AWS 비용은 Cost Explorer 반영 뒤 기록, base 층 삭제는 프로젝트 끝 |
+| P6 | 고객사 분리와 전체 실험, 정리 | 두 저장소 | 4-5 완료. EKS 고객사 분리(S01 두 고객사), README 비교 표, 회고 자료([docs/retro/phase4.md](retro/phase4.md)), 세션마다 남은 리소스 0. 실험 기간 AWS 사용액 $2.07(크레딧으로 청구 0, [results/phase4_eks.md](../results/phase4_eks.md)). base 층 삭제는 프로젝트 끝 |
 
 P2(4-1)의 구성은 다음과 같다.
 
