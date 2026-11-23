@@ -97,7 +97,7 @@ def process_message(c: Container, msg_id: str, payload: dict) -> dict:
     if c.store.report_ts(incident_id) is None:
         text, blocks = build_card(final)
         ts = c.notifier.post(incident["channel"], text, incident.get("thread_ts"), blocks=blocks)
-        c.store.set_report_ts(incident_id, ts)
+        c.store.set_report_ts(incident_id, ts, incident["channel"], blocks)
         if patch := patch_message(final):
             c.notifier.post(incident["channel"], patch, incident.get("thread_ts"))
     c.queue.ack(msg_id)

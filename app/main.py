@@ -11,6 +11,7 @@ from app.container import Container
 from app.alerts import Alert
 from app.core.fingerprint import fingerprint
 from app.deploys import read_state
+from app.notify.card import ALERT_RESOLVED_NOTE, retire_button
 from app.pod_events import read_pod_events
 from app.rag.ingest import Document
 from app.schemas import IncidentAccepted, IncidentIn, KnowledgeIngestIn
@@ -77,7 +78,14 @@ def create_app(container: Container | None = None) -> FastAPI:
         accepted, already_open, resolved = [], [], 0
         for alert in (Alert.parse(raw) for raw in payload.get("alerts", [])):
             if alert.status == "resolved":
-                resolved += c.store.resolve_alert(alert.fingerprint, alert.ends_at or datetime.now(timezone.utc))
+                rows = c.store.resolve_alert(alert.fingerprint, alert.ends_at or datetime.now(timezone.utc))
+                resolved += len(rows)
+                for r in rows:
+                    card = r["report_card"] or {}
+                    # 승인한 카드는 승인 처리가 이미 버튼을 지우고 진행을 적었다. 덮어쓰지 않는다
+                    if r["report_ts"] and not r["acted"] and any(b.get("block_id") == "approve" for b in card.get("blocks", [])):
+                        c.notifier.update(card["channel"], r["report_ts"], ALERT_RESOLVED_NOTE,
+                                          retire_button(card["blocks"], ALERT_RESOLVED_NOTE))
                 continue
             if open_id := c.store.open_alert_incident(alert.fingerprint):
                 already_open.append(open_id)
