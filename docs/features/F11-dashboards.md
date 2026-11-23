@@ -27,7 +27,7 @@
   - `aiops_queue_in_progress`: 워커가 가져가 처리 중인(ack 전) 수.
   - `aiops_queue_dead_letters`: 처리에 실패해 DLQ로 간 누적 수.
 - Grafana PostgreSQL 데이터 소스(uid `aiops-postgres`)는 읽기 전용 사용자 `grafana_ro`로 접속한다. `incidents`, `llm_calls`, `fixes`에 SELECT만 준다.
-- 데이터 소스는 `scripts/k8s_grafana.sh`가 `monitoring` namespace에 `grafana_datasource` 라벨을 단 Secret으로 만든다. 비밀번호는 Git에 두지 않는다. 다시 실행해도 같은 상태가 된다.
+- 데이터 소스는 api Pod의 `grafana-db` init 컨테이너(`app/grafana_db.py`)가 `monitoring` namespace에 `grafana_datasource` 라벨을 단 Secret으로 만든다. 비밀번호는 클러스터 안에서 만들고 Git에 두지 않는다. Pod가 뜰 때마다 돌아도 같은 상태가 된다. 실패해도 api는 뜨고, 이유는 이 컨테이너 로그에 남는다.
 - 대시보드 JSON은 `deploy/k8s/base/dashboards/`에 두고 `grafana_dashboard` 라벨을 단 ConfigMap으로 배포한다.
 
 ## 완료 기준
@@ -52,3 +52,4 @@
 ## 변경 이력
 
 - 2026-11-15 데이터 소스를 infra_local_set values 대신 이 저장소의 스크립트로 만들기로 했다(설계 메모).
+- 2026-11-23 스크립트 대신 api Pod의 `grafana-db` init 컨테이너가 데이터 소스를 만든다.
