@@ -5,6 +5,10 @@ set -euo pipefail
 . "$(dirname "$0")/_env.sh"
 MINUTES="${VERIFY_MINUTES:-60}"
 
+for t in eks-up eks-down; do
+  grep -q "^$t:" "$INFRA_DIR/Makefile" 2>/dev/null || { echo "$INFRA_DIR/Makefile에 $t 타깃이 없다. infra_template 경로(INFRA_DIR)나 이름이 바뀌었다(SKILL.md의 infra_template 의존)" >&2; exit 1; }
+done
+grep -q 'keep-up' "$EKS_SH" 2>/dev/null || { echo "$EKS_SH에 keep-up이 없다(SKILL.md의 infra_template 의존)" >&2; exit 1; }
 aws sts get-caller-identity >/dev/null || { echo "AWS 자격 증명이 없다(AWS_PROFILE=$AWS_PROFILE). aws login 뒤 다시" >&2; exit 1; }
 for k in ANTHROPIC_API_KEY SLACK_BOT_TOKEN SLACK_APP_TOKEN; do
   grep -qE "^$k=.+" "$ROOT/.env" 2>/dev/null || { echo ".env에 $k 값이 없다" >&2; exit 1; }

@@ -85,6 +85,22 @@ RUN_ID=$RUN_ID .claude/skills/verify-aiops-eks/bin/cleanup.sh
 
 `run_cluster`가 돌고 있으면 멈춘다. 이 실행이 띄운 port-forward만 끈다(프로세스 이름으로 죽이지 않는다). 이 실행이 만든 클러스터면 `make eks-down`(약 13분)으로 루트 앱 삭제, `terraform destroy`, 남은 리소스 검사까지 하고 `down took`, `leftovers: 0`을 출력한다. `VERIFY_KEEP_CLUSTER=1`이면 클러스터를 남기고 대신 Application을 Git 기준으로 되돌린다. `.state/`(kubeconfig, PID)만 지우고 증거는 남긴다. 태그 검색(`resourcegroupstaggingapi`)에는 지운 NAT, 볼륨, 서브넷이 한동안 남아 보인다. 남은 리소스 판단은 `leftovers`로 한다.
 
+## infra_template 의존
+
+클러스터 수명은 형제 저장소 infra_template이 맡고, 이 스킬은 아래 이름을 그대로 부른다. infra_template에서 이 이름을 바꾸면 이 스킬의 `bin/`도 같이 고친다. infra_template의 `verify-infra`는 가짜 AWS만 쓰므로 이 의존이 깨진 것을 잡지 못한다.
+
+| 의존 | 쓰는 곳 | 바뀌면 생기는 일 |
+| --- | --- | --- |
+| 경로 `../infra_template`(`INFRA_DIR`로 바꿀 수 있음) | `_env.sh` | 모든 스크립트가 Makefile과 `eks.sh`를 찾지 못한다 |
+| `make eks-up` | `launch.sh` | 클러스터를 만들지 못한다 |
+| `make eks-down` | `cleanup.sh` | 클러스터가 남아 과금이 계속된다 |
+| `terraform/envs/aiops-eks/eks.sh keep-up <요일> <HH:MM> <날짜> [hold]`(0이면 유지) | `_env.sh`의 `kept_for` | 보호 시간 판단이 틀려 launch가 거부되거나, 정리 워크플로가 실험 중에 클러스터를 지운다 |
+| `eks.sh` 출력 `down took`, `leftovers: N` | `cleanup.sh` | 남은 리소스 확인 줄이 보이지 않는다 |
+| 저장소 변수 `EKS_HOLD_UNTIL`(`IKYU925/infra_template`) | `_env.sh`, `launch.sh` | 보호 시간 연장을 읽지 못한다 |
+| 클러스터 `ai-incident`, ECR `aiops`, 루트 앱 `aiops-root` | `_env.sh`, `launch.sh`, `doctor.sh` | 상태, 이미지, selfHeal 확인이 실패한다 |
+
+`launch.sh`는 시작할 때 Makefile의 `eks-up`, `eks-down` 타깃과 `eks.sh`의 `keep-up`이 있는지 먼저 확인한다. 없으면 클러스터를 만들기 전에 멈춘다.
+
 ## Helpers
 
 모두 `bin/` 아래에 있고 실행 권한이 있다. `RUN_ID`로 같은 실행을 가리킨다.
