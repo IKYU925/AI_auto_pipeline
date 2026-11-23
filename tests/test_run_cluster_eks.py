@@ -21,7 +21,9 @@ class FakeArgoCD:
             app, body = self.apps[args[4]], json.loads(args[-1])
             if "spec" in body:
                 app["spec"]["source"]["kustomize"]["images"] = body["spec"]["source"]["kustomize"]["images"]
-                app["status"]["history"].append({"id": len(app["status"]["history"]) + 1})
+                history = app["status"]["history"]
+                history.append({"id": history[-1]["id"] + 1})
+                del history[:-10]  # ArgoCD는 이력을 최근 10개만 남긴다
             else:
                 assert body["operation"]["sync"]["syncOptions"] == ["Replace=true"]
                 self.replace_syncs.append((args[4], {(r["namespace"], r["name"]) for r in body["operation"]["sync"]["resources"]}))
@@ -96,3 +98,13 @@ def test_eks_missing_image_tag_lands_in_argocd_history_without_waiting_for_healt
     assert argo.images(rc.SHOPAPI_APPS["shop"]) == ["aiops=ecr/aiops:s21-missing"]
     assert len(shop["status"]["history"]) == 2, "분석이 직전 배포로 볼 수 있게 ArgoCD 이력에 남는다"
     assert argo.set_images == []
+
+
+def test_eks_deploy_is_detected_after_argocd_history_is_full(monkeypatch):
+    argo = FakeArgoCD()
+    argo.apps["shopapi-shop"]["status"]["history"] = [{"id": i} for i in range(5, 15)]
+    monkeypatch.setattr(rc, "kubectl", argo)
+    monkeypatch.setattr(rc.time, "sleep", lambda s: None)
+    rc.argo_deploy("shopapi-shop", "ecr/aiops:s08-x")
+    assert argo.apps["shopapi-shop"]["status"]["history"][-1] == {"id": 15}
+    assert len(argo.apps["shopapi-shop"]["status"]["history"]) == 10
