@@ -21,7 +21,8 @@ if [ "$(cluster_status)" = ACTIVE ] && [ -f "$KUBECONFIG" ]; then
 fi
 
 if [ -f "$ST/pf.pids" ]; then
-  while read -r pid; do pkill -P "$pid" 2>/dev/null || true; kill "$pid" 2>/dev/null || true; done < "$ST/pf.pids"
+  # 루프를 먼저 끝내야 kubectl을 다시 띄우지 않는다. 자식 목록은 루프가 살아 있을 때 읽는다
+  while read -r pid; do kids=$(pgrep -P "$pid" || true); kill "$pid" 2>/dev/null || true; [ -z "$kids" ] || kill $kids 2>/dev/null || true; done < "$ST/pf.pids"
   echo "port-forward 종료" >&2
 fi
 

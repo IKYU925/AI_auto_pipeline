@@ -59,6 +59,6 @@ ok "port-forward 확인 완료"
   || bad "launch 뒤 main이 바뀌었다. 루트 앱이 다시 sync해 넣은 장애가 풀린다(트러블슈팅 #30). 실험 중에는 병합하지 않는다"
 git -C "$ROOT" diff --quiet HEAD -- targets/shopapi app && ok "작업 트리에 주입된 버그 없음" || bad "targets/shopapi 또는 app에 커밋 안 된 변경"
 pgrep -f 'scripts.run_cluster' >/dev/null && bad "run_cluster가 이미 실행 중" || ok "다른 run_cluster 실행 없음"
-firing=$(curl -sf "localhost:19093/api/v2/alerts?active=true&silenced=false&inhibited=false" | python3 -c 'import json,sys; print(sum(any(r["name"]=="ai-automation" for r in a["receivers"]) for a in json.load(sys.stdin)))' 2>/dev/null)
+firing=$(curl -sf --max-time 5 "localhost:19093/api/v2/alerts?active=true&silenced=false&inhibited=false" | python3 -c 'import json,sys; print(sum(any(r["name"]=="ai-automation" for r in a["receivers"]) for a in json.load(sys.stdin)))' 2>/dev/null)
 info "자동화로 가는 firing 알림 ${firing:-?}개"
 finish

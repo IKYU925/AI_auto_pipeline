@@ -46,7 +46,13 @@ kubectl -n aiops exec deploy/api -c api -- python -m scripts.ingest_knowledge kn
 
 for spec in $PF_PORTS; do
   target=${spec%%:*}; ports=${spec#*:}
-  ( while true; do kubectl -n "${target%%/*}" port-forward "svc/${target#*/}" "${ports%%:*}:${ports#*:}" >/dev/null 2>&1; sleep 1; done ) &
+  # kubectl port-forward는 대상 Pod가 바뀌어도 끝나지 않고 죽은 Pod를 붙잡는다. 응답이 없으면 직접 끊고 다시 붙는다
+  ( while true; do
+      kubectl -n "${target%%/*}" port-forward "svc/${target#*/}" "${ports%%:*}:${ports#*:}" >/dev/null 2>&1 & pf=$!
+      sleep 3
+      while kill -0 $pf 2>/dev/null && curl -s -o /dev/null --max-time 3 "localhost:${ports%%:*}"; do sleep 5; done
+      kill $pf 2>/dev/null; wait $pf 2>/dev/null; sleep 1
+    done ) &
   echo $! >> "$ST/pf.pids"
 done
 for p in 19093 19090 18001 18002 18003; do
