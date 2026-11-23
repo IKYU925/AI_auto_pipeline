@@ -128,12 +128,17 @@ def wait_argo(app: str, done, what: str, timeout_sec: float = 300) -> None:
     raise RuntimeError(f"ArgoCD {app}: {what}이 끝나지 않았다")
 
 
+def last_history_id(app: dict) -> int:
+    """ArgoCD는 배포 이력을 최근 10개만 남긴다. 이력이 찼는지와 상관없이 새 배포를 알아보려고 개수가 아니라 마지막 id를 본다."""
+    return max((h["id"] for h in app["status"].get("history", [])), default=0)
+
+
 def argo_deploy(app: str, image: str, healthy: bool = True) -> None:
     """Application의 이미지를 바꾸면 자동 sync가 배포하고 배포 이력이 하나 쌓인다. 뜨지 않는 이미지(S21)는 healthy=False"""
-    before = len(argo_app(app)["status"].get("history", []))
+    before = last_history_id(argo_app(app))
     kubectl("-n", "argocd", "patch", "application", app, "--type", "merge",
             "-p", json.dumps({"spec": {"source": {"kustomize": {"images": [f"aiops={image}"]}}}}))
-    wait_argo(app, lambda a: len(a["status"].get("history", [])) > before
+    wait_argo(app, lambda a: last_history_id(a) > before
               and a["status"]["sync"]["status"] == "Synced" and (not healthy or a["status"]["health"]["status"] == "Healthy"),
               f"{image} 배포")
 
