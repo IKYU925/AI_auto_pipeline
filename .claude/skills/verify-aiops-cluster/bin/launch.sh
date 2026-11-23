@@ -31,7 +31,6 @@ fi
 "$ROOT/scripts/k8s_secrets.sh" >&2
 kubectl apply -k "$(dirname "$OVERLAY")" >/dev/null
 for r in $ROLLOUTS; do kubectl -n "${r%%/*}" rollout status "${r#*/}" --timeout=300s >&2; done
-"$ROOT/scripts/k8s_grafana.sh" >&2
 # 바뀐 청크만 임베딩하므로 다시 돌려도 싸다. api 컨테이너 안에서 돌면 잠시 메모리가 600Mi 넘게 오른다
 kubectl -n aiops exec deploy/api -c api -- python -m scripts.ingest_knowledge knowledge > "$EV/ingest.json"
 

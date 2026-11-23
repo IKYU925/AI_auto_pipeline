@@ -32,7 +32,7 @@ export RUN_ID=<마지막 줄의 값>
 1. 클러스터 접속, `.env` 값, 작업 트리에 주입된 버그가 없는지 확인한다.
 2. 잠금을 잡는다. 이미 있으면 멈춘다.
 3. 커밋된 overlay 태그(`deploy/k8s/overlays/local/kustomization.yaml`의 `newTag`) 이미지가 레지스트리에 없으면 HEAD로 빌드해 그 태그로 올린다. 클러스터를 새로 만들면 레지스트리가 비어 있어서 필요하다. 그 태그의 커밋 이후 코드가 바뀌었으면 빌드하지 않고 멈춘다(overlay 태그를 커밋해야 한다).
-4. `scripts/k8s_secrets.sh`, `kubectl apply -k deploy/k8s/overlays/local`, 모든 Deployment와 StatefulSet의 rollout 완료, `scripts/k8s_grafana.sh`, 지식 문서 수집(`scripts.ingest_knowledge`)을 한다. 빈 PostgreSQL이면 api Pod의 `migrate` init 컨테이너가 스키마를 만든다.
+4. `scripts/k8s_secrets.sh`, `kubectl apply -k deploy/k8s/overlays/local`, 모든 Deployment와 StatefulSet의 rollout 완료, 지식 문서 수집(`scripts.ingest_knowledge`)을 한다. 빈 PostgreSQL이면 api Pod의 `migrate` init 컨테이너가 스키마를 만들고, `grafana-db` init 컨테이너가 Grafana 데이터 소스를 만든다.
 5. doctor를 돌린다. 출력 끝의 `ready`와 `RUN_ID=...`가 준비 완료 신호다.
 
 이미 맞춰진 클러스터에서는 바뀌는 것이 없고 1~2분이면 끝난다. 새 클러스터에서는 이미지 빌드 때문에 5분 이상 걸린다.

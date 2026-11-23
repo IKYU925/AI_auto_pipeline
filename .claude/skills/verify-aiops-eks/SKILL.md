@@ -35,7 +35,7 @@ export RUN_ID=<마지막 줄의 값>
 2. `make -C ../infra_template eks-up`(약 12~14분). 로그는 증거 폴더의 `eks_up.log`.
 3. 실행 전용 kubeconfig를 만들고(`results/verify/eks-<RUN_ID>/.state/kubeconfig`), 지금 main 커밋을 적는다.
 4. ArgoCD 앱 10개가 Synced/Healthy가 될 때까지 기다린다(약 4~6분, 15분 넘으면 실패).
-5. `scripts/k8s_grafana.sh`, 지식 문서 수집, port-forward 5개(Alertmanager 19093, Prometheus 19090, shopapi 18001~18003)를 띄운다. port-forward는 끊기면 다시 붙는 루프이고 PID를 `.state/pf.pids`에 남긴다.
+5. 지식 문서 수집, port-forward 5개(Alertmanager 19093, Prometheus 19090, shopapi 18001~18003)를 띄운다. port-forward는 끊기면 다시 붙는 루프이고 PID를 `.state/pf.pids`에 남긴다.
 6. doctor를 돌린다. 출력 끝의 `ready`와 `RUN_ID=...`가 준비 완료 신호다.
 
 launch가 중간에 실패해도 클러스터는 남을 수 있다. 메시지의 `RUN_ID`로 바로 cleanup한다.

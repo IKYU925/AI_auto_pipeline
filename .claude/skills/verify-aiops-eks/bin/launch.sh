@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# EKS 클러스터를 만들고(infra_template make eks-up) ArgoCD가 앱을 모두 올릴 때까지 기다린 뒤, 그라파나, 지식 문서, port-forward를 준비한다.
+# EKS 클러스터를 만들고(infra_template make eks-up) ArgoCD가 앱을 모두 올릴 때까지 기다린 뒤, 지식 문서와 port-forward를 준비한다.
 # 마지막 줄이 RUN_ID=... 과금이 시작된다. 끝나면 반드시 cleanup.sh.
 set -euo pipefail
 . "$(dirname "$0")/_env.sh"
@@ -38,7 +38,6 @@ until [ "$(kubectl -n argocd get applications -o jsonpath='{range .items[*]}{.st
 done
 echo "argocd_healthy_sec=$(( $(date +%s) - start ))" >> "$EV/timings.txt"
 
-"$ROOT/scripts/k8s_grafana.sh" >&2
 kubectl -n aiops exec deploy/api -c api -- python -m scripts.ingest_knowledge knowledge > "$EV/ingest.json"
 
 for spec in $PF_PORTS; do

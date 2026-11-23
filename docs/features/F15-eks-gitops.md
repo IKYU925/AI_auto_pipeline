@@ -19,7 +19,7 @@
 
 1. infra_template에서 `make eks-up`을 실행한다. Terraform이 클러스터와 노드, ArgoCD, 루트 Application 하나를 만든다.
 2. 루트 앱이 이 저장소의 `deploy/argocd`(Helm 차트)를 읽어 앱 10개를 sync wave 순서로 만든다. 운영자는 기다리기만 한다.
-3. `scripts/k8s_grafana.sh`와 지식 문서 수집을 한 번 실행하고, port-forward로 실험한다.
+3. 지식 문서 수집을 한 번 실행하고, port-forward로 실험한다.
 4. 끝나면 `make eks-down`. 루트 앱을 지워 하위 리소스를 정리한 뒤 Terraform destroy, 남은 리소스 검사까지 한다.
 
 ## 요구사항
@@ -43,7 +43,7 @@
 - **Terraform은 ArgoCD와 루트 앱만 만든다.** 앱 목록을 Terraform에 두면 앱을 더할 때마다 인프라 저장소 PR이 필요하다. 이 저장소의 Helm 차트가 앱 목록을 갖고, Terraform은 ECR 주소와 Loki 버킷 같은 인프라 값만 넘긴다.
 - **shopapi를 고객사마다 Application으로 나눴다.** 처음에는 자동화 앱 하나에 shopapi 세 벌이 같이 있었다. 고객사 하나만 롤백하려면 앱이 나뉘어야 해서 4-4에서 나눴다(F17).
 - **base 층과 cluster 층을 나눴다.** ECR, S3, Secrets Manager는 base 층으로 계속 두고(월 약 0.63달러), 과금이 큰 클러스터만 세션마다 만들고 지운다. 코어타임 밖에서는 매시 정리 워크플로가 지운다.
-- **Grafana 데이터 소스는 GitOps 밖이다.** DB 사용자를 만드는 명령형 단계라 `scripts/k8s_grafana.sh`로 남겼다.
+- **Grafana 데이터 소스도 Git만으로 생긴다.** 처음에는 DB 사용자를 만드는 명령형 단계라 `scripts/k8s_grafana.sh`로 손으로 돌렸다. 지금은 api Pod의 `grafana-db` init 컨테이너(`app/grafana_db.py`)가 뜰 때마다 `grafana_ro`와 데이터 소스 Secret을 맞춘다. 비밀번호는 클러스터 안에서 만들어 `monitoring/aiops-postgres-datasource`에만 둔다. Secrets Manager 키를 더하지 않는다.
 
 ## 열린 질문
 
@@ -53,3 +53,4 @@
 ## 변경 이력
 
 - 2026-11-17 작성. 4-1, 4-2는 PR #58에서 끝났고, 이 문서는 구현 뒤에 정리했다.
+- 2026-11-23 Grafana 데이터 소스를 `scripts/k8s_grafana.sh`에서 api Pod의 `grafana-db` init 컨테이너로 옮겼다. 새 클러스터에서 손으로 할 단계가 하나 줄었다.

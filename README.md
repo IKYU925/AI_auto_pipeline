@@ -297,7 +297,6 @@ ECR_REPOSITORY_URL=<계정>.dkr.ecr.ap-northeast-2.amazonaws.com/aiops scripts/b
 
 (cd ../infra_template && make eks-up)        # 약 12~14분, 그 뒤 ArgoCD가 앱 10개를 4~6분에 올린다
 aws eks update-kubeconfig --region ap-northeast-2 --name ai-incident
-scripts/k8s_grafana.sh
 kubectl -n aiops exec deploy/api -c api -- python -m scripts.ingest_knowledge knowledge
 
 # Alertmanager 19093, Prometheus 19090, shopapi 18001~18003으로 port-forward를 띄운 뒤

@@ -290,7 +290,7 @@ infra_local_set 설정에서 이 레포가 맞춰야 할 점은 다음과 같다
 - Alloy는 Pod 라벨 `app.kubernetes.io/name`을 Loki 스트림 라벨 `service`로 옮긴다. 이 라벨이 없으면 로그에 `service`가 비고, 알림 규칙과 Loki 조회가 shopapi 로그를 찾지 못한다.
 - Loki 로그 알림 규칙은 `monitoring` namespace의 `loki-alert-rules` ConfigMap으로 읽는다.
 - Grafana 대시보드는 `grafana_dashboard` 라벨을 단 ConfigMap을 아무 namespace에 만들면 자동으로 추가된다.
-- Grafana 데이터 소스는 Prometheus와 Loki만 등록되어 있다. PostgreSQL 데이터 소스는 이 저장소의 `scripts/k8s_grafana.sh`가 `monitoring` namespace에 라벨 붙은 Secret으로 만든다([F11](features/F11-dashboards.md)).
+- Grafana 데이터 소스는 Prometheus와 Loki만 등록되어 있다. PostgreSQL 데이터 소스는 api Pod의 `grafana-db` init 컨테이너가 `monitoring` namespace에 라벨 붙은 Secret으로 만든다([F11](features/F11-dashboards.md)).
 
 수집 대상은 다음과 같다.
 
@@ -479,7 +479,7 @@ P2(4-1)의 구성은 다음과 같다.
 - 모든 앱은 자동 sync에 selfHeal을 끈다. 장애 주입이 Deployment 이미지를 바꾸는데 selfHeal이 켜져 있으면 ArgoCD가 바로 되돌린다. 앞 wave의 CRD가 늦게 생기는 경우는 재시도로 따라잡는다.
 - 비밀은 Secrets Manager `ai-incident/aiops` 하나에서 ExternalSecret으로 받는다. `DATABASE_URL`은 비밀번호로 클러스터 안에서 조합한다.
 - 인그레스 컨트롤러가 없으므로 EKS overlay에서 Ingress를 지운다. 접속은 port-forward다.
-- Grafana의 자동화 이력 데이터 소스(`scripts/k8s_grafana.sh`)는 DB 사용자를 만드는 명령형 단계라 아직 GitOps 밖이다. P3에서 EKS에 대고 실행한다.
+- Grafana의 자동화 이력 데이터 소스도 Git만으로 생긴다. api Pod의 `grafana-db` init 컨테이너가 뜰 때마다 읽기 전용 사용자 `grafana_ro`와 `monitoring` namespace의 데이터 소스 Secret을 맞춘다. 비밀번호는 클러스터 안에서 만든다.
 
 #### 10-5. 비용과 정리
 

@@ -25,4 +25,4 @@ Terraform이 ArgoCD와 루트 Application 하나만 만들면, 루트 앱이 이
 
 - ECR에 `imageTag`가 없으면 aiops와 shopapi가 ImagePullBackOff로 Healthy가 되지 않는다. launch가 미리 막는다.
 - 루트 앱 selfHeal이 켜져 있으면(infra_template #32 이전 Terraform) 장애 주입과 롤백이 1초 만에 되돌려진다.
-- Grafana 데이터 소스는 GitOps 밖이라 launch가 `scripts/k8s_grafana.sh`로 만든다.
+- Grafana 데이터 소스(uid `aiops-postgres`)는 api Pod의 `grafana-db` init 컨테이너가 만든다. launch가 따로 하지 않는다.

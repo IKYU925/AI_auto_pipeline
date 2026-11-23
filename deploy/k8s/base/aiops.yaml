@@ -44,6 +44,11 @@ spec:
           image: aiops
           command: ["python", "-m", "app.db"]
           envFrom: [{configMapRef: {name: aiops-config}}, {secretRef: {name: aiops-secrets}}]
+        # Grafana 자동화 이력 데이터 소스(grafana_ro, monitoring/aiops-postgres-datasource). 실패해도 api는 뜬다
+        - name: grafana-db
+          image: aiops
+          command: ["python", "-m", "app.grafana_db"]
+          envFrom: [{configMapRef: {name: aiops-config}}, {secretRef: {name: aiops-secrets}}]
       containers:
         - name: api
           image: aiops
@@ -169,6 +174,27 @@ metadata:
 roleRef: {apiGroup: rbac.authorization.k8s.io, kind: Role, name: ai-approvals}
 subjects:
   - {kind: ServiceAccount, name: ai-approvals, namespace: aiops}
+---
+# api의 grafana-db init 컨테이너가 Grafana 데이터 소스 Secret 하나만 읽고 쓴다(app/grafana_db.py)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: aiops-grafana-datasource
+  namespace: monitoring
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: ["aiops-postgres-datasource"]
+    verbs: ["get", "create", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: aiops-grafana-datasource
+  namespace: monitoring
+roleRef: {apiGroup: rbac.authorization.k8s.io, kind: Role, name: aiops-grafana-datasource}
+subjects:
+  - {kind: ServiceAccount, name: ai-api, namespace: aiops}
 ---
 apiVersion: apps/v1
 kind: Deployment
