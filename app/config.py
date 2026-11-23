@@ -70,6 +70,12 @@ class Settings(BaseSettings):
     slack_app_token: str = ""                    # Socket Mode(xapp-). 비우면 승인 버튼을 받지 않는다
     action_approvers: list[str] = []             # 승인할 수 있는 Slack 사용자 ID(JSON). 비우면 채널의 누구나
 
+    # --- 검증된 패치로 GitHub PR 열기(F18). GITHUB_REPO나 GITHUB_TOKEN이 비면 PR 버튼을 붙이지 않는다 ---
+    github_repo: str = ""                        # 대상 서비스 저장소(owner/name)
+    github_base_branch: str = "main"
+    github_path: str = ""                        # 저장소 안의 서비스 경로(예: targets/shopapi). 패치 경로 앞에 붙인다
+    github_token: str = ""                       # contents, pull requests 쓰기 권한. aiops-secrets의 GITHUB_TOKEN
+
     # --- Alertmanager 입구(3단계) ---
     loki_url: str = ""                           # 비우면 스택트레이스 조회를 하지 않는다
 

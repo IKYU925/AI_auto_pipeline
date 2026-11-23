@@ -32,6 +32,7 @@
 | F15 | EKS GitOps 배포(ArgoCD app-of-apps)와 기존 경로 재현 | 4단계, 4-1~4-2 | 10장 P2, P3 | [완료](F15-eks-gitops.md) |
 | F16 | 분석 컨텍스트(배포 이력, Pod 상태와 K8s 이벤트) | 4단계, 4-3 | 10장 P4 | [완료](F16-analysis-context.md) |
 | F17 | EKS 승인 후 ArgoCD 롤백 | 4단계, 4-4 | 10장 P5 | [완료](F17-argocd-rollback.md) |
+| F18 | 검증된 패치로 GitHub draft PR 열기(Slack 승인) | 4단계 이후 | - | [구현 중](F18-github-pr.md) |
 
 ## 양식
 

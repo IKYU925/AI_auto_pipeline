@@ -355,7 +355,7 @@ AI_auto_pipeline/
 
 ## 주의할 점
 
-- 수정안은 자동으로 머지하지 않는다. 검증된 패치를 `artifacts/<incident_id>.patch`로 저장하고 Slack에 올려 사람이 승인하도록 했다. PR 자동 생성은 이 지점에 붙이면 된다.
+- 수정안은 자동으로 머지하지 않는다. 검증된 패치를 `artifacts/<incident_id>.patch`로 저장하고 Slack에 올린다. `GITHUB_REPO`와 `GITHUB_TOKEN`을 설정하면 패치 메시지에 `PR 만들기` 버튼이 붙고, 사람이 누르면 대상 저장소에 draft PR이 열린다([F18](docs/features/F18-github-pr.md)). 머지는 사람이 한다.
 - 테스트 실행은 임시 디렉터리 복사본에서 하지만, 이것만으로는 LLM이 만든 코드를 격리했다고 볼 수 없다. 운영에서는 테스트를 네트워크가 차단된 별도 컨테이너(`docker run --network none`)나 Job에서 실행해야 한다.
 - Diff, 영향도 분석은 Python 저장소 기준이다. 다른 언어는 `ImportGraph`를 해당 언어의 의존성 분석 도구로 바꿔야 한다.
 - 승인 버튼은 Slack Socket Mode로 받는다(3-10). Socket Mode를 켜면 Slack 이벤트(Events API)가 HTTP 주소가 아니라 소켓으로 와서, 1단계의 Slack 알림 -> n8n 경로가 이벤트를 받지 못한다(1단계에서 확인한 Slack 동작). 3단계의 Alertmanager 경로는 Slack 이벤트를 쓰지 않아 영향이 없다. n8n 경로를 다시 쓰려면 그동안 Socket Mode를 끈다.

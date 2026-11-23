@@ -29,17 +29,23 @@ class ArgoRollback:
     window: timedelta
 
 
-ACTIONS: dict[str, Playbook | RolloutUndo | ArgoRollback] = {
+@dataclass(frozen=True)
+class PullRequest:
+    """검증을 통과한 패치로 대상 서비스 저장소에 draft PR을 연다(F18). 저장소는 설정(GITHUB_REPO)에서만 정한다. 머지는 사람이 한다."""
+
+
+ACTIONS: dict[str, Playbook | RolloutUndo | ArgoRollback | PullRequest] = {
     "cleanup-appdata": Playbook("cleanup-appdata.yml", {"k3s-w1": "192.168.56.11"}),
     "rollout-undo": RolloutUndo(frozenset({"shop", "tenant-a", "tenant-b"}), timedelta(minutes=30)),
     "argocd-rollback": ArgoRollback(frozenset({"shopapi-shop", "shopapi-tenant-a", "shopapi-tenant-b"}), timedelta(minutes=30)),
+    "github-pr": PullRequest(),
 }
 
 
 @dataclass(frozen=True)
 class Proposal:
     action: str
-    target: str                   # 노드 이름, namespace/deployment, 또는 ArgoCD Application 이름
+    target: str                   # 노드 이름, namespace/deployment, ArgoCD Application 이름, 또는 GitHub 저장소(owner/name)
     from_revision: int | None = None
     to_revision: int | None = None
 
@@ -61,6 +67,8 @@ def allowed(p: Proposal) -> bool:
             return p.target.split("/")[0] in namespaces and p.to_revision is not None
         case ArgoRollback(apps=apps):
             return p.target in apps and p.to_revision is not None
+        case PullRequest():
+            return True
     return False
 
 

@@ -9,10 +9,11 @@ import threading
 import time
 from dataclasses import dataclass
 
-from app.actions import ACTIONS, ArgoRollback, Playbook, Proposal, RolloutUndo, allowed
+from app.actions import ACTIONS, ArgoRollback, Playbook, Proposal, PullRequest, RolloutUndo, allowed
 from app.deploys import REVISION
+from app.github import PullRequester
 from app.kube import Kube
-from app.notify.card import ALERT_RESOLVED_NOTE, APPROVE_ACTION_ID, retire_button
+from app.notify.card import ALERT_RESOLVED_NOTE, APPROVE_ACTION_ID, OPEN_PR_ACTION_ID, retire_button
 
 log = logging.getLogger("approvals")
 JOB_TIMEOUT_SEC = 300
@@ -25,7 +26,15 @@ class Decision:
     proposal: Proposal | None = None
 
 
-def decide(c, incident_id: str, approver: str) -> Decision:
+def _pr_proposal(c, incident: dict) -> Proposal | None:
+    """PR 버튼은 설정이 켜져 있고 검증된 패치가 있는 장애에서만 동작한다. 저장소는 설정에서 읽는다."""
+    s = c.settings
+    if s.github_repo and s.github_token and incident.get("status") == "resolved" and incident.get("patch"):
+        return Proposal("github-pr", s.github_repo)
+    return None
+
+
+def decide(c, incident_id: str, approver: str, action_id: str = APPROVE_ACTION_ID) -> Decision:
     """실행할 조치는 버튼 값이 아니라 장애 기록에서 다시 읽고, 허용 목록으로 한 번 더 확인한다."""
     if c.settings.action_approvers and approver not in c.settings.action_approvers:
         return Decision("not_allowed")
@@ -33,10 +42,10 @@ def decide(c, incident_id: str, approver: str) -> Decision:
     if incident is None:
         return Decision("unknown")
     raw = incident.get("proposed_action")
-    proposal = Proposal(**raw) if raw else None
+    proposal = _pr_proposal(c, incident) if action_id == OPEN_PR_ACTION_ID else Proposal(**raw) if raw else None
     if not proposal or not allowed(proposal):
         return Decision("no_proposal")
-    if incident.get("alert_resolved_at"):
+    if action_id == APPROVE_ACTION_ID and incident.get("alert_resolved_at"):
         return Decision("stale", proposal)
     if not c.store.start_action(incident_id, proposal.action, proposal.target, approver):
         return Decision("already", proposal)
@@ -149,8 +158,8 @@ class ArgoRunner:
 
 
 class Executor:
-    def __init__(self, jobs: JobRunner, rollouts: RolloutRunner, argo: ArgoRunner):
-        self.runners = {Playbook: jobs, RolloutUndo: rollouts, ArgoRollback: argo}
+    def __init__(self, jobs: JobRunner, rollouts: RolloutRunner, argo: ArgoRunner, pr: PullRequester):
+        self.runners = {Playbook: jobs, RolloutUndo: rollouts, ArgoRollback: argo, PullRequest: pr}
 
     def run(self, incident_id: str, p: Proposal) -> tuple[bool, str]:
         return self.runners[type(ACTIONS[p.action])].run(incident_id, p)
@@ -165,8 +174,9 @@ REPLIES = {
 }
 
 
-def handle_click(c, runner: Executor, incident_id: str, approver: str, channel: str, ts: str, blocks: list[dict]) -> str:
-    decision = decide(c, incident_id, approver)
+def handle_click(c, runner: Executor, incident_id: str, approver: str, channel: str, ts: str, blocks: list[dict],
+                 action_id: str = APPROVE_ACTION_ID) -> str:
+    decision = decide(c, incident_id, approver, action_id)
     if decision.status == "stale":
         c.notifier.update(channel, ts, ALERT_RESOLVED_NOTE, retire_button(blocks, ALERT_RESOLVED_NOTE))
     if decision.status != "started":
@@ -193,7 +203,7 @@ def serve(c) -> None:
     from slack_sdk.socket_mode.response import SocketModeResponse
 
     kube = Kube()
-    runner = Executor(JobRunner(kube, kube.own_image()), RolloutRunner(kube), ArgoRunner(kube))
+    runner = Executor(JobRunner(kube, kube.own_image()), RolloutRunner(kube), ArgoRunner(kube), PullRequester(c.store, c.settings))
 
     def on_request(client: SocketModeClient, req: SocketModeRequest) -> None:
         # 3초 안에 확인 응답을 보내야 Slack이 다시 보내지 않는다. 조치는 따로 실행한다
@@ -202,9 +212,9 @@ def serve(c) -> None:
             return
         payload = req.payload
         for a in payload.get("actions", []):
-            if a.get("action_id") == APPROVE_ACTION_ID:
+            if a.get("action_id") in (APPROVE_ACTION_ID, OPEN_PR_ACTION_ID):
                 args = (c, runner, a["value"], payload["user"]["id"], payload["channel"]["id"],
-                        payload["container"]["message_ts"], payload["message"]["blocks"])
+                        payload["container"]["message_ts"], payload["message"]["blocks"], a["action_id"])
                 threading.Thread(target=handle_click, args=args, daemon=True).start()
 
     client = SocketModeClient(app_token=c.settings.slack_app_token, web_client=WebClient(token=c.settings.slack_bot_token))

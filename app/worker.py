@@ -20,7 +20,7 @@ from app.actions import propose
 from app.container import Container
 from app.core.queue import IncidentQueue
 from app.graph.workflow import recursion_limit
-from app.notify.card import build_card, patch_message
+from app.notify.card import build_card, patch_message, pr_button
 
 log = logging.getLogger("worker")
 
@@ -99,7 +99,9 @@ def process_message(c: Container, msg_id: str, payload: dict) -> dict:
         ts = c.notifier.post(incident["channel"], text, incident.get("thread_ts"), blocks=blocks)
         c.store.set_report_ts(incident_id, ts, incident["channel"], blocks)
         if patch := patch_message(final):
-            c.notifier.post(incident["channel"], patch, incident.get("thread_ts"))
+            repo = c.settings.github_repo if c.settings.github_token else ""
+            blocks = [{"type": "section", "text": {"type": "mrkdwn", "text": patch}}, pr_button(incident_id, repo)] if repo else None
+            c.notifier.post(incident["channel"], patch, incident.get("thread_ts"), blocks=blocks)
     c.queue.ack(msg_id)
     return final
 
