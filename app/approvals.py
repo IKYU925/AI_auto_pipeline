@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from app.actions import ACTIONS, ArgoRollback, Playbook, Proposal, RolloutUndo, allowed
 from app.deploys import REVISION
 from app.kube import Kube
-from app.notify.card import APPROVE_ACTION_ID
+from app.notify.card import ALERT_RESOLVED_NOTE, APPROVE_ACTION_ID, retire_button
 
 log = logging.getLogger("approvals")
 JOB_TIMEOUT_SEC = 300
@@ -21,7 +21,7 @@ ROLLOUT_TIMEOUT_SEC = 180
 
 @dataclass(frozen=True)
 class Decision:
-    status: str                      # started | already | no_proposal | not_allowed | unknown
+    status: str                      # started | already | stale | no_proposal | not_allowed | unknown
     proposal: Proposal | None = None
 
 
@@ -36,6 +36,8 @@ def decide(c, incident_id: str, approver: str) -> Decision:
     proposal = Proposal(**raw) if raw else None
     if not proposal or not allowed(proposal):
         return Decision("no_proposal")
+    if incident.get("alert_resolved_at"):
+        return Decision("stale", proposal)
     if not c.store.start_action(incident_id, proposal.action, proposal.target, approver):
         return Decision("already", proposal)
     return Decision("started", proposal)
@@ -156,6 +158,7 @@ class Executor:
 
 REPLIES = {
     "already": "이미 승인되어 실행했거나 실행 중인 조치입니다.",
+    "stale": f"{ALERT_RESOLVED_NOTE} 실행하지 않았습니다.",
     "no_proposal": "이 장애에는 실행할 수 있는 조치가 없습니다.",
     "not_allowed": "승인 권한이 없는 사용자입니다.",
     "unknown": "장애 기록을 찾지 못했습니다.",
@@ -164,14 +167,14 @@ REPLIES = {
 
 def handle_click(c, runner: Executor, incident_id: str, approver: str, channel: str, ts: str, blocks: list[dict]) -> str:
     decision = decide(c, incident_id, approver)
+    if decision.status == "stale":
+        c.notifier.update(channel, ts, ALERT_RESOLVED_NOTE, retire_button(blocks, ALERT_RESOLVED_NOTE))
     if decision.status != "started":
         c.notifier.post(channel, f"<@{approver}> {REPLIES[decision.status]}", ts)
         return decision.status
     p = decision.proposal
     # 버튼을 지워 같은 카드에서 다시 누르지 않게 한다. 다시 눌러도 start_action이 막는다
-    kept = [b for b in blocks if b.get("block_id") != "approve"]
-    note = {"type": "context", "elements": [{"type": "mrkdwn", "text": f"<@{approver}> 승인 · `{p.label}` 실행 중"}]}
-    c.notifier.update(channel, ts, f"{p.action} 실행 중", kept + [note])
+    c.notifier.update(channel, ts, f"{p.action} 실행 중", retire_button(blocks, f"<@{approver}> 승인 · `{p.label}` 실행 중"))
     try:
         ok, logs = runner.run(incident_id, p)
     except Exception as e:  # noqa: BLE001 - 실패도 조치 기록과 회신으로 남긴다

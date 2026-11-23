@@ -2,11 +2,14 @@ import json
 
 import httpx
 import pytest
+from fastapi.testclient import TestClient
 
 from app.actions import Proposal, propose
 from app.approvals import JobRunner, handle_click, job_spec
 from app.kube import Kube
+from app.main import create_app
 from app.notify.card import APPROVE_ACTION_ID, build_card
+from tests.test_alertmanager import BEARER, alert, webhook
 
 DISK = {"alertname": "AppdataDiskFull", "service": "k3s-w1", "message": "[AppdataDiskFull] 볼륨 90% 초과", "channel": "C1"}
 
@@ -95,6 +98,53 @@ def test_unlisted_approver_and_incident_without_proposal_do_not_run(incident):
     c.store.create("inc-2", "fp2", {**DISK, "source": "alertmanager"})
     assert handle_click(c, runner, "inc-2", "U-ALICE", "C1", "1", []) == "no_proposal"
     assert runner.calls == [] and actions(c) == []
+
+
+def reported(c, incident_id, alert_fp):
+    """워커가 버튼이 있는 카드를 보낸 상태."""
+    _, card = build_card({"incident_id": incident_id, "outcome": "no_code_fix", "incident": DISK,
+                          "proposed_action": {"action": "cleanup-appdata", "target": "k3s-w1"}})
+    with c.db.connection() as conn:
+        conn.execute("UPDATE incidents SET alert_fingerprint = %s WHERE id = %s", (alert_fp, incident_id))
+    c.store.set_report_ts(incident_id, f"{incident_id}.ts", "C1", card)
+    return card
+
+
+def test_resolved_alert_removes_the_button_and_says_why(incident):
+    card = reported(incident, "inc-1", "fp-disk")
+
+    res = TestClient(create_app(incident), headers=BEARER).post(
+        "/api/v1/alerts/alertmanager", json=webhook(alert("AppdataDiskFull", "resolved", fp="fp-disk")))
+
+    assert res.json()["resolved"] == 1
+    [(channel, ts, blocks)] = incident.notifier.updates
+    assert (channel, ts) == ("C1", "inc-1.ts")
+    assert blocks[:-1] == card[:-1], "버튼만 지우고 나머지 카드는 그대로"
+    assert blocks[-1]["elements"][0]["text"] == "알림이 해소되어 승인할 조치가 없습니다."
+
+
+def test_resolved_alert_leaves_an_approved_card_alone(incident):
+    reported(incident, "inc-1", "fp-disk")
+    incident.store.start_action("inc-1", "cleanup-appdata", "k3s-w1", "U-ALICE")
+
+    TestClient(create_app(incident), headers=BEARER).post(
+        "/api/v1/alerts/alertmanager", json=webhook(alert("AppdataDiskFull", "resolved", fp="fp-disk")))
+
+    assert incident.notifier.updates == [], "승인 처리가 남긴 진행 표시를 덮어쓰지 않는다"
+
+
+def test_click_after_alert_resolved_answers_and_does_not_run(incident):
+    c, runner = incident, FakeRunner()
+    with c.db.connection() as conn:
+        conn.execute("UPDATE incidents SET alert_resolved_at = now() WHERE id = 'inc-1'")
+    card = [{"type": "section"}, {"type": "actions", "block_id": "approve"}]
+
+    assert handle_click(c, runner, "inc-1", "U-ALICE", "C1", "111.1", card) == "stale"
+
+    assert runner.calls == [] and actions(c) == []
+    [(_, _, blocks)] = c.notifier.updates
+    assert all(b.get("block_id") != "approve" for b in blocks)
+    assert c.notifier.posts[-1][1] == "<@U-ALICE> 알림이 해소되어 승인할 조치가 없습니다. 실행하지 않았습니다."
 
 
 def test_job_targets_the_allowlisted_address_and_waits_for_the_result():

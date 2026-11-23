@@ -40,7 +40,7 @@ class IncidentStore:
     def get(self, incident_id: str) -> dict | None:
         with self.pool.connection() as conn:
             row = conn.execute(
-                "SELECT status, updated_at, fingerprint, attempts, report, result FROM incidents WHERE id = %s",
+                "SELECT status, updated_at, fingerprint, attempts, report, result, alert_resolved_at FROM incidents WHERE id = %s",
                 (incident_id,),
             ).fetchone()
         if not row:
@@ -49,6 +49,8 @@ class IncidentStore:
                "attempts": row["attempts"], **row["result"]}
         if row["report"] is not None:
             out["report"] = row["report"]
+        if row["alert_resolved_at"] is not None:
+            out["alert_resolved_at"] = row["alert_resolved_at"].isoformat()
         return out
 
     def open_alert_incident(self, alert_fingerprint: str) -> str | None:
@@ -61,22 +63,26 @@ class IncidentStore:
             ).fetchone()
         return row["id"] if row else None
 
-    def resolve_alert(self, alert_fingerprint: str, resolved_at) -> int:
+    def resolve_alert(self, alert_fingerprint: str, resolved_at) -> list[dict]:
+        """해소한 장애마다 회신 카드(report_ts, report_card)와 조치를 이미 시작했는지(acted)."""
         with self.pool.connection() as conn:
-            cur = conn.execute(
-                "UPDATE incidents SET alert_resolved_at = %s WHERE alert_fingerprint = %s AND alert_resolved_at IS NULL",
+            return conn.execute(
+                """UPDATE incidents SET alert_resolved_at = %s WHERE alert_fingerprint = %s AND alert_resolved_at IS NULL
+                   RETURNING id, report_ts, result->'report_card' AS report_card,
+                             EXISTS (SELECT 1 FROM actions a WHERE a.incident_id = incidents.id) AS acted""",
                 (resolved_at, alert_fingerprint),
-            )
-        return cur.rowcount
+            ).fetchall()
 
     def report_ts(self, incident_id: str) -> str | None:
         with self.pool.connection() as conn:
             row = conn.execute("SELECT report_ts FROM incidents WHERE id = %s", (incident_id,)).fetchone()
         return row["report_ts"] if row else None
 
-    def set_report_ts(self, incident_id: str, ts: str) -> None:
+    def set_report_ts(self, incident_id: str, ts: str, channel: str, blocks: list[dict]) -> None:
+        """카드도 남겨 알림이 해소되면 그 카드의 승인 버튼을 지울 수 있게 한다."""
         with self.pool.connection() as conn:
-            conn.execute("UPDATE incidents SET report_ts = %s WHERE id = %s", (ts, incident_id))
+            conn.execute("UPDATE incidents SET report_ts = %s, result = result || %s WHERE id = %s",
+                         (ts, Jsonb({"report_card": {"channel": channel, "blocks": blocks}}), incident_id))
 
     def start_action(self, incident_id: str, action: str, target: str, approver: str) -> bool:
         """처음 승인이면 True. 같은 장애의 같은 조치는 한 번만 실행한다(두 사람이 동시에 눌러도)."""
