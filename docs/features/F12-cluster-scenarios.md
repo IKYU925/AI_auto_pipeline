@@ -18,7 +18,7 @@
 
 1. `scripts/run_cluster.py S01 S14 --max-usd 1 --out results/phase3.csv`를 실행한다.
 2. 스크립트가 시나리오마다 장애를 넣고, 알림이 자동화로 넘어가 처리되고 회신될 때까지 기다린 뒤, 클러스터를 되돌리고 다음 시나리오로 간다.
-3. 결과 CSV에서 감지 시간과 전체 처리 시간을 본다.
+3. 결과 CSV에서 감지 시간과 전체 처리 시간을 본다. 코드 버그는 숨은 테스트 채점(`hidden_passed`, `full_passed`, `false_pass`)도 본다. 채점은 클러스터가 아니라 로컬 shopapi 복사본에서 한다.
 
 ## 요구사항
 

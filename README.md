@@ -285,7 +285,7 @@ kubectl apply -k deploy/k8s/overlays/local
 caffeinate -i .venv/bin/python -m scripts.run_cluster S01 S14 --max-usd 0.5 --out results/phase3.csv
 ```
 
-`run_cluster`는 장애를 실제로 넣고(버그 이미지 배포, 설정 변경, 노드 정지, 디스크 채우기) 알림이 자동화를 거쳐 Slack에 회신될 때까지 구간별 시간을 잰다. 맥이 잠들면 VM이 멈추므로 `caffeinate`로 실행하고, 노드 시계가 5초 넘게 어긋나면 시작하지 않는다. 승인이 필요한 시나리오(S17, S20)는 카드의 버튼을 사람이 누를 때까지 기다린다.
+`run_cluster`는 장애를 실제로 넣고(버그 이미지 배포, 설정 변경, 노드 정지, 디스크 채우기) 알림이 자동화를 거쳐 Slack에 회신될 때까지 구간별 시간을 잰다. 맥이 잠들면 VM이 멈추므로 `caffeinate`로 실행하고, 노드 시계가 5초 넘게 어긋나면 시작하지 않는다. 승인이 필요한 시나리오(S17, S20)는 카드의 버튼을 사람이 누를 때까지 기다린다. 코드 버그는 1, 2단계와 같이 AI 패치를 버그가 든 로컬 shopapi 복사본에 적용해 숨은 테스트와 전체 테스트로 채점한다(`hidden_passed`, `full_passed`, `false_pass`). 2026-11-23 이전의 3, 4단계 결과에는 이 열이 없다. 그때의 `resolved`는 자동화 안의 선별 테스트 통과만 뜻한다.
 
 ### 5. AWS EKS에서 실행(4단계)
 

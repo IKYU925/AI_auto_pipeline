@@ -43,6 +43,8 @@ from scripts.run_experiment import (
     Traffic,
     append_csv,
     inject,
+    injected,
+    judge,
     load_scenario,
     reset_caches,
 )
@@ -72,6 +74,7 @@ COLUMNS = [
     "scenario", "type", "alert", "incident_id", "fault_at", "occurred_at", "received_at", "finished_at", "reported_at",
     "detect_sec", "deliver_sec", "process_sec", "total_sec", "outcome", "expected_outcome", "outcome_correct",
     "category", "expected_category", "category_correct", "runbook_hit", "attempts", "usd", "llm_calls", "heavy_calls",
+    "hidden_passed", "full_passed", "false_pass",
     "incidents_created", "other_incidents", "procedure_usd", "note", "experiment",
 ]
 
@@ -449,6 +452,17 @@ def procedure_usd(since: datetime) -> float:
     return round(float(rows[0]["usd"]), 6)
 
 
+def judge_fix(s: Scenario, incident: dict) -> dict:
+    """1, 2단계와 같은 채점. 자동화가 못 본 숨은 테스트로 AI 패치가 버그를 실제로 고쳤는지 로컬 shopapi 복사본에서 확인한다."""
+    patch = psql(f"SELECT result->>'patch' AS patch FROM incidents WHERE id = '{incident['id']}'")[0]["patch"] or ""
+    if not patch or s.hidden_test is None:
+        return {"hidden_passed": None, "full_passed": None, "false_pass": None}
+    with injected(s.id, SHOPAPI):
+        v = judge(s, patch)
+    return {"hidden_passed": v["hidden_passed"], "full_passed": v["full_passed"],
+            "false_pass": incident["status"] == "resolved" and v["hidden_passed"] is False}
+
+
 def summarize(s: Scenario, fault_at: datetime, w: Waited, created: int) -> dict:
     i = w.incident
     calls = psql(f"SELECT model, usd FROM llm_calls WHERE incident_id = '{i['id']}'")
@@ -468,6 +482,7 @@ def summarize(s: Scenario, fault_at: datetime, w: Waited, created: int) -> dict:
         "runbook_hit": None if s.expected.runbook is None else s.expected.runbook in docs,
         "attempts": i["attempts"], "usd": round(sum(float(c["usd"] or 0) for c in calls), 6),
         "llm_calls": len(calls), "heavy_calls": sum("opus" in c["model"] for c in calls),
+        **judge_fix(s, i),
         "incidents_created": created,
         "other_incidents": ";".join(f"{o['alertname']}:{o['status']}" for o in w.others),
     }
