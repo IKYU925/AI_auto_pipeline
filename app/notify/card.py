@@ -98,12 +98,24 @@ def approve_button(incident_id: str, proposal: dict) -> dict:
 
 
 def retire_button(blocks: list[dict], note: str) -> list[dict]:
-    """승인 버튼을 지우고 그 이유를 카드에 남긴다. 사람이 더 누를 버튼인지 카드만 보고 알 수 있게 한다."""
-    kept = [b for b in blocks if b.get("block_id") != "approve"]
+    """승인 버튼(조치 승인, PR 만들기)을 지우고 그 이유를 카드에 남긴다. 사람이 더 누를 버튼인지 카드만 보고 알 수 있게 한다."""
+    kept = [b for b in blocks if b.get("block_id") not in ("approve", "open_pr")]
     return kept + [{"type": "context", "elements": [{"type": "mrkdwn", "text": note}]}]
 
 
 ALERT_RESOLVED_NOTE = "알림이 해소되어 승인할 조치가 없습니다."
+OPEN_PR_ACTION_ID = "open_pr"
+
+
+def pr_button(incident_id: str, repo: str) -> dict:
+    """패치 메시지에 붙는다. 승인 처리가 장애 기록의 패치로 PR을 연다(F18). 머지는 사람이 한다."""
+    return {"type": "actions", "block_id": "open_pr", "elements": [{
+        "type": "button", "action_id": OPEN_PR_ACTION_ID, "value": incident_id,
+        "text": {"type": "plain_text", "text": _clip(f"PR 만들기: {repo}", 75)},
+        "confirm": {"title": {"type": "plain_text", "text": "PR 만들기"},
+                    "text": {"type": "mrkdwn", "text": f"`{repo}`에 이 패치로 draft PR을 엽니다. 머지하지 않습니다. 같은 장애에는 한 번만 만듭니다."},
+                    "confirm": {"type": "plain_text", "text": "만들기"}, "deny": {"type": "plain_text", "text": "취소"}},
+    }]}
 
 
 def patch_message(state: dict) -> str | None:
